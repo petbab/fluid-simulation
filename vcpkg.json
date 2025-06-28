@@ -1,0 +1,9 @@
+{
+  "name": "fluid-simulation",
+  "version": "1.0.0",
+  "dependencies": [
+    "glfw3",
+    "glm",
+    "glad"
+  ]
+}
