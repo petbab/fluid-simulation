@@ -1,50 +1,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
 #include "glfw.h"
 #include "window.h"
-
-// Vertex shader source code
-const char* vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aColor;
-
-out vec3 vertexColor;
-
-void main() {
-    gl_Position = vec4(aPos, 1.0);
-    vertexColor = aColor;
-}
-)";
-
-// Fragment shader source code
-const char* fragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;
-in vec3 vertexColor;
-
-void main() {
-    FragColor = vec4(vertexColor, 1.0);
-}
-)";
-
-unsigned int compileShader(unsigned int type, const char* source) {
-    unsigned int shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
-    // Check for compilation errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    return shader;
-}
+#include "shader.h"
+#include "config.h"
 
 int main() {
     // Initialize GLFW
@@ -57,29 +16,6 @@ int main() {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         throw std::runtime_error{"Failed to initialize GLAD"};
 
-    // Compile shaders
-    unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    unsigned int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-    // Create shader program
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    // Check for linking errors
-    int success;
-    char infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    // Clean up shaders
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
     // Triangle vertices with positions and colors
     float vertices[] = {
         // positions        // colors
@@ -87,6 +23,8 @@ int main() {
         -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left (green)
         0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // bottom right (blue)
     };
+
+    Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"shader.frag"};
 
     // Create VAO, VBO
     unsigned int VAO, VBO;
@@ -118,7 +56,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw triangle
-        glUseProgram(shaderProgram);
+        shader.use();
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -130,7 +68,6 @@ int main() {
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
 
     return 0;
 }
