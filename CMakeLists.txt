@@ -9,8 +9,11 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 
+file(GLOB SOURCE src/*.cpp)
+file(GLOB HEADERS src/*.h)
+
 # Create executable
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE

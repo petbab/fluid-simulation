@@ -1,6 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include "glfw.h"
+#include "window.h"
 
 // Vertex shader source code
 const char* vertexShaderSource = R"(
@@ -27,15 +29,6 @@ void main() {
 }
 )";
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-
 unsigned int compileShader(unsigned int type, const char* source) {
     unsigned int shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, NULL);
@@ -55,32 +48,14 @@ unsigned int compileShader(unsigned int type, const char* source) {
 
 int main() {
     // Initialize GLFW
-    if (!glfwInit()) {
-        std::cout << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
-
-    // Configure GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    GLFW glfw{};
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL Hello World", NULL, NULL);
-    if (!window) {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    Window window{800, 600, "Fluid Simulation"};
 
     // Initialize GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        throw std::runtime_error{"Failed to initialize GLAD"};
 
     // Compile shaders
     unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
@@ -134,9 +109,9 @@ int main() {
     glEnableVertexAttribArray(1);
 
     // Render loop
-    while (!glfwWindowShouldClose(window)) {
+    while (!window.should_close()) {
         // Input
-        processInput(window);
+        window.process_input();
 
         // Clear screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -148,7 +123,7 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         // Swap buffers and poll events
-        glfwSwapBuffers(window);
+        window.swap_buffers();
         glfwPollEvents();
     }
 
@@ -157,6 +132,5 @@ int main() {
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
 
-    glfwTerminate();
     return 0;
 }
