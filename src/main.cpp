@@ -4,6 +4,7 @@
 #include "window.h"
 #include "shader.h"
 #include "config.h"
+#include "geometry.h"
 
 int main() {
     // Initialize GLFW
@@ -16,35 +17,9 @@ int main() {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         throw std::runtime_error{"Failed to initialize GLAD"};
 
-    // Triangle vertices with positions and colors
-    float vertices[] = {
-        // positions        // colors
-        0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  // top vertex (red)
-        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left (green)
-        0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // bottom right (blue)
-    };
-
     Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"shader.frag"};
 
-    // Create VAO, VBO
-    unsigned int VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    // Bind VAO
-    glBindVertexArray(VAO);
-
-    // Bind and configure VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    Geometry triangle = procedural::triangle();
 
     // Render loop
     while (!window.should_close()) {
@@ -57,17 +32,12 @@ int main() {
 
         // Draw triangle
         shader.use();
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        triangle.draw();
 
         // Swap buffers and poll events
         window.swap_buffers();
         glfwPollEvents();
     }
-
-    // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
 
     return 0;
 }
