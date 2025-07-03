@@ -17,9 +17,9 @@ int main() {
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         throw std::runtime_error{"Failed to initialize GLAD"};
 
-    Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"shader.frag"};
+    Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"disk.frag"};
 
-    Geometry triangle = procedural::triangle();
+    Geometry object = procedural::quad(.1f);
 
     // Render loop
     while (!window.should_close()) {
@@ -32,7 +32,7 @@ int main() {
 
         // Draw triangle
         shader.use();
-        triangle.draw();
+        object.draw();
 
         // Swap buffers and poll events
         window.swap_buffers();
