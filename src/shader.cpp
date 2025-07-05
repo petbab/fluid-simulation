@@ -1,9 +1,8 @@
 #include "shader.h"
 
 #include <stdexcept>
-#include <filesystem>
 #include <fstream>
-#include "glad/glad.h"
+#include <glm/gtc/type_ptr.hpp>
 
 
 static unsigned compile_shader(unsigned int type, const char* source) {
@@ -67,4 +66,17 @@ Shader::~Shader() {
 
 void Shader::use() const {
     glUseProgram(program);
+}
+
+GLint Shader::get_uniform_location(const std::string &name) const {
+    use();
+    return glGetUniformLocation(program, name.c_str());
+}
+
+void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &projection) const {
+    GLint view_loc = get_uniform_location(VIEW_UNIFORM);
+    GLint projection_loc = get_uniform_location(PROJECTION_UNIFORM);
+
+    glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
 }
