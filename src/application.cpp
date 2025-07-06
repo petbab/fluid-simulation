@@ -24,8 +24,12 @@ void Application::run() {
     glfwSetKeyCallback(window, on_key_pressed);
 
     Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"disk.frag"};
+    Shader axes_shader{cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag"};
 
     Geometry object = procedural::quad(.1f);
+    Geometry axes = procedural::axes();
+
+    glEnable(GL_DEPTH_TEST);
 
     // Render loop
     while (!glfwWindowShouldClose(window)) {
@@ -40,10 +44,13 @@ void Application::run() {
 
         // Clear screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
         object.draw();
+
+        axes_shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
+        axes.draw();
 
         glfwSwapBuffers(window);
     }

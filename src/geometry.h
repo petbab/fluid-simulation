@@ -4,16 +4,14 @@
 #include <glad/glad.h>
 
 
-class Geometry {
-    static constexpr GLuint POSITION_LOCATION = 0,
-                            TEX_COORD_LOCATION = 1,
-                            COLOR_LOCATION = 2;
+struct VertexAttribute {
+    unsigned elem_size;
+    const std::vector<float> &data;
+};
 
+class Geometry {
 public:
-    Geometry(GLenum mode,
-        const std::vector<float> &positions,
-        const std::vector<float> &tex_coords = {},
-        const std::vector<float> &colors = {});
+    Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes);
 
     ~Geometry();
 
@@ -32,5 +30,7 @@ namespace procedural {
 Geometry triangle(bool color = true);
 
 Geometry quad(float side_length, bool color = true);
+
+Geometry axes(float half_size = 5.);
 
 }
