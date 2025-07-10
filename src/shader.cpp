@@ -1,4 +1,5 @@
 #include "shader.h"
+#include "debug.h"
 
 #include <stdexcept>
 #include <fstream>
@@ -18,6 +19,8 @@ static unsigned compile_shader(unsigned int type, const char* source) {
         glGetShaderInfoLog(shader, 512, nullptr, info_log);
         throw std::runtime_error{"Shader compilation failed: " + std::string{info_log} };
     }
+
+    glCheckError();
 
     return shader;
 }
@@ -45,6 +48,8 @@ Shader::Shader(const char *vertex, const char *fragment) {
     // Clean up shaders
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
+
+    glCheckError();
 }
 
 static std::string read_file(const std::filesystem::path &path) {
@@ -62,15 +67,19 @@ Shader::Shader(const std::filesystem::path &vertex, const std::filesystem::path 
 
 Shader::~Shader() {
     glDeleteProgram(program);
+    glCheckError();
 }
 
 void Shader::use() const {
     glUseProgram(program);
+    glCheckError();
 }
 
 GLint Shader::get_uniform_location(const std::string &name) const {
     use();
-    return glGetUniformLocation(program, name.c_str());
+    GLint l = glGetUniformLocation(program, name.c_str());
+    glCheckError();
+    return l;
 }
 
 void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &projection) const {
@@ -79,4 +88,6 @@ void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &project
 
     glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glCheckError();
 }

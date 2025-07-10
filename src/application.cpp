@@ -24,6 +24,7 @@ Application::Application(int width, int height, const char *title)
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(glDebugOutput, nullptr);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+        glCheckError();
     }
 #endif
 }
@@ -57,6 +58,7 @@ void Application::run() {
         // Clear screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glCheckError();
 
         shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
         object.draw();
@@ -70,6 +72,8 @@ void Application::run() {
 
 void Application::on_resize(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
+    glCheckError();
+
     auto application = static_cast<Application*>(glfwGetWindowUserPointer(window));
     application->camera.update_window_size(width, height);
 }
