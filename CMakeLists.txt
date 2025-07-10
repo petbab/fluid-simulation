@@ -22,8 +22,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glad::glad
 )
 
-add_compile_options("-Wall -Wextra -Werror")
-add_compile_definitions(ROOT_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        ROOT_DIR="${CMAKE_SOURCE_DIR}"
+        $<$<CONFIG:Debug>:DEBUG>
+)
 
 # Platform-specific settings
 if(WIN32)

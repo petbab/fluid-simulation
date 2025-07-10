@@ -3,6 +3,7 @@
 #include "config.h"
 #include "shader.h"
 #include "geometry.h"
+#include "debug.h"
 
 
 Application::Application(int width, int height, const char *title)
@@ -15,6 +16,16 @@ Application::Application(int width, int height, const char *title)
     // Initialize GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         throw std::runtime_error{"Failed to initialize GLAD"};
+
+#ifdef DEBUG
+    int flags; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+    if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(glDebugOutput, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    }
+#endif
 }
 
 void Application::run() {
@@ -81,7 +92,7 @@ void Application::on_mouse_move(GLFWwindow *window, double x, double y) {
     application->last_mouse_pos = pos;
 }
 
-void Application::on_key_pressed(GLFWwindow *window, int key, int scancode, int action, int mods) {
+void Application::on_key_pressed(GLFWwindow *window, int key, int, int, int) {
     if (key == GLFW_KEY_ESCAPE)
         glfwSetWindowShouldClose(window, GL_TRUE);
 }
