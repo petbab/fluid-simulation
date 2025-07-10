@@ -75,19 +75,32 @@ void Shader::use() const {
     glCheckError();
 }
 
-GLint Shader::get_uniform_location(const std::string &name) const {
-    use();
-    GLint l = glGetUniformLocation(program, name.c_str());
-    glCheckError();
-    return l;
+void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &projection) {
+    set_uniform(VIEW_UNIFORM, view);
+    set_uniform(PROJECTION_UNIFORM, projection);
 }
 
-void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &projection) const {
-    GLint view_loc = get_uniform_location(VIEW_UNIFORM);
-    GLint projection_loc = get_uniform_location(PROJECTION_UNIFORM);
+GLint Shader::get_uniform_location(const std::string &name) {
+    auto it = uniform_cache.find(name);
+    if (it != uniform_cache.end())
+        return it->second;
 
-    glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
+    use();
+    GLint location = glGetUniformLocation(program, name.c_str());
+    glCheckError();
+    return uniform_cache[name] = location;
+}
 
+void Shader::set_uniform(const std::string &name, glm::vec3 v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform3f(loc, v.x, v.y, v.z);
+    glCheckError();
+}
+
+void Shader::set_uniform(const std::string &name, const glm::mat4 &m) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(m));
     glCheckError();
 }
