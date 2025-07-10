@@ -107,4 +107,8 @@ void Application::process_keyboard_input(float delta) {
         camera.on_key_move(Camera::move::LEFT, delta);
     else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.on_key_move(Camera::move::RIGHT, delta);
+    else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera.on_key_move(Camera::move::UP, delta);
+    else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+        camera.on_key_move(Camera::move::DOWN, delta);
 }

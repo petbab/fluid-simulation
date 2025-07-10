@@ -24,7 +24,7 @@ public:
     void on_mouse_move(glm::vec2 offset);
 
     enum class move {
-        FORWARD, BACKWARD, LEFT, RIGHT
+        FORWARD, BACKWARD, LEFT, RIGHT, UP, DOWN
     };
     void on_key_move(move m, float delta);
 

@@ -60,6 +60,12 @@ void Camera::on_key_move(Camera::move m, float delta) {
     case move::RIGHT:
         position += right * x;
         break;
+    case move::UP:
+        position += up * x;
+        break;
+    case move::DOWN:
+        position -= up * x;
+        break;
     }
     set_view();
 }
