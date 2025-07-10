@@ -61,10 +61,10 @@ void Camera::on_key_move(Camera::move m, float delta) {
         position += right * x;
         break;
     case move::UP:
-        position += up * x;
+        position += WORLD_UP * x;
         break;
     case move::DOWN:
-        position -= up * x;
+        position -= WORLD_UP * x;
         break;
     }
     set_view();

@@ -11,6 +11,8 @@ public:
     void run();
 
 private:
+    void configure_window();
+
     static void on_resize(GLFWwindow* window, int width, int height);
     static void on_mouse_move(GLFWwindow* window, double x, double y);
     static void on_key_pressed(GLFWwindow* window, int key, int scancode, int action, int mods);

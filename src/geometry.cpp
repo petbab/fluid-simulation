@@ -153,7 +153,7 @@ Geometry triangle(bool color) {
     return {GL_TRIANGLES, attributes};
 }
 
-Geometry quad(float side_length, bool color) {
+Geometry quad(float side_length, bool tex_coord, bool color) {
     std::vector positions{
         -0.5f,  0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
@@ -164,17 +164,17 @@ Geometry quad(float side_length, bool color) {
     };
     for (float &x : positions)
         x *= side_length;
+    std::vector<VertexAttribute> attributes{{3, positions}};
 
-    std::vector tex_coords{
-        0.f, 1.f,
-        0.f, 0.f,
-        1.f, 0.f,
-        1.f,  1.f,
-        0.f, 1.f,
-        1.f, 0.f,
-    };
-    std::vector<VertexAttribute> attributes{{3, positions}, {2, tex_coords}};
-
+    if (tex_coord)
+        attributes.emplace_back(2, std::vector{
+            0.f, 1.f,
+            0.f, 0.f,
+            1.f, 0.f,
+            1.f, 1.f,
+            0.f, 1.f,
+            1.f, 0.f,
+        });
     if (color)
         attributes.emplace_back(3, std::vector{
             1.0f, 0.0f, 0.0f,

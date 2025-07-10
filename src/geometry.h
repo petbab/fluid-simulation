@@ -52,7 +52,7 @@ namespace procedural {
 
 Geometry triangle(bool color);
 
-Geometry quad(float side_length, bool color);
+Geometry quad(float side_length, bool tex_coord, bool color);
 
 Geometry axes(float half_size = 5.);
 

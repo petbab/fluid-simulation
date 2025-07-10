@@ -29,18 +29,35 @@ Application::Application(int width, int height, const char *title)
 #endif
 }
 
-void Application::run() {
+void Application::configure_window() {
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetCursorPosCallback(window, on_mouse_move);
     glfwSetKeyCallback(window, on_key_pressed);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
 
-    Shader shader{cfg::shaders_dir/"shader.vert", cfg::shaders_dir/"disk.frag"};
+void Application::run() {
+    configure_window();
+
+    Shader ball_shader{cfg::shaders_dir/"instanced_ball.vert", cfg::shaders_dir/"instanced_ball.frag"};
+    ball_shader.set_uniform("projection_frag", camera.get_projection());
+
     Shader axes_shader{cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag"};
 
-    Geometry object = procedural::quad(5);
-    Geometry axes = procedural::axes(20);
+    std::vector<float> positions{
+        0., 0., 0.,
+        2., 0., 0.,
+        0., 2., 0.,
+        0., 0., 2.,
+        0., 2., 2.,
+        2., 2., 0.,
+        2., 0., 2.,
+        2., 2., 2.,
+    };
+    InstancedGeometry ball_instances{procedural::quad(1, false, false), 1, {{3, positions}}};
+
+    Geometry axes = procedural::axes(10);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -60,8 +77,9 @@ void Application::run() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glCheckError();
 
-        shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
-        object.draw();
+        ball_shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
+        ball_shader.set_uniform("camera_pos", camera.get_position());
+        ball_instances.draw();
 
         axes_shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
         axes.draw();
