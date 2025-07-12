@@ -1,8 +1,6 @@
 #include <glad/glad.h>
 #include "application.h"
 #include "config.h"
-#include "shader.h"
-#include "geometry.h"
 #include "debug.h"
 
 
@@ -10,6 +8,7 @@ Application::Application(GLFWwindow *window, int width, int height)
     : window{window},
       camera{{0, 0, 10}, glm::radians(270.f), 0, width, height} {
     configure_window();
+    setup_scene();
 }
 
 void Application::configure_window() {
@@ -21,8 +20,31 @@ void Application::configure_window() {
 }
 
 void Application::run() {
-    Shader ball_shader{cfg::shaders_dir/"instanced_ball.vert", cfg::shaders_dir/"instanced_ball.frag"};
-    Shader axes_shader{cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag"};
+    glEnable(GL_DEPTH_TEST);
+
+    // Render loop
+    while (!glfwWindowShouldClose(window)) {
+        const double current_time = glfwGetTime() * 1000.0; // from seconds to milliseconds
+        const double delta = current_time - last_glfw_time;
+        last_glfw_time = current_time;
+
+        // Poll for and process events.
+        glfwPollEvents();
+        update(delta);
+
+        // Clear screen
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glCheckError();
+
+        render_scene();
+        glfwSwapBuffers(window);
+    }
+}
+
+void Application::setup_scene() {
+    Shader *ball_shader = make_shader(cfg::shaders_dir/"instanced_ball.vert",
+                                      cfg::shaders_dir/"instanced_ball.frag");
 
     std::vector<float> positions{
         0., 0., 0.,
@@ -34,36 +56,22 @@ void Application::run() {
         2., 0., 2.,
         2., 2., 2.,
     };
-    InstancedGeometry ball_instances{procedural::quad(1, false, false), 1, {{3, positions}}};
+    Geometry *ball_instances = make_geometry<InstancedGeometry>(
+        procedural::quad(1, false, false), 1, std::vector{VertexAttribute{3, positions}});
+    make_object(*ball_shader, *ball_instances);
 
-    Geometry axes = procedural::axes(10);
+    Shader *axes_shader = make_shader(cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag");
+    Geometry *axes = make_geometry(procedural::axes(10));
+    make_object(*axes_shader, *axes);
+}
 
-    glEnable(GL_DEPTH_TEST);
+void Application::render_scene() {
+    for (auto &object : object_list)
+        object->render();
+}
 
-    // Render loop
-    while (!glfwWindowShouldClose(window)) {
-        const double current_time = glfwGetTime() * 1000.0; // from seconds to milliseconds
-        const double delta = current_time - last_glfw_time;
-        last_glfw_time = current_time;
-
-        // Poll for and process events.
-        glfwPollEvents();
-
-        process_keyboard_input(static_cast<float>(delta));
-
-        // Clear screen
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glCheckError();
-
-        ball_shader.use();
-        ball_instances.draw();
-
-        axes_shader.use();
-        axes.draw();
-
-        glfwSwapBuffers(window);
-    }
+void Application::update(double delta) {
+    process_keyboard_input(static_cast<float>(delta));
 }
 
 void Application::on_resize(GLFWwindow *window, int width, int height) {
