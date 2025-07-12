@@ -4,10 +4,13 @@ layout (location = 1) in vec3 aColor;
 
 out vec3 vertexColor;
 
-uniform mat4 view;
-uniform mat4 projection;
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 position;
+} camera;
 
 void main() {
-    gl_Position = projection * view * vec4(aPos, 1.0);
+    gl_Position = camera.projection * camera.view * vec4(aPos, 1.0);
     vertexColor = aColor;
 }

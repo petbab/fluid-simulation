@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <string>
+#include "ubo.h"
 
 
 class Camera {
@@ -18,9 +19,9 @@ public:
 
     void update_window_size(int width, int height) { set_projection(width, height); }
 
-    const glm::mat4& get_projection() const { return projection; }
-    const glm::mat4& get_view() const { return view; }
-    glm::vec3 get_position() const { return position; }
+    const glm::mat4& get_projection() const { return data.projection; }
+    const glm::mat4& get_view() const { return data.view; }
+    glm::vec3 get_position() const { return data.position; }
 
     void on_mouse_move(glm::vec2 offset);
 
@@ -32,10 +33,23 @@ public:
 private:
     void set_view();
     void set_projection(int width, int height);
-
     void update_vectors();
 
-    glm::vec3 position, front, right, up;
-    glm::mat4 projection, view;
+    /*
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 position;
+} camera;
+    */
+    struct CameraData {
+        glm::mat4 projection;
+        glm::mat4 view;
+        glm::vec3 position;
+        float _pad = 0.f;
+    };
+    UBO<CameraData> ubo;
+    CameraData data;
+    glm::vec3 front, right, up;
     float yaw, pitch;
 };

@@ -19,11 +19,11 @@ Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
             for (unsigned j = 0; j < attr.elem_size; ++j)
                 vertex_data.push_back(attr.data[i * attr.elem_size + j]);
 
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertex_data.size() * sizeof(float)), vertex_data.data(), GL_STATIC_DRAW);
 
     unsigned offset = 0;
@@ -45,29 +45,29 @@ Geometry::Geometry(Geometry &&other) noexcept {
 }
 
 Geometry &Geometry::operator=(Geometry &&other) noexcept {
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
     glCheckError();
 
     mode = other.mode;
-    VAO = other.VAO;
-    VBO = other.VBO;
+    vao = other.vao;
+    vbo = other.vbo;
     vertices_count = other.vertices_count;
 
-    other.VAO = 0;
-    other.VBO = 0;
+    other.vao = 0;
+    other.vbo = 0;
 
     return *this;
 }
 
 Geometry::~Geometry() {
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
     glCheckError();
 }
 
 void Geometry::draw() const {
-    glBindVertexArray(VAO);
+    glBindVertexArray(vao);
     glDrawArrays(mode, 0, vertices_count);
     glBindVertexArray(0);
     glCheckError();
@@ -94,9 +94,9 @@ InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
             for (unsigned j = 0; j < attr.elem_size; ++j)
                 instance_data.push_back(attr.data[i * attr.elem_size + j]);
 
-    glBindVertexArray(VAO);
-    glGenBuffers(1, &instanceVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBindVertexArray(vao);
+    glGenBuffers(1, &instance_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_STATIC_DRAW);
 
     unsigned offset = 0;
@@ -117,12 +117,12 @@ InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
 }
 
 InstancedGeometry::~InstancedGeometry() {
-    glDeleteBuffers(1, &instanceVBO);
+    glDeleteBuffers(1, &instance_vbo);
     glCheckError();
 }
 
 void InstancedGeometry::draw() const {
-    glBindVertexArray(VAO);
+    glBindVertexArray(vao);
     glDrawArraysInstanced(mode, 0, vertices_count, instance_count);
     glBindVertexArray(0);
     glCheckError();

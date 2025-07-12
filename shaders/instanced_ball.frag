@@ -6,8 +6,13 @@ in VertexData {
 } in_data;
 
 out vec4 frag_color;
+layout (depth_less) out float gl_FragDepth;
 
-uniform mat4 projection_frag;
+layout(std140, binding = 0) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 position;
+} camera;
 
 const float RADIUS = 1.;
 
@@ -20,7 +25,7 @@ void main()
     centered_pos.z = sqrt(centered_pos.z);
 
     vec3 view_pos = in_data.center_view + centered_pos * RADIUS;
-    vec4 clip_pos = projection_frag * vec4(view_pos, 1.);
+    vec4 clip_pos = camera.projection * vec4(view_pos, 1.);
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 

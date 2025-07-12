@@ -75,11 +75,6 @@ void Shader::use() const {
     glCheckError();
 }
 
-void Shader::set_camera_uniforms(const glm::mat4 &view, const glm::mat4 &projection) {
-    set_uniform(VIEW_UNIFORM, view);
-    set_uniform(PROJECTION_UNIFORM, projection);
-}
-
 GLint Shader::get_uniform_location(const std::string &name) {
     auto it = uniform_cache.find(name);
     if (it != uniform_cache.end())
@@ -87,6 +82,9 @@ GLint Shader::get_uniform_location(const std::string &name) {
 
     use();
     GLint location = glGetUniformLocation(program, name.c_str());
+    if (location == -1)
+        throw std::runtime_error{"location of uniform '" + name + "' not found"};
+
     glCheckError();
     return uniform_cache[name] = location;
 }

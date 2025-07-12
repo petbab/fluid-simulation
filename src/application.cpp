@@ -22,8 +22,6 @@ void Application::configure_window() {
 
 void Application::run() {
     Shader ball_shader{cfg::shaders_dir/"instanced_ball.vert", cfg::shaders_dir/"instanced_ball.frag"};
-    ball_shader.set_uniform("projection_frag", camera.get_projection());
-
     Shader axes_shader{cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag"};
 
     std::vector<float> positions{
@@ -58,11 +56,10 @@ void Application::run() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glCheckError();
 
-        ball_shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
-        ball_shader.set_uniform("camera_pos", camera.get_position());
+        ball_shader.use();
         ball_instances.draw();
 
-        axes_shader.set_camera_uniforms(camera.get_view(), camera.get_projection());
+        axes_shader.use();
         axes.draw();
 
         glfwSwapBuffers(window);

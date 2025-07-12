@@ -23,8 +23,8 @@ public:
 
 protected:
     GLenum mode;
-    unsigned VBO = 0,
-             VAO = 0;
+    unsigned vbo = 0,
+             vao = 0;
     int vertices_count;
 };
 
@@ -41,7 +41,7 @@ public:
     void draw() const override;
 
 private:
-    unsigned instanceVBO = 0;
+    unsigned instance_vbo = 0;
     int instance_count;
 };
 

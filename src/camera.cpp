@@ -1,20 +1,25 @@
 #include "camera.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 
 Camera::Camera(glm::vec3 position, float yaw, float pitch, int width, int height)
-    : position{position}, yaw{yaw}, pitch{pitch} {
+    : ubo{UBO<CameraData>::CAMERA_UBO_BINDING},
+      data{{0.}, {0.}, position},
+      yaw{yaw}, pitch{pitch} {
     update_vectors();
     set_projection(width, height);
 }
 
 void Camera::set_view() {
-    view = glm::lookAt(position, position + front, up);
+    data.view = glm::lookAt(data.position, data.position + front, up);
+    ubo.upload_data(glm::value_ptr(data.view), sizeof(glm::mat4), sizeof(glm::mat4) + sizeof(glm::vec4));
 }
 
 void Camera::set_projection(int width, int height) {
-    projection = glm::perspective(FOV, static_cast<float>(width) / static_cast<float>(height), NEAR, FAR);
+    data.projection = glm::perspective(FOV, static_cast<float>(width) / static_cast<float>(height), NEAR, FAR);
+    ubo.upload_data(&data, 0, sizeof(glm::mat4));
 }
 
 void Camera::update_vectors() {
@@ -49,22 +54,22 @@ void Camera::on_key_move(Camera::move m, float delta) {
     float x = delta * SPEED;
     switch (m) {
     case move::FORWARD:
-        position += front * x;
+        data.position += front * x;
         break;
     case move::BACKWARD:
-        position -= front * x;
+        data.position -= front * x;
         break;
     case move::LEFT:
-        position -= right * x;
+        data.position -= right * x;
         break;
     case move::RIGHT:
-        position += right * x;
+        data.position += right * x;
         break;
     case move::UP:
-        position += WORLD_UP * x;
+        data.position += WORLD_UP * x;
         break;
     case move::DOWN:
-        position -= WORLD_UP * x;
+        data.position -= WORLD_UP * x;
         break;
     }
     set_view();
