@@ -17,20 +17,18 @@ public:
     Geometry& operator=(const Geometry&) = delete;
     Geometry(Geometry&&) noexcept;
     Geometry& operator=(Geometry&&) noexcept;
-    ~Geometry();
+    virtual ~Geometry();
 
-    void draw() const;
+    virtual void draw() const;
 
-private:
+protected:
     GLenum mode;
     unsigned VBO = 0,
              VAO = 0;
     int vertices_count;
-
-    friend class InstancedGeometry;
 };
 
-class InstancedGeometry {
+class InstancedGeometry : public Geometry {
 public:
     InstancedGeometry(GLenum mode,
         const std::vector<VertexAttribute> &attributes,
@@ -38,12 +36,11 @@ public:
     InstancedGeometry(Geometry geometry, std::size_t attribute_count,
         const std::vector<VertexAttribute> &instance_attributes);
 
-    ~InstancedGeometry();
+    ~InstancedGeometry() override;
 
-    void draw() const;
+    void draw() const override;
 
 private:
-    Geometry geometry;
     unsigned instanceVBO = 0;
     int instance_count;
 };
