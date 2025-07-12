@@ -6,7 +6,7 @@
 
 class Application {
 public:
-    Application(int width, int height, const char *title);
+    Application(GLFWwindow *window, int width, int height);
 
     void run();
 
