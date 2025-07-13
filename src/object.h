@@ -7,10 +7,12 @@
 class Object {
 public:
     Object(const Shader &shader, const Geometry &geometry);
+    virtual ~Object() = default;
 
-    void render() const;
+    virtual void render() const;
+    virtual void update(double delta);
 
-private:
+protected:
     const Shader &shader;
     const Geometry &geometry;
 };

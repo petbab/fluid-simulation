@@ -7,3 +7,5 @@ void Object::render() const {
     shader.use();
     geometry.draw();
 }
+
+void Object::update(double) {}

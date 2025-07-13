@@ -16,15 +16,14 @@ layout(std140, binding = 0) uniform CameraData {
 
 const float RADIUS = 1.;
 
-void main()
-{
-    vec3 centered_pos = vec3(in_data.centered_pos,
+void main() {
+    vec3 n = vec3(in_data.centered_pos,
         1 - (in_data.centered_pos.x*in_data.centered_pos.x + in_data.centered_pos.y*in_data.centered_pos.y));
-    if (centered_pos.z < 0.)
+    if (n.z < 0.)
         discard;
-    centered_pos.z = sqrt(centered_pos.z);
+    n.z = sqrt(n.z);
 
-    vec3 view_pos = in_data.center_view + centered_pos * RADIUS;
+    vec3 view_pos = in_data.center_view + n * RADIUS;
     vec4 clip_pos = camera.projection * vec4(view_pos, 1.);
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;

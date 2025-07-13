@@ -16,8 +16,7 @@ out VertexData {
 
 const float RADIUS = 1.;
 
-void main()
-{
+void main() {
     // Calculate billboard orientation
     vec3 to_camera = normalize(camera.position - instance_position);
     vec3 up = vec3(0.0, 1.0, 0.0);

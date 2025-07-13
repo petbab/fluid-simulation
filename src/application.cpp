@@ -2,6 +2,7 @@
 #include "application.h"
 #include "config.h"
 #include "debug.h"
+#include "asset_manager.h"
 
 
 Application::Application(GLFWwindow *window, int width, int height)
@@ -43,8 +44,10 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
-    Shader *ball_shader = make_shader(cfg::shaders_dir/"instanced_ball.vert",
-                                      cfg::shaders_dir/"instanced_ball.frag");
+    auto *ball_shader = AssetManager::make<Shader>(
+        "instanced_ball_shader",
+        cfg::shaders_dir/"instanced_ball.vert",
+        cfg::shaders_dir/"instanced_ball.frag");
 
     std::vector<float> positions{
         0., 0., 0.,
@@ -56,22 +59,33 @@ void Application::setup_scene() {
         2., 0., 2.,
         2., 2., 2.,
     };
-    Geometry *ball_instances = make_geometry<InstancedGeometry>(
-        procedural::quad(1, false, false), 1, std::vector{VertexAttribute{3, positions}});
-    make_object(*ball_shader, *ball_instances);
+    auto *ball_instances = AssetManager::make<InstancedGeometry>(
+        "ball_geometry",
+        procedural::quad(1, false, false), 1,
+        std::vector{VertexAttribute{3, positions}});
+    objects.push_back(
+        AssetManager::make<Object>("ball", *ball_shader, *ball_instances)
+    );
 
-    Shader *axes_shader = make_shader(cfg::shaders_dir/"axes.vert", cfg::shaders_dir/"axes.frag");
-    Geometry *axes = make_geometry(procedural::axes(10));
-    make_object(*axes_shader, *axes);
+    auto *axes_shader = AssetManager::make<Shader>(
+        "axes_shader",
+        cfg::shaders_dir/"axes.vert",
+        cfg::shaders_dir/"axes.frag");
+    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
+    objects.push_back(
+        AssetManager::make<Object>("axes", *axes_shader, *axes_geom)
+    );
 }
 
 void Application::render_scene() {
-    for (auto &object : object_list)
+    for (auto &object : objects)
         object->render();
 }
 
 void Application::update(double delta) {
     process_keyboard_input(static_cast<float>(delta));
+    for (auto &object : objects)
+        object->update(delta);
 }
 
 void Application::on_resize(GLFWwindow *window, int width, int height) {
