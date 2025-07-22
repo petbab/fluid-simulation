@@ -2,11 +2,12 @@
 
 #include <vector>
 #include <glad/glad.h>
+#include <span>
 
 
 struct VertexAttribute {
     unsigned elem_size;
-    const std::vector<float> &data;
+    std::span<const float> data;
 };
 
 class Geometry {
@@ -40,7 +41,7 @@ public:
 
     void draw() const override;
 
-    void update_instance_data(const std::vector<float> &instance_data) const;
+    void update_instance_data(std::span<const float> instance_data) const;
 
 private:
     unsigned instance_vbo = 0;

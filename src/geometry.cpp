@@ -4,9 +4,8 @@
 
 
 Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
-    : mode{mode} {
+    : mode{mode}, vertices_count{static_cast<int>(attributes[0].data.size() / attributes[0].elem_size)} {
     assert(!attributes.empty());
-    vertices_count = static_cast<int>(attributes[0].data.size() / attributes[0].elem_size);
 
     int stride = 0;
     for (const auto &attr : attributes)
@@ -80,8 +79,8 @@ InstancedGeometry::InstancedGeometry(GLenum mode,
 
 InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
                                      const std::vector<VertexAttribute> &instance_attributes)
-    : Geometry{std::move(geom)} {
-    instance_count = static_cast<int>(instance_attributes[0].data.size() / instance_attributes[0].elem_size);
+    : Geometry{std::move(geom)},
+      instance_count{static_cast<int>(instance_attributes[0].data.size() / instance_attributes[0].elem_size)} {
 
     int stride = 0;
     for (const auto &attr : instance_attributes)
@@ -128,7 +127,7 @@ void InstancedGeometry::draw() const {
     glCheckError();
 }
 
-void InstancedGeometry::update_instance_data(const std::vector<float> &instance_data) const {
+void InstancedGeometry::update_instance_data(std::span<const float> instance_data) const {
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
