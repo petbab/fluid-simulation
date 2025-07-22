@@ -40,6 +40,8 @@ public:
 
     void draw() const override;
 
+    void update_instance_data(const std::vector<float> &instance_data) const;
+
 private:
     unsigned instance_vbo = 0;
     int instance_count;

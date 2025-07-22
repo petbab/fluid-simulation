@@ -6,13 +6,15 @@
 
 class Object {
 public:
-    Object(const Shader &shader, const Geometry &geometry);
+    Object(const Shader *shader, const Geometry *geometry);
     virtual ~Object() = default;
 
     virtual void render() const;
     virtual void update(double delta);
 
 protected:
-    const Shader &shader;
-    const Geometry &geometry;
+    Object() = default;
+
+    const Shader *shader = nullptr;
+    const Geometry *geometry = nullptr;
 };

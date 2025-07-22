@@ -97,7 +97,7 @@ InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
     glBindVertexArray(vao);
     glGenBuffers(1, &instance_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_DYNAMIC_DRAW);
 
     unsigned offset = 0;
     for (unsigned j = 0; j < instance_attributes.size(); ++j) {
@@ -125,6 +125,13 @@ void InstancedGeometry::draw() const {
     glBindVertexArray(vao);
     glDrawArraysInstanced(mode, 0, vertices_count, instance_count);
     glBindVertexArray(0);
+    glCheckError();
+}
+
+void InstancedGeometry::update_instance_data(const std::vector<float> &instance_data) const {
+    glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glCheckError();
 }
 
