@@ -4,6 +4,10 @@
 #include "geometry.h"
 
 
+struct BoundingBox {
+    glm::vec3 min, max;
+};
+
 class Object {
 public:
     Object(const Shader *shader, const Geometry *geometry);

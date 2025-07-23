@@ -96,6 +96,13 @@ void Shader::set_uniform(const std::string &name, glm::vec3 v) {
     glCheckError();
 }
 
+void Shader::set_uniform(const std::string &name, glm::vec4 v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform4f(loc, v.x, v.y, v.z, v.w);
+    glCheckError();
+}
+
 void Shader::set_uniform(const std::string &name, const glm::mat4 &m) {
     GLint loc = get_uniform_location(name);
     use();

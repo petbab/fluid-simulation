@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "asset_manager.h"
 #include "fluid.h"
+#include "box.h"
 
 
 Application::Application(GLFWwindow *window, int width, int height)
@@ -23,6 +24,7 @@ void Application::configure_window() {
 
 void Application::run() {
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     // Render loop
     while (!glfwWindowShouldClose(window)) {
@@ -45,6 +47,10 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
+    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-2, -1, -1}, glm::vec3{2, 1, 1},
+                                             glm::vec4{0.45, 0.4, 0.4, 1.});
+    objects.push_back(fluid_box);
+
     objects.push_back(AssetManager::make<Fluid>("fluid"));
 
     auto *axes_shader = AssetManager::make<Shader>(

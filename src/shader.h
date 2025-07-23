@@ -17,6 +17,7 @@ public:
     void use() const;
 
     void set_uniform(const std::string &name, glm::vec3 v);
+    void set_uniform(const std::string &name, glm::vec4 v);
     void set_uniform(const std::string &name, const glm::mat4 &m);
 
 private:
