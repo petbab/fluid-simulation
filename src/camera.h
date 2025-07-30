@@ -9,7 +9,7 @@ class Camera {
     static constexpr float FOV         = glm::radians(45.f);
     static constexpr float NEAR        = .1;
     static constexpr float FAR         = 100;
-    static constexpr float SPEED       = 0.02f;
+    static constexpr float SPEED       = 2.f;
     static constexpr float SENSITIVITY = 0.0005f;
 
     static constexpr glm::vec3 WORLD_UP{0, 1, 0};

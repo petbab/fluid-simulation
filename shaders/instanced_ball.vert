@@ -14,7 +14,7 @@ out VertexData {
     vec3 center_view;
 } out_data;
 
-const float RADIUS = 1.;
+const float RADIUS = 0.1;
 
 void main() {
     // Calculate billboard orientation

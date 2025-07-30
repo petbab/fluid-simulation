@@ -14,7 +14,7 @@ layout(std140, binding = 0) uniform CameraData {
     vec3 position;
 } camera;
 
-const float RADIUS = 1.;
+const float RADIUS = 0.1;
 
 void main() {
     vec3 n = vec3(in_data.centered_pos,

@@ -28,7 +28,7 @@ void Application::run() {
 
     // Render loop
     while (!glfwWindowShouldClose(window)) {
-        const double current_time = glfwGetTime() * 1000.0; // from seconds to milliseconds
+        const double current_time = glfwGetTime();
         const double delta = current_time - last_glfw_time;
         last_glfw_time = current_time;
 
@@ -51,7 +51,7 @@ void Application::setup_scene() {
                                              glm::vec4{0.45, 0.4, 0.4, 1.});
     objects.push_back(fluid_box);
 
-    objects.push_back(AssetManager::make<Fluid>("fluid"));
+    objects.push_back(AssetManager::make<Fluid>("fluid", 10, 0.1, *fluid_box));
 
     auto *axes_shader = AssetManager::make<Shader>(
         "axes_shader",
