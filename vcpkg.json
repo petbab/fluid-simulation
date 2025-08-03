@@ -4,6 +4,7 @@
   "dependencies": [
     "glfw3",
     "glm",
-    "glad"
+    "glad",
+    "gtest"
   ]
 }

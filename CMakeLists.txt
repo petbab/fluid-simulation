@@ -43,3 +43,21 @@ elseif(APPLE)
             ${COREVIDEO_LIBRARY}
     )
 endif()
+
+# GTest
+find_package(GTest CONFIG REQUIRED)
+
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+enable_testing()
+
+file(GLOB TESTS test/*.cpp)
+add_executable("${PROJECT_NAME}_test" ${TESTS})
+target_link_libraries(
+        "${PROJECT_NAME}_test"
+        GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests("${PROJECT_NAME}_test")

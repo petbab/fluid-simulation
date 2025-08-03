@@ -1,6 +1,7 @@
 vcpkg/
 *build*/
 .idea/
+vcpkg_installed/
 
 # ==== Gitignore Template ====
 # Prerequisites
