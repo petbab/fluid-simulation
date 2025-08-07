@@ -14,7 +14,7 @@ out VertexData {
     vec3 center_view;
 } out_data;
 
-const float RADIUS = 0.1;
+const float RADIUS = 0.02;
 
 void main() {
     // Calculate billboard orientation
@@ -22,7 +22,7 @@ void main() {
     vec3 up = vec3(0.0, 1.0, 0.0);
     vec3 right = normalize(cross(up, to_camera));
     up = cross(to_camera, right);
-    vec3 world_position = instance_position + (right * vertex_position.x + up * vertex_position.y) * RADIUS;
+    vec3 world_position = instance_position + (right * vertex_position.x + up * vertex_position.y) * RADIUS * 2.f;
 
     gl_Position = camera.projection * camera.view * vec4(world_position, 1.0);
 

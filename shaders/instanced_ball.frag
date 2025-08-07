@@ -14,7 +14,7 @@ layout(std140, binding = 0) uniform CameraData {
     vec3 position;
 } camera;
 
-const float RADIUS = 0.1;
+const float RADIUS = 0.02;
 
 void main() {
     vec3 n = vec3(in_data.centered_pos,
@@ -28,5 +28,5 @@ void main() {
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
-    frag_color = vec4(0.1, 0.3, 0.9, 1.);
+    frag_color = vec4(vec3(0., 0.5, 1.) * dot(n, vec3(0., 0., 1.)), 1.);
 }
