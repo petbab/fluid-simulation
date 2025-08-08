@@ -1,0 +1,22 @@
+#pragma once
+
+#include <array>
+#include <glm/vec3.hpp>
+
+
+class CubicSpline {
+    static constexpr unsigned SAMPLES = 1000;
+    static constexpr float Q_STEP = 1.f / (SAMPLES - 1);
+
+public:
+    explicit CubicSpline(float support_radius);
+
+    float W(const glm::vec3 &r) const;
+    glm::vec3 grad_W(const glm::vec3 &r) const;
+
+private:
+    static float sample(const std::array<float, SAMPLES> &t, float q);
+
+    const float support_radius, factor, grad_factor;
+    std::array<float, SAMPLES> table, grad_table;
+};
