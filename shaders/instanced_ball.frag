@@ -28,5 +28,6 @@ void main() {
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
-    frag_color = vec4(vec3(0., 0.5, 1.) * dot(n, vec3(0., 0., 1.)), 1.);
+    const vec3 base_color = vec3(0., 0.5, 1.);
+    frag_color = vec4(base_color * dot(n, vec3(0., 0., 1.)), 1.);
 }

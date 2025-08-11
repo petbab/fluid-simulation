@@ -9,7 +9,7 @@
 
 Application::Application(GLFWwindow *window, int width, int height)
     : window{window},
-      camera{{0, 0, 10}, glm::radians(270.f), 0, width, height} {
+      camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height} {
     configure_window();
     setup_scene();
 }
@@ -47,11 +47,11 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
-    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-2, -1, -1}, glm::vec3{2, 1, 1},
+    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-0.5, -0.5, -0.5}, glm::vec3{0.5, 0.5, 0.5},
                                              glm::vec4{0.45, 0.4, 0.4, 1.});
     objects.push_back(fluid_box);
 
-    objects.push_back(AssetManager::make<Fluid>("fluid", 10, 0.1, *fluid_box));
+    objects.push_back(AssetManager::make<Fluid>("fluid", 15, *fluid_box));
 
     auto *axes_shader = AssetManager::make<Shader>(
         "axes_shader",

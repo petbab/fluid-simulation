@@ -17,6 +17,6 @@ public:
 private:
     static float sample(const std::array<float, SAMPLES> &t, float q);
 
-    const float support_radius, factor, grad_factor;
+    const float inv_support_radius, factor, grad_factor;
     std::array<float, SAMPLES> table, grad_table;
 };

@@ -22,7 +22,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glad::glad
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror $<$<CONFIG:Release>:-O3>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         ROOT_DIR="${CMAKE_SOURCE_DIR}"
         $<$<CONFIG:Debug>:DEBUG>

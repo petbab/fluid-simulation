@@ -23,7 +23,7 @@ static float cubic_spline_g(const float q, const float h, const float grad_facto
 }
 
 CubicSpline::CubicSpline(float support_radius)
-    : support_radius{support_radius},
+    : inv_support_radius{1.f / support_radius},
       factor{8.f / (glm::pi<float>() * support_radius * support_radius * support_radius)},
       grad_factor{48.f / (glm::pi<float>() * support_radius * support_radius * support_radius)},
       table{}, grad_table{} {
@@ -35,26 +35,26 @@ CubicSpline::CubicSpline(float support_radius)
 }
 
 float CubicSpline::W(const glm::vec3 &r) const {
-    float q = glm::length(r) / support_radius;
+    float q = glm::length(r) * inv_support_radius;
     if (q > 1.f)
         return 0;
     return sample(table, q);
 }
 
 glm::vec3 CubicSpline::grad_W(const glm::vec3 &r) const {
-    float q = glm::length(r) / support_radius;
-    if (q > 1.f)
+    float q = glm::length(r) * inv_support_radius;
+    if (q > 1.f || q < 1.e-9f)
         return glm::vec3{0};
     return sample(grad_table, q) * r;
 }
 
 float CubicSpline::sample(const std::array<float, SAMPLES> &t, float q) {
-    const unsigned lo = static_cast<unsigned>(q) * (SAMPLES - 1);
-    if (lo == SAMPLES - 1)
-        return t[lo];
+    const float index_f = q * (SAMPLES - 1);
+    const auto lo = static_cast<unsigned>(index_f);
 
-    const unsigned hi = lo + 1;
+    if (lo >= SAMPLES - 1)
+        return t[SAMPLES - 1];
 
-    const float lambda = static_cast<float>(hi) - q * (SAMPLES - 1);
-    return lambda * t[lo] + (1 - lambda) * t[hi];
+    const float lambda = index_f - static_cast<float>(lo);
+    return t[lo] + lambda * (t[lo + 1] - t[lo]);
 }
