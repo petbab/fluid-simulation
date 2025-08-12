@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
+find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 
 file(GLOB SOURCE src/*.cpp)
 file(GLOB HEADERS src/*.h)
@@ -20,6 +21,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenGL::GL
         glfw
         glad::glad
+        OpenMP::OpenMP_CXX
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror $<$<CONFIG:Release>:-O3>)

@@ -6,7 +6,7 @@
 
 class Fluid : public Object {
 public:
-    Fluid(unsigned grid_count, float gap, BoundingBox bounding_box);
+    Fluid(unsigned grid_count, BoundingBox bounding_box);
 
     void update(double delta) override;
 

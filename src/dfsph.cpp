@@ -41,6 +41,7 @@ void FluidSimulation::simulation_step(double delta) {
 }
 
 void FluidSimulation::compute_densities() {
+    #pragma omp parallel for
     for (std::size_t i = 0; i < densities.size(); ++i) {
         float density = 0.f;
         for (std::size_t j = 0; j < densities.size(); ++j) {
@@ -55,6 +56,7 @@ void FluidSimulation::compute_densities() {
 }
 
 void FluidSimulation::compute_alphas() {
+    #pragma omp parallel for
     for (std::size_t i = 0; i < alphas.size(); ++i) {
         float alpha = 0.f;
         glm::vec3 tmp{0.f};
@@ -85,11 +87,13 @@ double FluidSimulation::adapt_time_step(double delta) const {
 }
 
 void FluidSimulation::predict_velocities(double delta) {
+    #pragma omp parallel for
     for (glm::vec3 &v : velocities)
         v += static_cast<float>(delta) * GRAVITY;
 }
 
 void FluidSimulation::update_positions(double delta) {
+    #pragma omp parallel for
     for (std::size_t i = 0; i < positions.size(); ++i)
         positions[i] += static_cast<float>(delta) * velocities[i];
 }
@@ -190,6 +194,7 @@ void FluidSimulation::correct_divergence_error(double delta) {
 }
 
 void FluidSimulation::warm_start_density(double delta) {
+    #pragma omp parallel for
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = density_kappas[i];
 
@@ -207,6 +212,7 @@ void FluidSimulation::warm_start_density(double delta) {
 }
 
 void FluidSimulation::warm_start_divergence(double delta) {
+    #pragma omp parallel for
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = divergence_kappas[i];
 
@@ -224,6 +230,7 @@ void FluidSimulation::warm_start_divergence(double delta) {
 }
 
 void FluidSimulation::resolve_collisions(double) {
+    #pragma omp parallel for
     for (unsigned i = 0; i < positions.size(); ++i) {
         if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
             positions[i].x = bounding_box.min.x + PARTICLE_RADIUS;
