@@ -13,14 +13,15 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
     ///////////////////////////////////////////////////////////////////////////////
-    static constexpr float REST_DENSITY = 800.f;
+    static constexpr float REST_DENSITY = 1000.f;
     static constexpr float PARTICLE_RADIUS = 0.02f;
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING;
     static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
 
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
-    static constexpr float ELASTICITY = 0.95f;
+    static constexpr float ELASTICITY = 0.9f;
+    static constexpr float VISCOSITY = 0.01f;
 
     static constexpr float MAX_TIME_STEP = 0.001f;
     static constexpr float MIN_TIME_STEP = 0.0001f;
@@ -28,8 +29,8 @@ public:
 
     static constexpr float MAX_DIVERGENCE_ERROR = 0.1f; // 0.001 * REST_DENSITY
     static constexpr float MAX_DENSITY_ERROR = 0.001f; // 0.001 * REST_DENSITY
-    static constexpr int MAX_DIVERGENCE_ITERATIONS = 50;
-    static constexpr int MAX_DENSITY_ITERATIONS = 50;
+    static constexpr int MAX_DIVERGENCE_ITERATIONS = 100;
+    static constexpr int MAX_DENSITY_ITERATIONS = 100;
 
     FluidSimulation(unsigned grid_count, BoundingBox bounding_box);
 

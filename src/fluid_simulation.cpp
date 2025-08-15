@@ -24,7 +24,7 @@ void FluidSimulation::init_positions(const unsigned grid_count) {
 
     const unsigned particle_count = grid_count * grid_count;// * grid_count;
     const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
-    const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS;
+    const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS + glm::vec3{0.1, 0, 0};
 
     assert(grid_start.x >= bounding_box.min.x);
     assert(grid_start.y >= bounding_box.min.y);

@@ -88,8 +88,21 @@ double FluidSimulation::adapt_time_step(double delta) const {
 
 void FluidSimulation::predict_velocities(double delta) {
     #pragma omp parallel for
-    for (glm::vec3 &v : velocities)
-        v += static_cast<float>(delta) * GRAVITY;
+    for (std::size_t i = 0; i < velocities.size(); ++i) {
+        glm::vec3 velocity_laplacian{0.f};
+        for (std::size_t j = 0; j < velocities.size(); ++j) {
+            if (i == j)
+                continue;
+
+            glm::vec3 x_ij = positions[i] - positions[j];
+            glm::vec3 v_ij = velocities[i] - velocities[j];
+
+            velocity_laplacian += glm::dot(v_ij, x_ij) * kernel.grad_W(x_ij) / (densities[j] * (glm::dot(x_ij, x_ij) + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
+        }
+        velocity_laplacian *= 10 * PARTICLE_MASS;
+
+        velocities[i] += static_cast<float>(delta) * (GRAVITY + VISCOSITY * velocity_laplacian);
+    }
 }
 
 void FluidSimulation::update_positions(double delta) {
