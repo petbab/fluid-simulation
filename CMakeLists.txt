@@ -10,6 +10,22 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 
+# CompactNSearch
+include(FetchContent)
+set(USE_DOUBLE_PRECISION OFF CACHE BOOL "Use double precision")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
+FetchContent_Declare(
+        CompactNSearch
+        GIT_REPOSITORY https://github.com/petbab/CompactNSearch.git
+        GIT_TAG master
+)
+FetchContent_MakeAvailable(CompactNSearch)
+# Ensure CompactNSearch is built with the same flags
+if(TARGET CompactNSearch)
+    target_compile_options(CompactNSearch PRIVATE $<$<CONFIG:Release>:-O3>)
+    target_compile_features(CompactNSearch PRIVATE cxx_std_20)
+endif()
+
 file(GLOB SOURCE src/*.cpp)
 file(GLOB HEADERS src/*.h)
 
@@ -22,12 +38,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glfw
         glad::glad
         OpenMP::OpenMP_CXX
+        CompactNSearch
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror $<$<CONFIG:Release>:-O3>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         ROOT_DIR="${CMAKE_SOURCE_DIR}"
         $<$<CONFIG:Debug>:DEBUG>
+        USE_DOUBLE_PRECISION=OFF
+        COMPACT_NSEARCH_STATIC_LIB
 )
 
 # Platform-specific settings

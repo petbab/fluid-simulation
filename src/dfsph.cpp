@@ -15,7 +15,9 @@ void FluidSimulation::init_simulation() {
     divergence_kappas.resize(positions.size());
     density_kappas.resize(positions.size());
 
-    // TODO: init neighbors
+    point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
+    n_search->z_sort();
+    n_search->find_neighbors();
 
     compute_densities();
     compute_alphas();
@@ -30,6 +32,8 @@ void FluidSimulation::simulation_step(double delta) {
 
     update_positions(delta);
 
+    n_search->find_neighbors();
+
     compute_densities();
     compute_alphas();
 
@@ -43,13 +47,12 @@ void FluidSimulation::simulation_step(double delta) {
 void FluidSimulation::compute_densities() {
     #pragma omp parallel for
     for (std::size_t i = 0; i < densities.size(); ++i) {
-        float density = 0.f;
-        for (std::size_t j = 0; j < densities.size(); ++j) {
-//            if (i == j)
-//                continue;
+        float density = kernel.W(glm::vec3{0.f});
+        glm::vec3 xi = positions[i];
 
-            density += kernel.W(positions[i] - positions[j]);
-        }
+        for_neighbors(i, [&](unsigned j){
+            density += kernel.W(xi - positions[j]);
+        });
 
         densities[i] = density * PARTICLE_MASS;
     }
@@ -60,16 +63,15 @@ void FluidSimulation::compute_alphas() {
     for (std::size_t i = 0; i < alphas.size(); ++i) {
         float alpha = 0.f;
         glm::vec3 tmp{0.f};
-        for (std::size_t j = 0; j < alphas.size(); ++j) {
-//            if (i == j)
-//                continue;
+        glm::vec3 xi = positions[i];
 
-            glm::vec3 grad = kernel.grad_W(positions[i] - positions[j]);
+        for_neighbors(i, [&](unsigned j){
+            glm::vec3 grad = kernel.grad_W(xi - positions[j]);
             tmp += grad;
             alpha += glm::dot(grad, grad);
-        }
+        });
 
-        alphas[i] = 1.f / ((alpha + glm::dot(tmp, tmp)) * PARTICLE_MASS * PARTICLE_MASS + float(10e-6));
+        alphas[i] = 1.f / ((alpha + glm::dot(tmp, tmp)) * PARTICLE_MASS * PARTICLE_MASS + 10e-6f);
     }
 }
 
@@ -90,15 +92,16 @@ void FluidSimulation::predict_velocities(double delta) {
     #pragma omp parallel for
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         glm::vec3 velocity_laplacian{0.f};
-        for (std::size_t j = 0; j < velocities.size(); ++j) {
-            if (i == j)
-                continue;
+        glm::vec3 xi = positions[i];
+        glm::vec3 vi = velocities[i];
 
-            glm::vec3 x_ij = positions[i] - positions[j];
-            glm::vec3 v_ij = velocities[i] - velocities[j];
+        for_neighbors(i, [&](unsigned j){
+            glm::vec3 x_ij = xi - positions[j];
+            glm::vec3 v_ij = vi - velocities[j];
 
             velocity_laplacian += glm::dot(v_ij, x_ij) * kernel.grad_W(x_ij) / (densities[j] * (glm::dot(x_ij, x_ij) + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
-        }
+        });
+
         velocity_laplacian *= 10 * PARTICLE_MASS;
 
         velocities[i] += static_cast<float>(delta) * (GRAVITY + VISCOSITY * velocity_laplacian);
@@ -123,13 +126,14 @@ void FluidSimulation::correct_density_error(double delta) {
         // Predict densities
         for (std::size_t i = 0; i < densities.size(); ++i) {
             float density_delta = 0.f;
-            for (std::size_t j = 0; j < densities.size(); ++j) {
-                if (i == j)
-                    continue;
+            glm::vec3 xi = positions[i];
+            glm::vec3 vi = velocities[i];
 
-                density_delta += glm::dot(velocities[i] - velocities[j],
-                                          kernel.grad_W(positions[i] - positions[j]));
-            }
+            for_neighbors(i, [&](unsigned j){
+                density_delta += glm::dot(vi - velocities[j],
+                                          kernel.grad_W(xi - positions[j]));
+            });
+
             predicted_densities[i] = densities[i] + static_cast<float>(delta) * PARTICLE_MASS * density_delta;
 
             density_error += predicted_densities[i];
@@ -142,16 +146,17 @@ void FluidSimulation::correct_density_error(double delta) {
             density_kappas[i] += kappa_i;
 
             glm::vec3 vel_correction{0.f};
-            for (std::size_t j = 0; j < velocities.size(); ++j) {
-                if (i == j)
-                    continue;
+            glm::vec3 xi = positions[i];
+            float di = densities[i];
 
+            for_neighbors(i, [&](unsigned j){
                 float kappa_j = std::max(predicted_densities[j] - REST_DENSITY, 0.f) * alphas[j] / static_cast<float>(delta * delta);
                 density_kappas[j] += kappa_j;
 
-                vel_correction += (kappa_i / (densities[i] * densities[i]) + kappa_j / (densities[j] * densities[j]))
-                                  * kernel.grad_W(positions[i] - positions[j]);
-            }
+                vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
+                                  * kernel.grad_W(xi - positions[j]);
+            });
+
             velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
         }
     }
@@ -170,13 +175,14 @@ void FluidSimulation::correct_divergence_error(double delta) {
         for (std::size_t i = 0; i < divergence_errors.size(); ++i) {
             // Compute divergence error of particle i (Equation 9.)
             float divergence = 0.f;
-            for (std::size_t j = 0; j < velocities.size(); ++j) {
-                if (i == j)
-                    continue;
+            glm::vec3 xi = positions[i];
+            glm::vec3 vi = velocities[i];
 
-                divergence += glm::dot(velocities[i] - velocities[j],
-                                       kernel.grad_W(positions[i] - positions[j]));
-            }
+            for_neighbors(i, [&](unsigned j){
+                divergence += glm::dot(vi - velocities[j],
+                                       kernel.grad_W(xi - positions[j]));
+            });
+
             divergence *= PARTICLE_MASS;
             divergence_errors[i] = divergence;
 
@@ -190,16 +196,17 @@ void FluidSimulation::correct_divergence_error(double delta) {
             divergence_kappas[i] += kappa_i;
 
             glm::vec3 vel_correction{0.f};
-            for (std::size_t j = 0; j < velocities.size(); ++j) {
-                if (i == j)
-                    continue;
+            glm::vec3 xi = positions[i];
+            float di = densities[i];
 
+            for_neighbors(i, [&](unsigned j){
                 float kappa_j = divergence_errors[j] * alphas[j] / static_cast<float>(delta);
                 divergence_kappas[j] += kappa_j;
 
-                vel_correction += (kappa_i / (densities[i] * densities[i]) + kappa_j / (densities[j] * densities[j]))
-                                  * kernel.grad_W(positions[i] - positions[j]);
-            }
+                vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
+                                  * kernel.grad_W(xi - positions[j]);
+            });
+
             velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
         }
     }
@@ -212,14 +219,15 @@ void FluidSimulation::warm_start_density(double delta) {
         float kappa_i = density_kappas[i];
 
         glm::vec3 vel_correction{0.f};
-        for (std::size_t j = 0; j < velocities.size(); ++j) {
-            if (i == j)
-                continue;
+        glm::vec3 xi = positions[i];
+        float di = densities[i];
 
+        for_neighbors(i, [&](unsigned j){
             float kappa_j = density_kappas[j];
-            vel_correction += (kappa_i / (densities[i] * densities[i]) + kappa_j / (densities[j] * densities[j]))
-                              * kernel.grad_W(positions[i] - positions[j]);
-        }
+            vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
+                              * kernel.grad_W(xi - positions[j]);
+        });
+
         velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
     }
 }
@@ -230,14 +238,15 @@ void FluidSimulation::warm_start_divergence(double delta) {
         float kappa_i = divergence_kappas[i];
 
         glm::vec3 vel_correction{0.f};
-        for (std::size_t j = 0; j < velocities.size(); ++j) {
-            if (i == j)
-                continue;
+        glm::vec3 xi = positions[i];
+        float di = densities[i];
 
+        for_neighbors(i, [&](unsigned j){
             float kappa_j = divergence_kappas[j];
-            vel_correction += (kappa_i / (densities[i] * densities[i]) + kappa_j / (densities[j] * densities[j]))
-                              * kernel.grad_W(positions[i] - positions[j]);
-        }
+            vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
+                              * kernel.grad_W(xi - positions[j]);
+        });
+
         velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
     }
 }
@@ -267,4 +276,10 @@ void FluidSimulation::resolve_collisions(double) {
             velocities[i].z *= -ELASTICITY;
         }
     }
+}
+
+void FluidSimulation::for_neighbors(unsigned int i, auto f) {
+    CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
+    for (unsigned j = 0; j < ps.n_neighbors(point_set_index, i); ++j)
+        f(ps.neighbor(point_set_index, i, j));
 }

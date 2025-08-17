@@ -10,7 +10,9 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
 }
 
 FluidSimulation::FluidSimulation(unsigned int grid_count, BoundingBox bounding_box)
-    : kernel{SUPPORT_RADIUS}, bounding_box{bounding_box} {
+    : kernel{SUPPORT_RADIUS},
+      n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(SUPPORT_RADIUS)},
+      bounding_box{bounding_box} {
     init_positions(grid_count);
     init_simulation();
 }
