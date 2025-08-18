@@ -22,10 +22,16 @@ static float cubic_spline_g(const float q, const float h, const float grad_facto
     return -grad_factor * (1.f - q) * (1.f - q) / (h * r_len);
 }
 
-CubicSpline::CubicSpline(float support_radius)
+CubicSpline::CubicSpline(float support_radius, bool is_2d)
     : inv_support_radius{1.f / support_radius},
-      factor{8.f / (glm::pi<float>() * support_radius * support_radius * support_radius)},
-      grad_factor{48.f / (glm::pi<float>() * support_radius * support_radius * support_radius)},
+      factor{is_2d
+        ? 40.f / (7.f * glm::pi<float>() * support_radius * support_radius)
+        : 8.f / (glm::pi<float>() * support_radius * support_radius * support_radius)
+      },
+      grad_factor{is_2d
+        ? 240.f / (7.f * glm::pi<float>() * support_radius * support_radius)
+        : 48.f / (glm::pi<float>() * support_radius * support_radius * support_radius)
+      },
       table{}, grad_table{} {
     for (unsigned i = 0; i < SAMPLES; ++i) {
         const float q = static_cast<float>(i) * Q_STEP;

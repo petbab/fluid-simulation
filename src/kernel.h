@@ -9,7 +9,7 @@ class CubicSpline {
     static constexpr float Q_STEP = 1.f / (SAMPLES - 1);
 
 public:
-    explicit CubicSpline(float support_radius);
+    explicit CubicSpline(float support_radius, bool is_2d = false);
 
     float W(const glm::vec3 &r) const;
     glm::vec3 grad_W(const glm::vec3 &r) const;
