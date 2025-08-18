@@ -35,11 +35,11 @@ void FluidSimulation::init_positions(const unsigned grid_count) {
     positions.reserve(particle_count);
     for (unsigned x = 0; x < grid_count; ++x)
         for (unsigned y = 0; y < grid_count; ++y)
-//            for (unsigned z = 0; z < grid_count; ++z)
+            for (unsigned z = 0; z < grid_count; ++z)
                 positions.push_back(grid_start + glm::vec3{
                     static_cast<float>(x) * PARTICLE_SPACING,
-                    static_cast<float>(y) * PARTICLE_SPACING, 0.f
-//                    static_cast<float>(z) * PARTICLE_SPACING
+                    static_cast<float>(y) * PARTICLE_SPACING,
+                    static_cast<float>(z) * PARTICLE_SPACING
                 });
 }
 

@@ -45,7 +45,7 @@ void FluidSimulation::simulation_step(double delta) {
 }
 
 void FluidSimulation::compute_densities() {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < densities.size(); ++i) {
         float density = kernel.W(glm::vec3{0.f});
         glm::vec3 xi = positions[i];
@@ -59,19 +59,20 @@ void FluidSimulation::compute_densities() {
 }
 
 void FluidSimulation::compute_alphas() {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < alphas.size(); ++i) {
-        float alpha = 0.f;
-        glm::vec3 tmp{0.f};
+        float sum_grad_sq = 0.f;
+        glm::vec3 sum_grad{0.f};
         glm::vec3 xi = positions[i];
 
         for_neighbors(i, [&](unsigned j){
-            glm::vec3 grad = kernel.grad_W(xi - positions[j]);
-            tmp += grad;
-            alpha += glm::dot(grad, grad);
+            glm::vec3 grad = -PARTICLE_MASS * kernel.grad_W(xi - positions[j]);
+            sum_grad_sq += glm::dot(grad, grad);
+            sum_grad -= grad;
         });
 
-        alphas[i] = 1.f / ((alpha + glm::dot(tmp, tmp)) * PARTICLE_MASS * PARTICLE_MASS + 10e-6f);
+        sum_grad_sq += glm::dot(sum_grad, sum_grad);
+        alphas[i] = sum_grad_sq > ALPHA_DENOM_EPSILON ? 1.f / sum_grad_sq : 0.f;
     }
 }
 
@@ -79,6 +80,8 @@ double FluidSimulation::adapt_time_step(double delta) const {
     float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
         return glm::length(v);
     }));
+
+//    std::cout << "MAX VELOCITY: " << max_velocity << '\n';
 
     if (max_velocity < 1.e-9)
         return MAX_TIME_STEP;
@@ -89,7 +92,7 @@ double FluidSimulation::adapt_time_step(double delta) const {
 }
 
 void FluidSimulation::predict_velocities(double delta) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         glm::vec3 velocity_laplacian{0.f};
         glm::vec3 xi = positions[i];
@@ -109,7 +112,7 @@ void FluidSimulation::predict_velocities(double delta) {
 }
 
 void FluidSimulation::update_positions(double delta) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < positions.size(); ++i)
         positions[i] += static_cast<float>(delta) * velocities[i];
 }
@@ -151,8 +154,6 @@ void FluidSimulation::correct_density_error(double delta) {
 
             for_neighbors(i, [&](unsigned j){
                 float kappa_j = std::max(predicted_densities[j] - REST_DENSITY, 0.f) * alphas[j] / static_cast<float>(delta * delta);
-                density_kappas[j] += kappa_j;
-
                 vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
                                   * kernel.grad_W(xi - positions[j]);
             });
@@ -201,8 +202,6 @@ void FluidSimulation::correct_divergence_error(double delta) {
 
             for_neighbors(i, [&](unsigned j){
                 float kappa_j = divergence_errors[j] * alphas[j] / static_cast<float>(delta);
-                divergence_kappas[j] += kappa_j;
-
                 vel_correction += (kappa_i / (di * di) + kappa_j / (densities[j] * densities[j]))
                                   * kernel.grad_W(xi - positions[j]);
             });
@@ -214,7 +213,7 @@ void FluidSimulation::correct_divergence_error(double delta) {
 }
 
 void FluidSimulation::warm_start_density(double delta) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = density_kappas[i];
 
@@ -233,7 +232,7 @@ void FluidSimulation::warm_start_density(double delta) {
 }
 
 void FluidSimulation::warm_start_divergence(double delta) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = divergence_kappas[i];
 
@@ -252,7 +251,7 @@ void FluidSimulation::warm_start_divergence(double delta) {
 }
 
 void FluidSimulation::resolve_collisions(double) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < positions.size(); ++i) {
         if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
             positions[i].x = bounding_box.min.x + PARTICLE_RADIUS;

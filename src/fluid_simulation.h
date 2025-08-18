@@ -4,6 +4,7 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/constants.hpp>
 #include <span>
+#include <CompactNSearch>
 #include "object.h"
 #include "kernel.h"
 
@@ -16,8 +17,11 @@ public:
     static constexpr float REST_DENSITY = 1000.f;
     static constexpr float PARTICLE_RADIUS = 0.02f;
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
-    static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING;
     static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
+    static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING;
+    static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
+
+    static constexpr float ALPHA_DENOM_EPSILON = 1.e-5f;
 
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
     static constexpr float ELASTICITY = 0.9f;
@@ -57,12 +61,17 @@ private:
 
     void resolve_collisions(double delta);
 
+    void for_neighbors(unsigned i, auto f);
+
     std::vector<glm::vec3> positions, velocities;
     std::vector<float> densities, predicted_densities,
                        alphas, divergence_errors,
                        divergence_kappas, density_kappas;
 
     CubicSpline kernel;
+
+    std::unique_ptr<CompactNSearch::NeighborhoodSearch> n_search;
+    unsigned point_set_index;
 
     bool first_iteration = true;
     BoundingBox bounding_box;
