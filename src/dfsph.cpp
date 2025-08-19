@@ -1,4 +1,4 @@
-#include "fluid_simulation.h"
+#include "dfsph.h"
 
 #include <random>
 #include <glm/gtc/constants.hpp>
@@ -6,7 +6,10 @@
 //#include <iostream>
 
 
-void FluidSimulation::init_simulation() {
+DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, BoundingBox bounding_box)
+    : FluidSimulator(grid_count, bounding_box),
+      kernel{SUPPORT_RADIUS},
+      n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(SUPPORT_RADIUS)} {
     velocities.resize(positions.size());
     densities.resize(positions.size());
     predicted_densities.resize(positions.size());
@@ -23,7 +26,7 @@ void FluidSimulation::init_simulation() {
     compute_alphas();
 }
 
-void FluidSimulation::simulation_step(double delta) {
+void DFSPHSimulator::update(double delta) {
     delta = adapt_time_step(delta);
 
     predict_velocities(delta);
@@ -44,7 +47,7 @@ void FluidSimulation::simulation_step(double delta) {
     first_iteration = false;
 }
 
-void FluidSimulation::compute_densities() {
+void DFSPHSimulator::compute_densities() {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < densities.size(); ++i) {
         float density = kernel.W(glm::vec3{0.f});
@@ -58,7 +61,7 @@ void FluidSimulation::compute_densities() {
     }
 }
 
-void FluidSimulation::compute_alphas() {
+void DFSPHSimulator::compute_alphas() {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < alphas.size(); ++i) {
         float sum_grad_sq = 0.f;
@@ -76,7 +79,7 @@ void FluidSimulation::compute_alphas() {
     }
 }
 
-double FluidSimulation::adapt_time_step(double delta) const {
+double DFSPHSimulator::adapt_time_step(double delta) const {
     float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
         return glm::length(v);
     }));
@@ -91,7 +94,7 @@ double FluidSimulation::adapt_time_step(double delta) const {
     return std::min(std::clamp(static_cast<float>(delta), MIN_TIME_STEP, MAX_TIME_STEP), cfl_max_time_step);
 }
 
-void FluidSimulation::predict_velocities(double delta) {
+void DFSPHSimulator::predict_velocities(double delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         glm::vec3 velocity_laplacian{0.f};
@@ -111,13 +114,13 @@ void FluidSimulation::predict_velocities(double delta) {
     }
 }
 
-void FluidSimulation::update_positions(double delta) {
+void DFSPHSimulator::update_positions(double delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < positions.size(); ++i)
         positions[i] += static_cast<float>(delta) * velocities[i];
 }
 
-void FluidSimulation::correct_density_error(double delta) {
+void DFSPHSimulator::correct_density_error(double delta) {
     if (!first_iteration)
         warm_start_density(delta);
     std::ranges::fill(density_kappas, 0.f);
@@ -164,7 +167,7 @@ void FluidSimulation::correct_density_error(double delta) {
 //    std::cout << "DENSITY ERROR: " << density_error << '\n';
 }
 
-void FluidSimulation::correct_divergence_error(double delta) {
+void DFSPHSimulator::correct_divergence_error(double delta) {
     if (!first_iteration)
         warm_start_divergence(delta);
     std::ranges::fill(divergence_kappas, 0.f);
@@ -212,7 +215,7 @@ void FluidSimulation::correct_divergence_error(double delta) {
 //    std::cout << "DIVERGENCE ERROR: " << divergence_error << '\n';
 }
 
-void FluidSimulation::warm_start_density(double delta) {
+void DFSPHSimulator::warm_start_density(double delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = density_kappas[i];
@@ -231,7 +234,7 @@ void FluidSimulation::warm_start_density(double delta) {
     }
 }
 
-void FluidSimulation::warm_start_divergence(double delta) {
+void DFSPHSimulator::warm_start_divergence(double delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = divergence_kappas[i];
@@ -250,7 +253,7 @@ void FluidSimulation::warm_start_divergence(double delta) {
     }
 }
 
-void FluidSimulation::resolve_collisions(double) {
+void DFSPHSimulator::resolve_collisions(double) {
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < positions.size(); ++i) {
         if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
@@ -277,7 +280,7 @@ void FluidSimulation::resolve_collisions(double) {
     }
 }
 
-void FluidSimulation::for_neighbors(unsigned int i, auto f) {
+void DFSPHSimulator::for_neighbors(unsigned int i, auto f) {
     CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
     for (unsigned j = 0; j < ps.n_neighbors(point_set_index, i); ++j)
         f(ps.neighbor(point_set_index, i, j));

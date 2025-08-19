@@ -1,4 +1,4 @@
-#include "fluid_simulation.h"
+#include "fluid_simulator.h"
 
 #include <random>
 #include <glm/gtc/constants.hpp>
@@ -9,22 +9,19 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulation::FluidSimulation(unsigned int grid_count, BoundingBox bounding_box)
-    : kernel{SUPPORT_RADIUS},
-      n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(SUPPORT_RADIUS)},
-      bounding_box{bounding_box} {
+FluidSimulator::FluidSimulator(unsigned int grid_count, BoundingBox bounding_box)
+    : bounding_box{bounding_box} {
     init_positions(grid_count);
-    init_simulation();
 }
 
-auto FluidSimulation::get_position_data() -> std::span<const float> {
+auto FluidSimulator::get_position_data() -> std::span<const float> {
     return vec_to_span(positions);
 }
 
-void FluidSimulation::init_positions(const unsigned grid_count) {
+void FluidSimulator::init_positions(const unsigned grid_count) {
     assert(grid_count > 1);
 
-    const unsigned particle_count = grid_count * grid_count;// * grid_count;
+    const unsigned particle_count = grid_count * grid_count * grid_count;
     const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
     const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS + glm::vec3{0.1, 0, 0};
 
@@ -41,8 +38,4 @@ void FluidSimulation::init_positions(const unsigned grid_count) {
                     static_cast<float>(y) * PARTICLE_SPACING,
                     static_cast<float>(z) * PARTICLE_SPACING
                 });
-}
-
-void FluidSimulation::update(double delta) {
-    simulation_step(delta);
 }

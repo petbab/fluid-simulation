@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fluid_simulator.h"
 #include <vector>
 #include <glm/vec3.hpp>
 #include <glm/gtc/constants.hpp>
@@ -9,14 +10,12 @@
 #include "kernel.h"
 
 
-class FluidSimulation {
+class DFSPHSimulator final : public FluidSimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
     ///////////////////////////////////////////////////////////////////////////////
     static constexpr float REST_DENSITY = 1000.f;
-    static constexpr float PARTICLE_RADIUS = 0.02f;
-    static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
     static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
     static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING;
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
@@ -36,17 +35,11 @@ public:
     static constexpr int MAX_DIVERGENCE_ITERATIONS = 100;
     static constexpr int MAX_DENSITY_ITERATIONS = 100;
 
-    FluidSimulation(unsigned grid_count, BoundingBox bounding_box);
+    DFSPHSimulator(unsigned grid_count, BoundingBox bounding_box);
 
-    void update(double delta);
-
-    auto get_position_data() -> std::span<const float>;
+    void update(double delta) override;
 
 private:
-    void init_positions(unsigned grid_count);
-    void init_simulation();
-    void simulation_step(double delta);
-
     void compute_densities();
     void compute_alphas();
 
@@ -63,10 +56,10 @@ private:
 
     void for_neighbors(unsigned i, auto f);
 
-    std::vector<glm::vec3> positions, velocities;
+    std::vector<glm::vec3> velocities;
     std::vector<float> densities, predicted_densities,
-                       alphas, divergence_errors,
-                       divergence_kappas, density_kappas;
+        alphas, divergence_errors,
+        divergence_kappas, density_kappas;
 
     CubicSpline kernel;
 
@@ -74,5 +67,4 @@ private:
     unsigned point_set_index;
 
     bool first_iteration = true;
-    BoundingBox bounding_box;
 };

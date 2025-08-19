@@ -5,6 +5,7 @@
 #include "asset_manager.h"
 #include "fluid.h"
 #include "box.h"
+#include "dfsph.h"
 
 
 Application::Application(GLFWwindow *window, int width, int height)
@@ -51,7 +52,7 @@ void Application::setup_scene() {
                                              glm::vec4{0.45, 0.4, 0.4, 1.});
     objects.push_back(fluid_box);
 
-    objects.push_back(AssetManager::make<Fluid>("fluid", 15, *fluid_box));
+    objects.push_back(AssetManager::make<Fluid<DFSPHSimulator>>("fluid", 10, *fluid_box));
 
     auto *axes_shader = AssetManager::make<Shader>(
         "axes_shader",
