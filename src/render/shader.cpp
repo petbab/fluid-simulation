@@ -1,5 +1,5 @@
 #include "shader.h"
-#include "debug.h"
+#include "../debug.h"
 
 #include <stdexcept>
 #include <fstream>

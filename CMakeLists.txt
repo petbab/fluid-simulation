@@ -26,8 +26,8 @@ if(TARGET CompactNSearch)
     target_compile_features(CompactNSearch PRIVATE cxx_std_20)
 endif()
 
-file(GLOB SOURCE src/*.cpp)
-file(GLOB HEADERS src/*.h)
+file(GLOB_RECURSE SOURCE src/*.cpp)
+file(GLOB_RECURSE HEADERS src/*.h)
 
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS})

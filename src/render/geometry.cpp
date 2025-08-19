@@ -1,6 +1,6 @@
 #include <cassert>
 #include "geometry.h"
-#include "debug.h"
+#include "../debug.h"
 
 
 Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)

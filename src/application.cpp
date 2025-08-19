@@ -2,10 +2,10 @@
 #include "application.h"
 #include "config.h"
 #include "debug.h"
-#include "asset_manager.h"
-#include "fluid.h"
-#include "box.h"
-#include "dfsph.h"
+#include "render/asset_manager.h"
+#include "render/fluid.h"
+#include "render/box.h"
+#include "simulation/SPH/dfsph.h"
 
 
 Application::Application(GLFWwindow *window, int width, int height)
@@ -20,7 +20,7 @@ void Application::configure_window() {
     glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetCursorPosCallback(window, on_mouse_move);
     glfwSetKeyCallback(window, on_key_pressed);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void Application::run() {
@@ -50,18 +50,18 @@ void Application::run() {
 void Application::setup_scene() {
     Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-0.5, -0.5, -0.5}, glm::vec3{0.5, 0.5, 0.5},
                                              glm::vec4{0.45, 0.4, 0.4, 1.});
-    objects.push_back(fluid_box);
+//    objects.push_back(fluid_box);
 
     objects.push_back(AssetManager::make<Fluid<DFSPHSimulator>>("fluid", 10, *fluid_box));
 
-    auto *axes_shader = AssetManager::make<Shader>(
-        "axes_shader",
-        cfg::shaders_dir/"axes.vert",
-        cfg::shaders_dir/"axes.frag");
-    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
-    objects.push_back(
-        AssetManager::make<Object>("axes", axes_shader, axes_geom)
-    );
+//    auto *axes_shader = AssetManager::make<Shader>(
+//        "axes_shader",
+//        cfg::shaders_dir/"axes.vert",
+//        cfg::shaders_dir/"axes.frag");
+//    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
+//    objects.push_back(
+//        AssetManager::make<Object>("axes", axes_shader, axes_geom)
+//    );
 }
 
 void Application::render_scene() {

@@ -3,8 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <memory>
-#include "camera.h"
-#include "object.h"
+#include "render/camera.h"
+#include "render/object.h"
 
 
 class Application {

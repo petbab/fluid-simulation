@@ -2,9 +2,9 @@
 
 #include <type_traits>
 #include "object.h"
-#include "fluid_simulator.h"
+#include "../simulation/fluid_simulator.h"
 #include "asset_manager.h"
-#include "config.h"
+#include "../config.h"
 
 
 template<class S>

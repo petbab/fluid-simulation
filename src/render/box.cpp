@@ -1,6 +1,6 @@
 #include "box.h"
 #include "asset_manager.h"
-#include "config.h"
+#include "../config.h"
 
 
 static Geometry box_geometry(glm::vec3 half_size) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "object.h"
+#include "../render/object.h"
 
 class FluidSimulator {
 public:

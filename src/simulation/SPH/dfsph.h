@@ -1,12 +1,11 @@
 #pragma once
 
-#include "fluid_simulator.h"
+#include "../fluid_simulator.h"
 #include <vector>
 #include <glm/vec3.hpp>
 #include <glm/gtc/constants.hpp>
 #include <span>
 #include <CompactNSearch>
-#include "object.h"
 #include "kernel.h"
 
 

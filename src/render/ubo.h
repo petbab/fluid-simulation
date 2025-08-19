@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
-#include "debug.h"
+#include "../debug.h"
 
 
 template<class T>
