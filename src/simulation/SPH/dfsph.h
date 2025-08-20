@@ -1,15 +1,13 @@
 #pragma once
 
-#include "../fluid_simulator.h"
+#include "common.h"
 #include <vector>
 #include <glm/vec3.hpp>
 #include <glm/gtc/constants.hpp>
 #include <span>
-#include <CompactNSearch>
-#include "kernel.h"
 
 
-class DFSPHSimulator final : public FluidSimulator {
+class DFSPHSimulator final : public SPHBase {
 public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
@@ -39,7 +37,6 @@ public:
     void update(double delta) override;
 
 private:
-    void compute_densities();
     void compute_alphas();
 
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
@@ -53,17 +50,12 @@ private:
 
     void resolve_collisions(double delta);
 
-    void for_neighbors(unsigned i, auto f);
-
     std::vector<glm::vec3> velocities;
-    std::vector<float> densities, predicted_densities,
+    std::vector<float> predicted_densities,
         alphas, divergence_errors,
         divergence_kappas, density_kappas;
 
     CubicSpline kernel;
-
-    std::unique_ptr<CompactNSearch::NeighborhoodSearch> n_search;
-    unsigned point_set_index;
 
     bool first_iteration = true;
 };

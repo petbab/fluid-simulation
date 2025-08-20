@@ -7,22 +7,16 @@
 
 
 DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, BoundingBox bounding_box)
-    : FluidSimulator(grid_count, bounding_box),
-      kernel{SUPPORT_RADIUS},
-      n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(SUPPORT_RADIUS)} {
+    : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS),
+      kernel{SUPPORT_RADIUS} {
     velocities.resize(positions.size());
-    densities.resize(positions.size());
     predicted_densities.resize(positions.size());
     alphas.resize(positions.size());
     divergence_errors.resize(positions.size());
     divergence_kappas.resize(positions.size());
     density_kappas.resize(positions.size());
 
-    point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
-    n_search->z_sort();
-    n_search->find_neighbors();
-
-    compute_densities();
+    compute_densities(PARTICLE_MASS, kernel);
     compute_alphas();
 }
 
@@ -35,9 +29,9 @@ void DFSPHSimulator::update(double delta) {
 
     update_positions(delta);
 
-    n_search->find_neighbors();
+    find_neighbors();
 
-    compute_densities();
+    compute_densities(PARTICLE_MASS, kernel);
     compute_alphas();
 
     correct_divergence_error(delta);
@@ -45,20 +39,6 @@ void DFSPHSimulator::update(double delta) {
     resolve_collisions(delta);
 
     first_iteration = false;
-}
-
-void DFSPHSimulator::compute_densities() {
-    #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < densities.size(); ++i) {
-        float density = kernel.W(glm::vec3{0.f});
-        glm::vec3 xi = positions[i];
-
-        for_neighbors(i, [&](unsigned j){
-            density += kernel.W(xi - positions[j]);
-        });
-
-        densities[i] = density * PARTICLE_MASS;
-    }
 }
 
 void DFSPHSimulator::compute_alphas() {
@@ -278,10 +258,4 @@ void DFSPHSimulator::resolve_collisions(double) {
             velocities[i].z *= -ELASTICITY;
         }
     }
-}
-
-void DFSPHSimulator::for_neighbors(unsigned int i, auto f) {
-    CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
-    for (unsigned j = 0; j < ps.n_neighbors(point_set_index, i); ++j)
-        f(ps.neighbor(point_set_index, i, j));
 }
