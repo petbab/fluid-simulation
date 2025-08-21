@@ -22,7 +22,7 @@ protected:
     void find_neighbors() { n_search->find_neighbors(); }
     void z_sort() { n_search->z_sort(); }
 
-    void compute_densities(float particle_mass, Kernel auto kernel) {
+    void compute_densities(float particle_mass, const Kernel &kernel) {
         #pragma omp parallel for schedule(static)
         for (std::size_t i = 0; i < densities.size(); ++i) {
             float density = kernel.W(glm::vec3{0.f});

@@ -31,6 +31,7 @@ public:
     static constexpr float MAX_DENSITY_ERROR = 0.001f; // 0.001 * REST_DENSITY
     static constexpr int MAX_DIVERGENCE_ITERATIONS = 100;
     static constexpr int MAX_DENSITY_ITERATIONS = 100;
+    ///////////////////////////////////////////////////////////////////////////////
 
     DFSPHSimulator(unsigned grid_count, BoundingBox bounding_box);
 
