@@ -8,8 +8,8 @@
 
 class SPHBase : public FluidSimulator {
 public:
-    SPHBase(unsigned grid_count, BoundingBox bounding_box, float support_radius)
-        : FluidSimulator{grid_count, bounding_box},
+    SPHBase(unsigned grid_count, BoundingBox bounding_box, float support_radius, bool is_2d = false)
+        : FluidSimulator{grid_count, bounding_box, is_2d},
           n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)} {
         densities.resize(positions.size());
 

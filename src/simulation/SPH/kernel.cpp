@@ -70,25 +70,6 @@ float CubicSpline::compute_grad_W(float q) const {
     return -grad_factor * (1.f - q) * (1.f - q) / (h * r_len);
 }
 
-static float spiky_kernel(const float q, const float factor) {
-    if (q <= 0.5f)
-        return factor * (6.f*q*q*q - 6.f*q*q + 1);
-    if (q <= 1.f)
-        return factor * 2.f * std::pow(1.f - q, 3.f);
-    return 0.f;
-}
-
-static float spiky_kernel_g(const float q, const float h, const float grad_factor) {
-    if (q < 1.e-9 || q > 1.)
-        return 0.f;
-
-    float r_len = q * h;
-
-    if (q <= 0.5)
-        return grad_factor * q * (3.f*q - 2.f) / (h * r_len);
-    return -grad_factor * (1.f - q) * (1.f - q) / (h * r_len);
-}
-
 SpikyKernel::SpikyKernel(float support_radius)
     : Kernel{support_radius}, h{support_radius},
       factor{15.f / (glm::pi<float>() * std::pow(support_radius, 9.f))},

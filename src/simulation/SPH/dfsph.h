@@ -33,7 +33,7 @@ public:
     static constexpr int MAX_DENSITY_ITERATIONS = 100;
     ///////////////////////////////////////////////////////////////////////////////
 
-    DFSPHSimulator(unsigned grid_count, BoundingBox bounding_box);
+    DFSPHSimulator(unsigned grid_count, BoundingBox bounding_box, bool is_2d = false);
 
     void update(double delta) override;
 

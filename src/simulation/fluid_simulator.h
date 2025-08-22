@@ -7,7 +7,7 @@ public:
     static constexpr float PARTICLE_RADIUS = 0.02f;
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
 
-    FluidSimulator(unsigned grid_count, BoundingBox bounding_box);
+    FluidSimulator(unsigned grid_count, BoundingBox bounding_box, bool is_2d = false);
     virtual ~FluidSimulator() = default;
 
     virtual void update(double delta) = 0;
@@ -15,7 +15,7 @@ public:
     auto get_position_data() -> std::span<const float>;
 
 private:
-    void init_positions(unsigned grid_count);
+    void init_positions(unsigned grid_count, bool is_2d);
 
 protected:
     std::vector<glm::vec3> positions;

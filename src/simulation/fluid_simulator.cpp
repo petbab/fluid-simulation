@@ -9,19 +9,19 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulator::FluidSimulator(unsigned int grid_count, BoundingBox bounding_box)
+FluidSimulator::FluidSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
     : bounding_box{bounding_box} {
-    init_positions(grid_count);
+    init_positions(grid_count, is_2d);
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {
     return vec_to_span(positions);
 }
 
-void FluidSimulator::init_positions(const unsigned grid_count) {
+void FluidSimulator::init_positions(const unsigned grid_count, const bool is_2d) {
     assert(grid_count > 1);
 
-    const unsigned particle_count = grid_count * grid_count * grid_count;
+    const unsigned particle_count = grid_count * grid_count * (is_2d ? 1 : grid_count);
     const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
     const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS + glm::vec3{0.1, 0, 0};
 
@@ -31,11 +31,20 @@ void FluidSimulator::init_positions(const unsigned grid_count) {
 
     positions.reserve(particle_count);
     for (unsigned x = 0; x < grid_count; ++x)
-        for (unsigned y = 0; y < grid_count; ++y)
-            for (unsigned z = 0; z < grid_count; ++z)
+        for (unsigned y = 0; y < grid_count; ++y) {
+            if (!is_2d) {
+                for (unsigned z = 0; z < grid_count; ++z)
+                    positions.push_back(grid_start + glm::vec3{
+                        static_cast<float>(x) * PARTICLE_SPACING,
+                        static_cast<float>(y) * PARTICLE_SPACING,
+                        static_cast<float>(z) * PARTICLE_SPACING
+                    });
+            } else {
                 positions.push_back(grid_start + glm::vec3{
                     static_cast<float>(x) * PARTICLE_SPACING,
                     static_cast<float>(y) * PARTICLE_SPACING,
-                    static_cast<float>(z) * PARTICLE_SPACING
+                    center.z
                 });
+            }
+        }
 }
