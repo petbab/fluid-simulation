@@ -14,13 +14,12 @@ public:
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
-    static constexpr float ELASTICITY = 0.9f;
     static constexpr float VISCOSITY = 0.01f;
 
     static constexpr float STIFFNESS = 1.f;
     static constexpr float EXPONENT = 3.f;
 
-    static constexpr float MAX_TIME_STEP = 0.0002f;
+    static constexpr float MAX_TIME_STEP = 0.0005f;
     static constexpr float MIN_TIME_STEP = 0.00001f;
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -37,9 +36,6 @@ private:
 
     void update_positions(double delta);
 
-    void resolve_collisions();
-
-    std::vector<glm::vec3> velocities, pressure_accel;
     std::vector<float> pressure;
 
     CubicSpline cubic_k;

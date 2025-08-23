@@ -6,9 +6,7 @@
 SPHSimulator::SPHSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
     : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
       cubic_k{SUPPORT_RADIUS, is_2d}, spiky_k{SUPPORT_RADIUS} {
-    velocities.resize(positions.size());
     pressure.resize(positions.size());
-    pressure_accel.resize(positions.size());
 }
 
 void SPHSimulator::update(double delta) {
@@ -20,6 +18,8 @@ void SPHSimulator::update(double delta) {
 
     compute_pressure();
     apply_pressure_force(delta);
+
+    apply_XSPH(cubic_k, PARTICLE_MASS);
 
     update_positions(delta);
     resolve_collisions();
@@ -77,31 +77,4 @@ void SPHSimulator::update_positions(double delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < positions.size(); ++i)
         positions[i] += static_cast<float>(delta) * velocities[i];
-}
-
-void SPHSimulator::resolve_collisions() {
-    #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < positions.size(); ++i) {
-        if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
-            positions[i].x = bounding_box.min.x + PARTICLE_RADIUS;
-            velocities[i].x *= -ELASTICITY;
-        } else if (positions[i].x + PARTICLE_RADIUS > bounding_box.max.x) {
-            positions[i].x = bounding_box.max.x - PARTICLE_RADIUS;
-            velocities[i].x *= -ELASTICITY;
-        }
-        if (positions[i].y - PARTICLE_RADIUS < bounding_box.min.y) {
-            positions[i].y = bounding_box.min.y + PARTICLE_RADIUS;
-            velocities[i].y *= -ELASTICITY;
-        } else if (positions[i].y + PARTICLE_RADIUS > bounding_box.max.y) {
-            positions[i].y = bounding_box.max.y - PARTICLE_RADIUS;
-            velocities[i].y *= -ELASTICITY;
-        }
-        if (positions[i].z - PARTICLE_RADIUS < bounding_box.min.z) {
-            positions[i].z = bounding_box.min.z + PARTICLE_RADIUS;
-            velocities[i].z *= -ELASTICITY;
-        } else if (positions[i].z + PARTICLE_RADIUS > bounding_box.max.z) {
-            positions[i].z = bounding_box.max.z - PARTICLE_RADIUS;
-            velocities[i].z *= -ELASTICITY;
-        }
-    }
 }

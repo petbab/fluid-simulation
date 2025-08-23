@@ -9,7 +9,6 @@
 DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
     : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
       kernel{SUPPORT_RADIUS, is_2d} {
-    velocities.resize(positions.size());
     predicted_densities.resize(positions.size());
     alphas.resize(positions.size());
     divergence_errors.resize(positions.size());
@@ -36,7 +35,7 @@ void DFSPHSimulator::update(double delta) {
 
     correct_divergence_error(delta);
 
-    resolve_collisions(delta);
+    resolve_collisions();
 
     first_iteration = false;
 }
@@ -230,32 +229,5 @@ void DFSPHSimulator::warm_start_divergence(double delta) {
         });
 
         velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
-    }
-}
-
-void DFSPHSimulator::resolve_collisions(double) {
-    #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < positions.size(); ++i) {
-        if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
-            positions[i].x = bounding_box.min.x + PARTICLE_RADIUS;
-            velocities[i].x *= -ELASTICITY;
-        } else if (positions[i].x + PARTICLE_RADIUS > bounding_box.max.x) {
-            positions[i].x = bounding_box.max.x - PARTICLE_RADIUS;
-            velocities[i].x *= -ELASTICITY;
-        }
-        if (positions[i].y - PARTICLE_RADIUS < bounding_box.min.y) {
-            positions[i].y = bounding_box.min.y + PARTICLE_RADIUS;
-            velocities[i].y *= -ELASTICITY;
-        } else if (positions[i].y + PARTICLE_RADIUS > bounding_box.max.y) {
-            positions[i].y = bounding_box.max.y - PARTICLE_RADIUS;
-            velocities[i].y *= -ELASTICITY;
-        }
-        if (positions[i].z - PARTICLE_RADIUS < bounding_box.min.z) {
-            positions[i].z = bounding_box.min.z + PARTICLE_RADIUS;
-            velocities[i].z *= -ELASTICITY;
-        } else if (positions[i].z + PARTICLE_RADIUS > bounding_box.max.z) {
-            positions[i].z = bounding_box.max.z - PARTICLE_RADIUS;
-            velocities[i].z *= -ELASTICITY;
-        }
     }
 }

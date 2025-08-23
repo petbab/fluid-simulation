@@ -7,34 +7,19 @@
 
 
 class SPHBase : public FluidSimulator {
-public:
-    SPHBase(unsigned grid_count, BoundingBox bounding_box, float support_radius, bool is_2d = false)
-        : FluidSimulator{grid_count, bounding_box, is_2d},
-          n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)} {
-        densities.resize(positions.size());
+    static constexpr float ELASTICITY = 0.9f;
+    static constexpr float XSPH_ALPHA = 0.01f;
 
-        point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
-        n_search->z_sort();
-        n_search->find_neighbors();
-    }
+public:
+    SPHBase(unsigned grid_count, BoundingBox bounding_box, float support_radius, bool is_2d = false);
 
 protected:
     void find_neighbors() { n_search->find_neighbors(); }
     void z_sort() { n_search->z_sort(); }
 
-    void compute_densities(float particle_mass, const Kernel &kernel) {
-        #pragma omp parallel for schedule(static)
-        for (std::size_t i = 0; i < densities.size(); ++i) {
-            float density = kernel.W(glm::vec3{0.f});
-            glm::vec3 xi = positions[i];
+    void compute_densities(float particle_mass, const Kernel &kernel);
 
-            for_neighbors(i, [&](unsigned j){
-                density += kernel.W(xi - positions[j]);
-            });
-
-            densities[i] = density * particle_mass;
-        }
-    }
+    void resolve_collisions();
 
     void for_neighbors(unsigned i, auto f) {
         CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
@@ -42,6 +27,9 @@ protected:
             f(ps.neighbor(point_set_index, i, j));
     }
 
+    void apply_XSPH(const Kernel &kernel, float particle_mass);
+
+    std::vector<glm::vec3> velocities, XSPH_accel;
     std::vector<float> densities;
 private:
     std::unique_ptr<CompactNSearch::NeighborhoodSearch> n_search;

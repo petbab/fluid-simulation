@@ -20,7 +20,6 @@ public:
     static constexpr float ALPHA_DENOM_EPSILON = 1.e-5f;
 
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
-    static constexpr float ELASTICITY = 0.9f;
     static constexpr float VISCOSITY = 0.01f;
 
     static constexpr float MAX_TIME_STEP = 0.001f;
@@ -49,9 +48,6 @@ private:
     void warm_start_density(double delta);
     void warm_start_divergence(double delta);
 
-    void resolve_collisions(double delta);
-
-    std::vector<glm::vec3> velocities;
     std::vector<float> predicted_densities,
         alphas, divergence_errors,
         divergence_kappas, density_kappas;
