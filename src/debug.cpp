@@ -1,4 +1,6 @@
 #include "debug.h"
+#include <algorithm>
+#include <numeric>
 
 
 std::ostream &operator<<(std::ostream &out, glm::vec3 v) {
@@ -7,6 +9,13 @@ std::ostream &operator<<(std::ostream &out, glm::vec3 v) {
 
 void print_fps(double delta) {
     std::cerr << "FPS: " << 1000. / delta << '\n';
+}
+
+void print_stats(const std::vector<float> &v, const std::string &name) {
+    std::cout << "=== " + name + " ===\n"
+              << "Min: " << std::ranges::min(v) << '\n'
+              << "Max: " << std::ranges::max(v) << '\n'
+              << "Mean: " << std::accumulate(v.begin(), v.end(), 0.f) / static_cast<float>(v.size()) << '\n';
 }
 
 GLenum gl_check_error(const char *file, int line) {

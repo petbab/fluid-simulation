@@ -5,7 +5,7 @@
 #include "render/asset_manager.h"
 #include "render/fluid.h"
 #include "render/box.h"
-#include "simulation/SPH/dfsph.h"
+#include "simulation/SPH/sph.h"
 
 
 Application::Application(GLFWwindow *window, int width, int height)
@@ -20,7 +20,7 @@ void Application::configure_window() {
     glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetCursorPosCallback(window, on_mouse_move);
     glfwSetKeyCallback(window, on_key_pressed);
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void Application::run() {
@@ -48,11 +48,11 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
-    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-0.5, -0.5, -0.5}, glm::vec3{0.5, 0.5, 0.5},
-                                             glm::vec4{0.45, 0.4, 0.4, 1.});
-//    objects.push_back(fluid_box);
+    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-1, -0.75, -0.75}, glm::vec3{1, 0.75, 0.75},
+                                             glm::vec4{0.65, 0.6, 0.6, 1.});
+    objects.push_back(fluid_box);
 
-    objects.push_back(AssetManager::make<Fluid<DFSPHSimulator>>("fluid", 10, *fluid_box));
+    objects.push_back(AssetManager::make<Fluid<SPHSimulator>>("fluid", 20, *fluid_box, false));
 
 //    auto *axes_shader = AssetManager::make<Shader>(
 //        "axes_shader",

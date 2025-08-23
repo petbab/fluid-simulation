@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 
 std::ostream& operator<<(std::ostream &out, glm::vec3 v);
@@ -12,6 +13,8 @@ std::ostream& operator<<(std::ostream &out, glm::vec3 v);
  * @param delta milliseconds
  */
 void print_fps(double delta);
+
+void print_stats(const std::vector<float> &v, const std::string &name);
 
 GLenum gl_check_error(const char *file, int line);
 #ifdef DEBUG
