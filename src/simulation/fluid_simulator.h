@@ -14,10 +14,14 @@ public:
 
     auto get_position_data() -> std::span<const float>;
 
+    virtual void reset();
+
 private:
-    void init_positions(unsigned grid_count, bool is_2d);
+    void init_positions();
 
 protected:
     std::vector<glm::vec3> positions;
     BoundingBox bounding_box;
+    const unsigned grid_count;
+    const bool is_2d;
 };

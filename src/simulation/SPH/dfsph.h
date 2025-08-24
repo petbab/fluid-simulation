@@ -36,6 +36,8 @@ public:
 
     void update(double delta) override;
 
+    void reset() override;
+
 private:
     void compute_alphas();
 

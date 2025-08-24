@@ -9,8 +9,14 @@ SPHBase::SPHBase(unsigned int grid_count, BoundingBox bounding_box, float suppor
     XSPH_accel.resize(positions.size());
 
     point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
+    z_sort();
+    find_neighbors();
+}
+
+void SPHBase::z_sort() {
     n_search->z_sort();
-    n_search->find_neighbors();
+    CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
+    ps.sort_field(positions.data());
 }
 
 void SPHBase::compute_densities(float particle_mass, const Kernel &kernel) {
@@ -71,4 +77,15 @@ void SPHBase::apply_XSPH(const Kernel &kernel, float particle_mass) {
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < velocities.size(); ++i)
         velocities[i] += XSPH_accel[i];
+}
+
+void SPHBase::reset() {
+    FluidSimulator::reset();
+
+    std::ranges::fill(velocities, glm::vec3{0});
+    std::ranges::fill(XSPH_accel, glm::vec3{0});
+    std::ranges::fill(densities, 0);
+
+    z_sort();
+    find_neighbors();
 }

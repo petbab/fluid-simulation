@@ -26,9 +26,18 @@ public:
 
     void update(double delta) override {
         simulator->update(delta);
-        dynamic_cast<const InstancedGeometry*>(geometry)->update_instance_data(simulator->get_position_data());
+        update_geometry();
+    }
+
+    void reset() {
+        simulator->reset();
+        update_geometry();
     }
 
 private:
+    void update_geometry() {
+        dynamic_cast<const InstancedGeometry*>(geometry)->update_instance_data(simulator->get_position_data());
+    }
+
     std::unique_ptr<FluidSimulator> simulator;
 };

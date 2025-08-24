@@ -78,3 +78,8 @@ void SPHSimulator::update_positions(double delta) {
     for (std::size_t i = 0; i < positions.size(); ++i)
         positions[i] += static_cast<float>(delta) * velocities[i];
 }
+
+void SPHSimulator::reset() {
+    SPHBase::reset();
+    std::ranges::fill(pressure, 0);
+}

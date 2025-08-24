@@ -27,6 +27,8 @@ public:
 
     void update(double delta) override;
 
+    void reset() override;
+
 private:
     void apply_non_pressure_forces(double delta);
     glm::vec3 compute_viscosity(unsigned i);

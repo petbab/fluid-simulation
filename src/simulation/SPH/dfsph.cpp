@@ -231,3 +231,15 @@ void DFSPHSimulator::warm_start_divergence(double delta) {
         velocities[i] -= static_cast<float>(delta) * PARTICLE_MASS * vel_correction;
     }
 }
+
+void DFSPHSimulator::reset() {
+    SPHBase::reset();
+
+    std::ranges::fill(predicted_densities, 0);
+    std::ranges::fill(alphas, 0);
+    std::ranges::fill(divergence_errors, 0);
+    std::ranges::fill(divergence_kappas, 0);
+    std::ranges::fill(density_kappas, 0);
+
+    first_iteration = true;
+}

@@ -18,6 +18,7 @@ private:
     void setup_scene();
     void render_scene();
     void update(double delta);
+    void update_objects(double delta);
 
     static void on_resize(GLFWwindow* window, int width, int height);
     static void on_mouse_move(GLFWwindow* window, double x, double y);
@@ -33,4 +34,6 @@ private:
     double last_glfw_time = 0.;
     bool first_mouse_move = true;
     glm::vec2 last_mouse_pos{0.f};
+
+    bool paused = false;
 };

@@ -10,15 +10,15 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
 }
 
 FluidSimulator::FluidSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
-    : bounding_box{bounding_box} {
-    init_positions(grid_count, is_2d);
+    : bounding_box{bounding_box}, grid_count{grid_count}, is_2d{is_2d} {
+    init_positions();
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {
     return vec_to_span(positions);
 }
 
-void FluidSimulator::init_positions(const unsigned grid_count, const bool is_2d) {
+void FluidSimulator::init_positions() {
     assert(grid_count > 1);
 
     const unsigned particle_count = grid_count * grid_count * (is_2d ? 1 : grid_count);
@@ -29,22 +29,30 @@ void FluidSimulator::init_positions(const unsigned grid_count, const bool is_2d)
     assert(grid_start.y >= bounding_box.min.y);
     assert(grid_start.z >= bounding_box.min.z);
 
-    positions.reserve(particle_count);
+    positions.resize(particle_count);
+    unsigned i = 0;
     for (unsigned x = 0; x < grid_count; ++x)
         for (unsigned y = 0; y < grid_count; ++y) {
             if (!is_2d) {
-                for (unsigned z = 0; z < grid_count; ++z)
-                    positions.push_back(grid_start + glm::vec3{
+                for (unsigned z = 0; z < grid_count; ++z) {
+                    positions[i] = grid_start + glm::vec3{
                         static_cast<float>(x) * PARTICLE_SPACING,
                         static_cast<float>(y) * PARTICLE_SPACING,
                         static_cast<float>(z) * PARTICLE_SPACING
-                    });
+                    };
+                    ++i;
+                }
             } else {
-                positions.push_back(grid_start + glm::vec3{
+                positions[i] = grid_start + glm::vec3{
                     static_cast<float>(x) * PARTICLE_SPACING,
                     static_cast<float>(y) * PARTICLE_SPACING,
                     center.z
-                });
+                };
+                ++i;
             }
         }
+}
+
+void FluidSimulator::reset() {
+    init_positions();
 }

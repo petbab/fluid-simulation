@@ -15,7 +15,7 @@ public:
 
 protected:
     void find_neighbors() { n_search->find_neighbors(); }
-    void z_sort() { n_search->z_sort(); }
+    void z_sort();
 
     void compute_densities(float particle_mass, const Kernel &kernel);
 
@@ -28,6 +28,8 @@ protected:
     }
 
     void apply_XSPH(const Kernel &kernel, float particle_mass);
+
+    void reset() override;
 
     std::vector<glm::vec3> velocities, XSPH_accel;
     std::vector<float> densities;
