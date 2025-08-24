@@ -10,15 +10,17 @@ struct BoundingBox {
 
 class Object {
 public:
-    Object(const Shader *shader, const Geometry *geometry);
+    Object(Shader *shader, Geometry *geometry);
     virtual ~Object() = default;
 
     virtual void render() const;
     virtual void update(double delta);
 
+    void set_model(const glm::mat4 &m);
+
 protected:
     Object() = default;
 
-    const Shader *shader = nullptr;
-    const Geometry *geometry = nullptr;
+    Shader *shader = nullptr;
+    Geometry *geometry = nullptr;
 };

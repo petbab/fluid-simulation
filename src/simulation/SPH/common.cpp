@@ -1,7 +1,7 @@
 #include "common.h"
 
 
-SPHBase::SPHBase(unsigned int grid_count, BoundingBox bounding_box, float support_radius, bool is_2d)
+SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d)
     : FluidSimulator{grid_count, bounding_box, is_2d},
       n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)} {
     densities.resize(positions.size());

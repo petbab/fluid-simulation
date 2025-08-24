@@ -8,10 +8,21 @@ public:
     Box(glm::vec3 min, glm::vec3 max, glm::vec4 color);
     Box(BoundingBox bb, glm::vec4 color) : Box{bb.min, bb.max, color} {}
 
-    operator BoundingBox() const { return {min, max}; }
+    const BoundingBox& bounding_box() const { return *bb; }
 
     void render() const override;
 
+protected:
+    std::unique_ptr<BoundingBox> bb;
+};
+
+class MovingBox : public Box {
+public:
+    MovingBox(glm::vec3 min, glm::vec3 max, glm::vec4 color);
+
+    void update(double delta) override;
+
 private:
-    glm::vec3 min, max;
+    double time = 0.;
+    const BoundingBox initial_bb;
 };

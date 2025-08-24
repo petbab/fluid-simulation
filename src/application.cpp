@@ -56,7 +56,7 @@ void Application::setup_scene() {
                                              glm::vec4{0.65, 0.6, 0.6, 1.});
     objects.push_back(fluid_box);
 
-    objects.push_back(AssetManager::make<Fluid<FluidSim>>("fluid", 20, *fluid_box, false));
+    objects.push_back(AssetManager::make<Fluid<FluidSim>>("fluid", 20, fluid_box->bounding_box()));
 
 //    auto *axes_shader = AssetManager::make<Shader>(
 //        "axes_shader",

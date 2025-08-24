@@ -23,7 +23,7 @@ public:
     static constexpr float MIN_TIME_STEP = 0.00001f;
     ///////////////////////////////////////////////////////////////////////////////
 
-    SPHSimulator(unsigned grid_count, BoundingBox bounding_box, bool is_2d = false);
+    SPHSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
 
     void update(double delta) override;
 

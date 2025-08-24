@@ -9,7 +9,7 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulator::FluidSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
+FluidSimulator::FluidSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
     : bounding_box{bounding_box}, grid_count{grid_count}, is_2d{is_2d} {
     init_positions();
 }

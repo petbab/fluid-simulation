@@ -11,7 +11,7 @@ class SPHBase : public FluidSimulator {
     static constexpr float XSPH_ALPHA = 0.01f;
 
 public:
-    SPHBase(unsigned grid_count, BoundingBox bounding_box, float support_radius, bool is_2d = false);
+    SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
 
 protected:
     void find_neighbors() { n_search->find_neighbors(); }

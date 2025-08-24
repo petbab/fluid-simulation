@@ -13,7 +13,7 @@ concept Simulator = std::is_base_of_v<FluidSimulator, S>;
 template<Simulator S>
 class Fluid : public Object {
 public:
-    Fluid(unsigned grid_count, BoundingBox bounding_box, bool is_2d = false) : simulator{std::make_unique<S>(grid_count, bounding_box, is_2d)} {
+    Fluid(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false) : simulator{std::make_unique<S>(grid_count, bounding_box, is_2d)} {
         shader = AssetManager::make<Shader>(
             "instanced_ball_shader",
             cfg::shaders_dir/"instanced_ball.vert",

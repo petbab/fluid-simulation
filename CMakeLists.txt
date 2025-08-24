@@ -47,6 +47,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<CONFIG:Debug>:DEBUG>
         USE_DOUBLE_PRECISION=OFF
         COMPACT_NSEARCH_STATIC_LIB
+        GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
 )
 
 # Platform-specific settings

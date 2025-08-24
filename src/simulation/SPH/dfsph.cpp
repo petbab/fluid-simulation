@@ -6,7 +6,7 @@
 //#include <iostream>
 
 
-DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
+DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
     : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
       kernel{SUPPORT_RADIUS, is_2d} {
     predicted_densities.resize(positions.size());

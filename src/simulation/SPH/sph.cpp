@@ -3,7 +3,7 @@
 #include <numeric>
 
 
-SPHSimulator::SPHSimulator(unsigned int grid_count, BoundingBox bounding_box, bool is_2d)
+SPHSimulator::SPHSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
     : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
       cubic_k{SUPPORT_RADIUS, is_2d}, spiky_k{SUPPORT_RADIUS} {
     pressure.resize(positions.size());
