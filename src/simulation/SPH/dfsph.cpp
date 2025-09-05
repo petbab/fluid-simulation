@@ -1,7 +1,5 @@
 #include "dfsph.h"
 
-#include <random>
-#include <glm/gtc/constants.hpp>
 #include <algorithm>
 //#include <iostream>
 
@@ -15,14 +13,14 @@ DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, const BoundingBox &bound
     divergence_kappas.resize(positions.size());
     density_kappas.resize(positions.size());
 
-    compute_densities(PARTICLE_MASS, kernel);
+    compute_densities();
     compute_alphas();
 }
 
 void DFSPHSimulator::update(double delta) {
-    delta = adapt_time_step(delta);
+    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
 
-    predict_velocities(delta);
+    apply_non_pressure_forces(delta);
 
     correct_density_error(delta);
 
@@ -30,7 +28,7 @@ void DFSPHSimulator::update(double delta) {
 
     find_neighbors();
 
-    compute_densities(PARTICLE_MASS, kernel);
+    compute_densities();
     compute_alphas();
 
     correct_divergence_error(delta);
@@ -56,47 +54,6 @@ void DFSPHSimulator::compute_alphas() {
         sum_grad_sq += glm::dot(sum_grad, sum_grad);
         alphas[i] = sum_grad_sq > ALPHA_DENOM_EPSILON ? 1.f / sum_grad_sq : 0.f;
     }
-}
-
-double DFSPHSimulator::adapt_time_step(double delta) const {
-    float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
-        return glm::length(v);
-    }));
-
-//    std::cout << "MAX VELOCITY: " << max_velocity << '\n';
-
-    if (max_velocity < 1.e-9)
-        return MAX_TIME_STEP;
-
-    float cfl_max_time_step = CFL_FACTOR * PARTICLE_SPACING / max_velocity;
-
-    return std::min(std::clamp(static_cast<float>(delta), MIN_TIME_STEP, MAX_TIME_STEP), cfl_max_time_step);
-}
-
-void DFSPHSimulator::predict_velocities(double delta) {
-    #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < velocities.size(); ++i) {
-        glm::vec3 velocity_laplacian{0.f};
-        glm::vec3 xi = positions[i];
-        glm::vec3 vi = velocities[i];
-
-        for_neighbors(i, [&](unsigned j){
-            glm::vec3 x_ij = xi - positions[j];
-            glm::vec3 v_ij = vi - velocities[j];
-
-            velocity_laplacian += glm::dot(v_ij, x_ij) * kernel.grad_W(x_ij) / (densities[j] * (glm::dot(x_ij, x_ij) + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
-        });
-
-        velocity_laplacian *= 10 * PARTICLE_MASS;
-
-        velocities[i] += static_cast<float>(delta) * (GRAVITY + VISCOSITY * velocity_laplacian);
-    }
-}
-
-void DFSPHSimulator::update_positions(double delta) {
-    #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < positions.size(); ++i)
-        positions[i] += static_cast<float>(delta) * velocities[i];
 }
 
 void DFSPHSimulator::correct_density_error(double delta) {

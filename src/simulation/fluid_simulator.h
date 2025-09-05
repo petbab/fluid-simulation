@@ -4,8 +4,12 @@
 
 class FluidSimulator {
 public:
+    ///////////////////////////////////////////////////////////////////////////////
+    ////                         SIMULATION PARAMETERS                         ////
+    ///////////////////////////////////////////////////////////////////////////////
     static constexpr float PARTICLE_RADIUS = 0.02f;
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
+    ///////////////////////////////////////////////////////////////////////////////
 
     FluidSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
     virtual ~FluidSimulator() = default;

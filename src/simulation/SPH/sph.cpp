@@ -1,52 +1,25 @@
 #include "sph.h"
 #include <algorithm>
-#include <numeric>
 
 
 SPHSimulator::SPHSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
-    : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
-      cubic_k{SUPPORT_RADIUS, is_2d}, spiky_k{SUPPORT_RADIUS} {
+    : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d), spiky_k{SUPPORT_RADIUS} {
     pressure.resize(positions.size());
 }
 
 void SPHSimulator::update(double delta) {
-    delta = std::clamp(delta, static_cast<double>(MIN_TIME_STEP), static_cast<double>(MAX_TIME_STEP));
+    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
 
-    compute_densities(PARTICLE_MASS, cubic_k);
+    compute_densities();
 
     apply_non_pressure_forces(delta);
 
     compute_pressure();
     apply_pressure_force(delta);
 
-    apply_XSPH(cubic_k, PARTICLE_MASS);
-
     update_positions(delta);
     resolve_collisions();
     find_neighbors();
-}
-
-void SPHSimulator::apply_non_pressure_forces(double delta) {
-    #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < velocities.size(); ++i)
-        velocities[i] += static_cast<float>(delta) * (GRAVITY + compute_viscosity(i));
-}
-
-glm::vec3 SPHSimulator::compute_viscosity(unsigned i) {
-    glm::vec3 velocity_laplacian{0.f};
-    glm::vec3 xi = positions[i];
-    glm::vec3 vi = velocities[i];
-
-    for_neighbors(i, [&](unsigned j){
-        glm::vec3 x_ij = xi - positions[j];
-        glm::vec3 v_ij = vi - velocities[j];
-
-        velocity_laplacian += glm::dot(v_ij, x_ij) * cubic_k.grad_W(x_ij) / (densities[j] * (glm::dot(x_ij, x_ij) + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
-    });
-
-    velocity_laplacian *= 10 * PARTICLE_MASS;
-
-    return VISCOSITY * velocity_laplacian;
 }
 
 void SPHSimulator::compute_pressure() {
@@ -71,12 +44,6 @@ void SPHSimulator::apply_pressure_force(double delta) {
 
         velocities[i] += static_cast<float>(delta) * PARTICLE_MASS * p_accel;
     }
-}
-
-void SPHSimulator::update_positions(double delta) {
-    #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < positions.size(); ++i)
-        positions[i] += static_cast<float>(delta) * velocities[i];
 }
 
 void SPHSimulator::reset() {

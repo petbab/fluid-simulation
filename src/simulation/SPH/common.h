@@ -7,33 +7,68 @@
 
 
 class SPHBase : public FluidSimulator {
-    static constexpr float ELASTICITY = 0.9f;
-    static constexpr float XSPH_ALPHA = 0.01f;
-
 public:
+    ///////////////////////////////////////////////////////////////////////////////
+    ////                         SIMULATION PARAMETERS                         ////
+    ///////////////////////////////////////////////////////////////////////////////
+    static constexpr float REST_DENSITY = 1000.f;
+    static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
+    static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8;
+    static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
+
+    static constexpr float ELASTICITY = 0.9f;
+    static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
+    static constexpr float XSPH_ALPHA = 0.01f;
+    static constexpr float VISCOSITY = 0.01f;
+
+    static constexpr float CFL_FACTOR = 0.4f;
+    ///////////////////////////////////////////////////////////////////////////////
+
     SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
 
 protected:
-    void find_neighbors() { n_search->find_neighbors(); }
-    void z_sort();
+    void compute_densities();
 
-    void compute_densities(float particle_mass, const Kernel &kernel);
-
+    void update_positions(double delta);
     void resolve_collisions();
 
+    void apply_non_pressure_forces(double delta);
+
+    void reset() override;
+
+    void find_neighbors() { n_search->find_neighbors(); }
+    void z_sort();
     void for_neighbors(unsigned i, auto f) {
         CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
         for (unsigned j = 0; j < ps.n_neighbors(point_set_index, i); ++j)
             f(ps.neighbor(point_set_index, i, j));
     }
 
-    void apply_XSPH(const Kernel &kernel, float particle_mass);
+    // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
+    template<float MIN_STEP, float MAX_STEP, float H>
+    double adapt_time_step(double delta) const {
+        float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
+            return glm::length(v);
+        }));
 
-    void reset() override;
+        if (max_velocity < 1.e-9)
+            return MAX_STEP;
 
-    std::vector<glm::vec3> velocities, XSPH_accel;
+        float cfl_max_time_step = CFL_FACTOR * H / MAX_STEP;
+
+        return std::min(std::clamp(static_cast<float>(delta), MIN_STEP, MAX_STEP), cfl_max_time_step);
+    }
+
+private:
+    void compute_XSPH();
+    void compute_viscosity();
+
+protected:
+    std::vector<glm::vec3> velocities, non_pressure_accel;
     std::vector<float> densities;
+
 private:
     std::unique_ptr<CompactNSearch::NeighborhoodSearch> n_search;
     unsigned point_set_index;
+    CubicSpline cubic_k;
 };
