@@ -88,3 +88,24 @@ float SpikyKernel::compute_grad_W(float q) const {
     float r_len = q * h;
     return grad_factor * (1.f - q) * (1.f - q) / (h * r_len);
 }
+
+CohesionKernel::CohesionKernel(float support_radius)
+    : Kernel{support_radius},
+      h{support_radius},
+      factor{32.f / (glm::pi<float>() * h*h*h)} {
+    populate_tables();
+}
+
+float CohesionKernel::compute_W(float q) const {
+    const float iq3 = std::pow(1 - q, 3.f);
+    const float q3 = q*q*q;
+    if (q <= 0.5f)
+        return factor * (2.f * q3 * iq3 - 1.f / 64.f);
+    if (q <= 1.f)
+        return factor * q3 * iq3;
+    return 0.f;
+}
+
+float CohesionKernel::compute_grad_W(float) const {
+    return 0.f;
+}

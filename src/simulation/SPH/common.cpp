@@ -4,10 +4,12 @@
 SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d)
     : FluidSimulator{grid_count, bounding_box, is_2d},
       n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)},
-      cubic_k{SUPPORT_RADIUS, is_2d} {
+      cubic_k{SUPPORT_RADIUS, is_2d},
+      cohesion_k{SUPPORT_RADIUS} {
     densities.resize(positions.size());
     velocities.resize(positions.size());
     non_pressure_accel.resize(positions.size());
+    normals.resize(positions.size());
 
     point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
     z_sort();
@@ -71,11 +73,13 @@ void SPHBase::apply_non_pressure_forces(double delta) {
     std::ranges::fill(non_pressure_accel, GRAVITY);
 
     compute_viscosity();
-    compute_XSPH();
+    compute_surface_tension();
 
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < velocities.size(); ++i)
         velocities[i] += static_cast<float>(delta) * non_pressure_accel[i];
+
+    compute_XSPH();
 }
 
 void SPHBase::compute_XSPH() {
@@ -89,7 +93,7 @@ void SPHBase::compute_XSPH() {
             sum += (velocities[j] - vi) * cubic_k.W(xi - positions[j]) / densities[j];
         });
 
-        non_pressure_accel[i] += XSPH_ALPHA * PARTICLE_MASS * sum;
+        velocities[i] += XSPH_ALPHA * PARTICLE_MASS * sum;
     }
 }
 
@@ -110,6 +114,40 @@ void SPHBase::compute_viscosity() {
         velocity_laplacian *= 10 * PARTICLE_MASS;
 
         non_pressure_accel[i] += VISCOSITY * velocity_laplacian;
+    }
+}
+
+void SPHBase::compute_surface_tension() {
+    compute_surface_normals();
+
+    #pragma omp parallel for schedule(static)
+    for (unsigned i = 0; i < positions.size(); ++i) {
+        glm::vec3 xi = positions[i];
+        glm::vec3 ni = normals[i];
+        glm::vec3 f{0.f};
+
+        for_neighbors(i, [&](unsigned j) {
+            glm::vec3 x_ij = xi - positions[j];
+            if (glm::dot(x_ij, x_ij) > 1e-6)
+                f += (PARTICLE_MASS * glm::normalize(x_ij) * cohesion_k.W(x_ij) + ni - normals[j])
+                    / (densities[i] + densities[j]);
+        });
+
+        non_pressure_accel[i] -= SURFACE_TENSION_ALPHA * 2.f * REST_DENSITY * f;
+    }
+}
+
+void SPHBase::compute_surface_normals() {
+    #pragma omp parallel for schedule(static)
+    for (unsigned i = 0; i < normals.size(); ++i) {
+        glm::vec3 xi = positions[i];
+        glm::vec3 n{0.f};
+
+        for_neighbors(i, [&](unsigned j){
+            n += cubic_k.grad_W(xi - positions[j]) / densities[j];
+        });
+
+        normals[i] = SUPPORT_RADIUS * PARTICLE_MASS * n;
     }
 }
 

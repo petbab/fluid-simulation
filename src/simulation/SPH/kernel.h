@@ -53,3 +53,15 @@ protected:
 private:
     const float h, factor, grad_factor;
 };
+
+class CohesionKernel final : public Kernel {
+public:
+    explicit CohesionKernel(float support_radius);
+
+protected:
+    float compute_W(float q) const override;
+    float compute_grad_W(float q) const override;
+
+private:
+    const float h, factor;
+};
