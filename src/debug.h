@@ -15,6 +15,7 @@ std::ostream& operator<<(std::ostream &out, glm::vec3 v);
 void print_fps(double delta);
 
 void print_stats(const std::vector<float> &v, const std::string &name);
+void print_stats(const std::vector<glm::vec3> &v, const std::string &name);
 
 GLenum gl_check_error(const char *file, int line);
 #ifdef DEBUG
