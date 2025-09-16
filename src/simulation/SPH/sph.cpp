@@ -8,11 +8,11 @@ SPHSimulator::SPHSimulator(unsigned int grid_count, const BoundingBox &bounding_
 }
 
 void SPHSimulator::update(double delta) {
-    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
-
     compute_densities();
 
     apply_non_pressure_forces(delta);
+
+    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
 
     compute_pressure();
     apply_pressure_force(delta);

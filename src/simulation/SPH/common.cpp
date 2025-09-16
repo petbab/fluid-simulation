@@ -16,6 +16,10 @@ SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float
     find_neighbors();
 }
 
+void SPHBase::find_neighbors() {
+    n_search->find_neighbors();
+}
+
 void SPHBase::z_sort() {
     n_search->z_sort();
     CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
@@ -75,11 +79,13 @@ void SPHBase::apply_non_pressure_forces(double delta) {
     compute_viscosity();
     compute_surface_tension();
 
+    delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
+
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < velocities.size(); ++i)
         velocities[i] += static_cast<float>(delta) * non_pressure_accel[i];
 
-    compute_XSPH();
+    // compute_XSPH();
 }
 
 void SPHBase::compute_XSPH() {

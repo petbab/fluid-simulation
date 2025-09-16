@@ -23,6 +23,7 @@ public:
     static constexpr float SURFACE_TENSION_ALPHA = 0.2f;
 
     static constexpr float CFL_FACTOR = 0.4f;
+    static constexpr double NON_PRESSURE_MAX_TIME_STEP = 0.025;
     ///////////////////////////////////////////////////////////////////////////////
 
     SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
@@ -37,7 +38,7 @@ protected:
 
     void reset() override;
 
-    void find_neighbors() { n_search->find_neighbors(); }
+    void find_neighbors();
     void z_sort();
     void for_neighbors(unsigned i, auto f) {
         CompactNSearch::PointSet &ps = n_search->point_set(point_set_index);
