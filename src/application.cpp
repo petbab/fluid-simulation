@@ -24,7 +24,9 @@ void Application::configure_window() {
     glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetCursorPosCallback(window, on_mouse_move);
     glfwSetKeyCallback(window, on_key_pressed);
+#ifndef DEBUG
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+#endif
 }
 
 void Application::run() {
