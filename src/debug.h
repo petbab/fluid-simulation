@@ -12,7 +12,7 @@ std::ostream& operator<<(std::ostream &out, glm::vec3 v);
 /**
  * @param delta milliseconds
  */
-void print_fps(double delta);
+void print_fps(float delta);
 
 void print_stats(const std::vector<float> &v, const std::string &name);
 void print_stats(const std::vector<glm::vec3> &v, const std::string &name);

@@ -14,7 +14,7 @@ public:
     virtual ~Object() = default;
 
     virtual void render() const;
-    virtual void update(double delta);
+    virtual void update(float delta);
 
     void set_model(const glm::mat4 &m);
 

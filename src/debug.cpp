@@ -7,7 +7,7 @@ std::ostream &operator<<(std::ostream &out, glm::vec3 v) {
     return out << '(' << v.x << ", " << v.y << ", " << v.z << ')';
 }
 
-void print_fps(double delta) {
+void print_fps(float delta) {
     std::cerr << "FPS: " << 1000. / delta << '\n';
 }
 

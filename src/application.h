@@ -2,7 +2,6 @@
 
 #include <GLFW/glfw3.h>
 #include <vector>
-#include <memory>
 #include "render/camera.h"
 #include "render/object.h"
 
@@ -17,8 +16,8 @@ private:
     void configure_window();
     void setup_scene();
     void render_scene();
-    void update(double delta);
-    void update_objects(double delta);
+    void update(float delta);
+    void update_objects(float delta);
 
     static void on_resize(GLFWwindow* window, int width, int height);
     static void on_mouse_move(GLFWwindow* window, double x, double y);

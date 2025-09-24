@@ -22,17 +22,17 @@ public:
 
     DFSPHSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
 
-    void update(double delta) override;
+    void update(float delta) override;
 
     void reset() override;
 
 private:
     void compute_alphas();
 
-    void correct_density_error(double delta);
-    void correct_divergence_error(double delta);
-    void warm_start_density(double delta);
-    void warm_start_divergence(double delta);
+    void correct_density_error(float delta);
+    void correct_divergence_error(float delta);
+    void warm_start_density(float delta);
+    void warm_start_divergence(float delta);
 
     std::vector<float> predicted_densities,
         alphas, divergence_errors,

@@ -23,7 +23,7 @@ public:
     static constexpr float SURFACE_TENSION_ALPHA = 0.2f;
 
     static constexpr float CFL_FACTOR = 0.4f;
-    static constexpr double NON_PRESSURE_MAX_TIME_STEP = 0.025;
+    static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.025;
     ///////////////////////////////////////////////////////////////////////////////
 
     SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
@@ -31,10 +31,10 @@ public:
 protected:
     void compute_densities();
 
-    void update_positions(double delta);
+    void update_positions(float delta);
     void resolve_collisions();
 
-    void apply_non_pressure_forces(double delta);
+    void apply_non_pressure_forces(float delta);
 
     void reset() override;
 
@@ -48,7 +48,7 @@ protected:
 
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
     template<float MIN_STEP, float MAX_STEP, float H>
-    double adapt_time_step(double delta) const {
+    float adapt_time_step(float delta) const {
         float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
             return glm::length(v);
         }));
@@ -58,7 +58,7 @@ protected:
 
         float cfl_max_time_step = CFL_FACTOR * H / MAX_STEP;
 
-        return std::min(std::clamp(static_cast<float>(delta), MIN_STEP, MAX_STEP), cfl_max_time_step);
+        return std::min(std::clamp(delta, MIN_STEP, MAX_STEP), cfl_max_time_step);
     }
 
 private:

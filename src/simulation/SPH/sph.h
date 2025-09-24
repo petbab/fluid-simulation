@@ -17,13 +17,13 @@ public:
 
     SPHSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
 
-    void update(double delta) override;
+    void update(float delta) override;
 
     void reset() override;
 
 private:
     void compute_pressure();
-    void apply_pressure_force(double delta);
+    void apply_pressure_force(float delta);
 
     std::vector<float> pressure;
     SpikyKernel spiky_k;

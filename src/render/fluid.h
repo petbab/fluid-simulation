@@ -24,7 +24,7 @@ public:
             std::vector{VertexAttribute{3, simulator->get_position_data()}});
     }
 
-    void update(double delta) override {
+    void update(float delta) override {
         simulator->update(delta);
         update_geometry();
     }

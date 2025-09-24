@@ -20,9 +20,9 @@ class MovingBox : public Box {
 public:
     MovingBox(glm::vec3 min, glm::vec3 max, glm::vec4 color);
 
-    void update(double delta) override;
+    void update(float delta) override;
 
 private:
-    double time = 0.;
+    float time = 0.;
     const BoundingBox initial_bb;
 };

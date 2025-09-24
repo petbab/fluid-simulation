@@ -34,7 +34,7 @@ void Application::run() {
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         const double current_time = glfwGetTime();
-        const double delta = current_time - last_glfw_time;
+        const float delta = current_time - last_glfw_time;
         last_glfw_time = current_time;
 
         // Poll for and process events.
@@ -73,8 +73,8 @@ void Application::render_scene() {
         object->render();
 }
 
-void Application::update(double delta) {
-    process_keyboard_input(static_cast<float>(delta));
+void Application::update(float delta) {
+    process_keyboard_input(delta);
     if (!paused)
         update_objects(delta);
 }
@@ -147,7 +147,7 @@ void Application::process_keyboard_input(float delta) {
         camera.on_key_move(Camera::move::DOWN, delta);
 }
 
-void Application::update_objects(double delta) {
+void Application::update_objects(float delta) {
     for (auto object : objects)
         object->update(delta);
 }

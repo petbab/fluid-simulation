@@ -7,7 +7,7 @@ SPHSimulator::SPHSimulator(unsigned int grid_count, const BoundingBox &bounding_
     pressure.resize(positions.size());
 }
 
-void SPHSimulator::update(double delta) {
+void SPHSimulator::update(float delta) {
     compute_densities();
 
     apply_non_pressure_forces(delta);
@@ -30,7 +30,7 @@ void SPHSimulator::compute_pressure() {
     }
 }
 
-void SPHSimulator::apply_pressure_force(double delta) {
+void SPHSimulator::apply_pressure_force(float delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         glm::vec3 p_accel{0.f};
@@ -42,7 +42,7 @@ void SPHSimulator::apply_pressure_force(double delta) {
             p_accel -= (dpi + dpj) * spiky_k.grad_W(xi - positions[j]);
         });
 
-        velocities[i] += static_cast<float>(delta) * PARTICLE_MASS * p_accel;
+        velocities[i] += delta * PARTICLE_MASS * p_accel;
     }
 }
 

@@ -14,7 +14,7 @@ public:
     FluidSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
     virtual ~FluidSimulator() = default;
 
-    virtual void update(double delta) = 0;
+    virtual void update(float delta) = 0;
 
     auto get_position_data() -> std::span<const float>;
 

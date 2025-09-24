@@ -11,7 +11,7 @@ void Object::render() const {
     geometry->draw();
 }
 
-void Object::update(double) {}
+void Object::update(float) {}
 
 void Object::set_model(const glm::mat4 &m) {
     assert(shader != nullptr);

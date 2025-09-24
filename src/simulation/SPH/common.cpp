@@ -40,10 +40,10 @@ void SPHBase::compute_densities() {
     }
 }
 
-void SPHBase::update_positions(double delta) {
+void SPHBase::update_positions(float delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < positions.size(); ++i)
-        positions[i] += static_cast<float>(delta) * velocities[i];
+        positions[i] += delta * velocities[i];
 }
 
 void SPHBase::resolve_collisions() {
@@ -73,7 +73,7 @@ void SPHBase::resolve_collisions() {
     }
 }
 
-void SPHBase::apply_non_pressure_forces(double delta) {
+void SPHBase::apply_non_pressure_forces(float delta) {
     std::ranges::fill(non_pressure_accel, GRAVITY);
 
     compute_viscosity();
@@ -83,7 +83,7 @@ void SPHBase::apply_non_pressure_forces(double delta) {
 
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < velocities.size(); ++i)
-        velocities[i] += static_cast<float>(delta) * non_pressure_accel[i];
+        velocities[i] += delta * non_pressure_accel[i];
 
     // compute_XSPH();
 }
