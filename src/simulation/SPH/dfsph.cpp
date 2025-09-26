@@ -17,7 +17,7 @@ DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, const BoundingBox &bound
     compute_alphas();
 }
 
-void DFSPHSimulator::update(double delta) {
+void DFSPHSimulator::update(float delta) {
     delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
 
     apply_non_pressure_forces(delta);
@@ -56,7 +56,7 @@ void DFSPHSimulator::compute_alphas() {
     }
 }
 
-void DFSPHSimulator::correct_density_error(double delta) {
+void DFSPHSimulator::correct_density_error(float delta) {
     if (!first_iteration)
         warm_start_density(delta);
     std::ranges::fill(density_kappas, 0.f);
@@ -103,7 +103,7 @@ void DFSPHSimulator::correct_density_error(double delta) {
 //    std::cout << "DENSITY ERROR: " << density_error << '\n';
 }
 
-void DFSPHSimulator::correct_divergence_error(double delta) {
+void DFSPHSimulator::correct_divergence_error(float delta) {
     if (!first_iteration)
         warm_start_divergence(delta);
     std::ranges::fill(divergence_kappas, 0.f);
@@ -151,7 +151,7 @@ void DFSPHSimulator::correct_divergence_error(double delta) {
 //    std::cout << "DIVERGENCE ERROR: " << divergence_error << '\n';
 }
 
-void DFSPHSimulator::warm_start_density(double delta) {
+void DFSPHSimulator::warm_start_density(float delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = density_kappas[i];
@@ -170,7 +170,7 @@ void DFSPHSimulator::warm_start_density(double delta) {
     }
 }
 
-void DFSPHSimulator::warm_start_divergence(double delta) {
+void DFSPHSimulator::warm_start_divergence(float delta) {
     #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < velocities.size(); ++i) {
         float kappa_i = divergence_kappas[i];

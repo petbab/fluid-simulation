@@ -19,11 +19,11 @@ public:
     static constexpr float ELASTICITY = 0.9f;
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
     static constexpr float XSPH_ALPHA = 0.01f;
-    static constexpr float VISCOSITY = 0.01f;
+    static constexpr float VISCOSITY = 0.002f;
     static constexpr float SURFACE_TENSION_ALPHA = 0.2f;
 
     static constexpr float CFL_FACTOR = 0.4f;
-    static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.025;
+    static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
     ///////////////////////////////////////////////////////////////////////////////
 
     SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
