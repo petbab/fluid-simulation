@@ -18,9 +18,10 @@ public:
 
     static constexpr float ELASTICITY = 0.9f;
     static constexpr glm::vec3 GRAVITY{0, -9.81f, 0};
-    static constexpr float XSPH_ALPHA = 0.01f;
-    static constexpr float VISCOSITY = 0.002f;
-    static constexpr float SURFACE_TENSION_ALPHA = 0.2f;
+
+    static constexpr float XSPH_ALPHA = 0.f;
+    static constexpr float VISCOSITY = 0.001f;
+    static constexpr float SURFACE_TENSION_ALPHA = 0.15f;
 
     static constexpr float CFL_FACTOR = 0.4f;
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;

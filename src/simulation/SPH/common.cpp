@@ -85,10 +85,13 @@ void SPHBase::apply_non_pressure_forces(float delta) {
     for (unsigned i = 0; i < velocities.size(); ++i)
         velocities[i] += delta * non_pressure_accel[i];
 
-    // compute_XSPH();
+    compute_XSPH();
 }
 
 void SPHBase::compute_XSPH() {
+    if constexpr (XSPH_ALPHA == 0.f)
+        return;
+
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < velocities.size(); ++i) {
         glm::vec3 vi = velocities[i];
@@ -104,6 +107,9 @@ void SPHBase::compute_XSPH() {
 }
 
 void SPHBase::compute_viscosity() {
+    if constexpr (VISCOSITY == 0.f)
+        return;
+
     #pragma omp parallel for schedule(static)
     for (unsigned i = 0; i < positions.size(); ++i) {
         glm::vec3 velocity_laplacian{0.f};
