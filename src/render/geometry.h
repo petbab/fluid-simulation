@@ -21,6 +21,7 @@ public:
     virtual ~Geometry();
 
     virtual void draw() const;
+    unsigned get_vbo() const { return vbo; }
 
 protected:
     GLenum mode;
@@ -36,12 +37,11 @@ public:
         const std::vector<VertexAttribute> &instance_attributes);
     InstancedGeometry(Geometry geometry, std::size_t attribute_count,
         const std::vector<VertexAttribute> &instance_attributes);
-
     ~InstancedGeometry() override;
 
     void draw() const override;
-
     void update_instance_data(std::span<const float> instance_data) const;
+    unsigned get_instance_vbo() const { return instance_vbo; }
 
 private:
     unsigned instance_vbo = 0;

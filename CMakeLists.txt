@@ -1,14 +1,25 @@
 cmake_minimum_required(VERSION 3.22)
-project(fluid_simulation)
+
+# Local settings:
+# `nvidia-smi --query-gpu=name,compute_cap --format=csv`
+# `which nvcc`
+set(CMAKE_CUDA_ARCHITECTURES 75)
+set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
+
+project(fluid_simulation LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # Find required packages
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
+find_package(CUDAToolkit REQUIRED)
 
 # CompactNSearch
 include(FetchContent)
@@ -28,9 +39,10 @@ endif()
 
 file(GLOB_RECURSE SOURCE src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h)
+file(GLOB_RECURSE CUDA_SOURCE src/*.cu)
 
 # Create executable
-add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS})
+add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS} ${CUDA_SOURCE})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -39,9 +51,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         glad::glad
         OpenMP::OpenMP_CXX
         CompactNSearch
+        CUDA::cudart
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror $<$<CONFIG:Release>:-O3>)
+target_compile_options(${PROJECT_NAME} PRIVATE  $<$<CONFIG:Release>:-O3>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         ROOT_DIR="${CMAKE_SOURCE_DIR}"
         $<$<CONFIG:Debug>:DEBUG>
@@ -65,6 +78,8 @@ elseif(APPLE)
             ${COREVIDEO_LIBRARY}
     )
 endif()
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
 # GTest
 find_package(GTest CONFIG REQUIRED)

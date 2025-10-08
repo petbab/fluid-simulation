@@ -27,3 +27,10 @@ GLenum gl_check_error(const char *file, int line);
 void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id,
                             GLenum severity, GLsizei length, const char *message,
                             const void *userParam);
+
+void cuda_check_error(const char *file, int line);
+#ifdef DEBUG
+#define cudaCheckError() cuda_check_error(__FILE__, __LINE__)
+#else
+#define cudaCheckError()
+#endif

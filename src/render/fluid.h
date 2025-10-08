@@ -5,6 +5,7 @@
 #include "../simulation/fluid_simulator.h"
 #include "asset_manager.h"
 #include "../config.h"
+#include "../cuda/simulator.h"
 
 
 template<class S>
@@ -22,6 +23,9 @@ public:
             "ball_geometry",
             procedural::quad(1, false, false), 1,
             std::vector{VertexAttribute{3, simulator->get_position_data()}});
+
+        if constexpr (std::is_same_v<S, CUDASimulator>)
+            dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());
     }
 
     void update(float delta) override {
@@ -36,8 +40,11 @@ public:
 
 private:
     void update_geometry() {
-        dynamic_cast<const InstancedGeometry*>(geometry)->update_instance_data(simulator->get_position_data());
+        if constexpr (!std::is_same_v<S, CUDASimulator>)
+            inst_geom()->update_instance_data(simulator->get_position_data());
     }
+
+    const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
     std::unique_ptr<FluidSimulator> simulator;
 };

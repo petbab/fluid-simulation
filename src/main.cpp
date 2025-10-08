@@ -1,6 +1,7 @@
 #include "glfw.h"
 #include "application.h"
 #include "window.h"
+#include "cuda/init.h"
 
 
 int main() {
@@ -8,6 +9,8 @@ int main() {
     GLFW glfw{};
 
     Window window{800, 600, "Fluid Simulation"};
+
+    cuda_init();
 
     {
         Application application{window.get(), window.width(), window.height()};

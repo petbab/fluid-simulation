@@ -1,5 +1,6 @@
 #include "debug.h"
 #include <algorithm>
+#include <cuda_runtime_api.h>
 #include <numeric>
 
 
@@ -83,4 +84,11 @@ void glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
         case GL_DEBUG_SEVERITY_NOTIFICATION: std::cerr << "Severity: notification"; break;
     } std::cerr << std::endl;
     std::cerr << "---------------" << std::endl;
+}
+
+void cuda_check_error(const char *file, int line) {
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+        std::cerr << "CUDA error " << cudaGetErrorName(err) << ": "
+            << cudaGetErrorString(err) << " at " << file << " (" << line << ")" << std::endl;
 }

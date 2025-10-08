@@ -8,7 +8,7 @@
 #include "simulation/SPH/sph.h"
 
 
-using FluidSim = SPHSimulator;
+using FluidSim = CUDASimulator;
 
 static constexpr float DEFAULT_TIME_STEP = 0.01;
 

@@ -7,7 +7,7 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
-	"CMAKE_INSTALL_PREFIX": "~/.local/bin"
+        "CMAKE_INSTALL_PREFIX": "~/.local/bin"
       }
     }
   ]
