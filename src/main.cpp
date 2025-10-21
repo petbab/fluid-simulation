@@ -2,6 +2,7 @@
 #include "application.h"
 #include "window.h"
 #include "cuda/init.h"
+#include "render/asset_manager.h"
 
 
 int main() {
@@ -17,6 +18,7 @@ int main() {
         application.run();
 
         // Free the entire application before terminating glfw
+        AssetManager::free();
     }
 
     return 0;

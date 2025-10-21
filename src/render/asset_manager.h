@@ -12,6 +12,12 @@ public:
     AssetManager(const AssetManager&) = delete;
     AssetManager& operator=(const AssetManager&) = delete;
 
+    static void free() {
+        instance().shaders.clear();
+        instance().geometries.clear();
+        instance().objects.clear();
+    }
+
     template<class T, class... Args>
     requires std::derived_from<T, Shader> ||
              std::derived_from<T, Geometry> ||
