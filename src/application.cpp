@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include "application.h"
+#include <ranges>
 #include "config.h"
 #include "debug.h"
 #include "render/asset_manager.h"
@@ -56,22 +57,18 @@ void Application::run() {
 void Application::setup_scene() {
     Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-1, -0.75, -0.75}, glm::vec3{1, 0.75, 0.75},
                                              glm::vec4{0.65, 0.6, 0.6, 1.});
-    objects.push_back(fluid_box);
+    AssetManager::make<Fluid<FluidSim>>("fluid", 20, fluid_box->bounding_box());
 
-    objects.push_back(AssetManager::make<Fluid<FluidSim>>("fluid", 20, fluid_box->bounding_box()));
-
-//    auto *axes_shader = AssetManager::make<Shader>(
-//        "axes_shader",
-//        cfg::shaders_dir/"axes.vert",
-//        cfg::shaders_dir/"axes.frag");
-//    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
-//    objects.push_back(
-//        AssetManager::make<Object>("axes", axes_shader, axes_geom)
-//    );
+    auto *axes_shader = AssetManager::make<Shader>(
+        "axes_shader",
+        cfg::shaders_dir/"axes.vert",
+        cfg::shaders_dir/"axes.frag");
+    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
+    AssetManager::make<Object>("axes", axes_shader, axes_geom);
 }
 
 void Application::render_scene() {
-    for (auto &object : objects)
+    for (auto object : AssetManager::container<Object>())
         object->render();
 }
 
@@ -150,6 +147,6 @@ void Application::process_keyboard_input(float delta) {
 }
 
 void Application::update_objects(float delta) {
-    for (auto object : objects)
+    for (auto object : AssetManager::container<Object>())
         object->update(delta);
 }

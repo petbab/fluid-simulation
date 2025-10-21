@@ -1,9 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <vector>
 #include "render/camera.h"
-#include "render/object.h"
 
 
 class Application {
@@ -27,8 +25,6 @@ private:
 
     GLFWwindow *window;
     Camera camera;
-
-    std::vector<Object*> objects;
 
     double last_glfw_time = 0.;
     bool first_mouse_move = true;

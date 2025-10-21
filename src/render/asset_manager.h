@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <ranges>
 #include <type_traits>
 #include "shader.h"
 #include "geometry.h"
@@ -8,6 +9,9 @@
 
 
 class AssetManager {
+    template<class T>
+    using container_t = std::unordered_map<std::string, std::unique_ptr<T>>;
+
 public:
     AssetManager(const AssetManager&) = delete;
     AssetManager& operator=(const AssetManager&) = delete;
@@ -32,6 +36,14 @@ public:
              std::derived_from<T, Object>
     static T* get(const std::string &name) {
         return get_impl<T>(get_container<T>(), name);
+    }
+
+    template<class T>
+    requires std::derived_from<T, Shader> ||
+             std::derived_from<T, Geometry> ||
+             std::derived_from<T, Object>
+    static auto container() {
+        return get_container<T>() | std::ranges::views::transform([](const auto &p){ return p.second.get(); });
     }
 
 private:
