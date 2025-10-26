@@ -1,4 +1,4 @@
-#include "common.h"
+#include "sph_base.h"
 
 
 SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d)

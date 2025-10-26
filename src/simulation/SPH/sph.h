@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "sph_base.h"
 
 
 class SPHSimulator final : public SPHBase {
