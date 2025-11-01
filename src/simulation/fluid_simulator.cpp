@@ -10,7 +10,8 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
 }
 
 FluidSimulator::FluidSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
-    : bounding_box{bounding_box}, grid_count{grid_count}, is_2d{is_2d} {
+    : particle_count{grid_count * grid_count * (is_2d ? 1 : grid_count)},
+      bounding_box{bounding_box}, grid_count{grid_count}, is_2d{is_2d} {
     init_positions();
 }
 
@@ -21,7 +22,6 @@ auto FluidSimulator::get_position_data() -> std::span<const float> {
 void FluidSimulator::init_positions() {
     assert(grid_count > 1);
 
-    const unsigned particle_count = grid_count * grid_count * (is_2d ? 1 : grid_count);
     const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
     const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS + glm::vec3{0.1, -0.1, 0};
 

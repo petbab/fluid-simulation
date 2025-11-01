@@ -6,12 +6,12 @@ SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float
       n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)},
       cubic_k{SUPPORT_RADIUS, is_2d},
       cohesion_k{SUPPORT_RADIUS} {
-    densities.resize(positions.size());
-    velocities.resize(positions.size());
-    non_pressure_accel.resize(positions.size());
-    normals.resize(positions.size());
+    densities.resize(particle_count);
+    velocities.resize(particle_count);
+    non_pressure_accel.resize(particle_count);
+    normals.resize(particle_count);
 
-    point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), positions.size());
+    point_set_index = n_search->add_point_set(reinterpret_cast<float*>(positions.data()), particle_count);
     z_sort();
     find_neighbors();
 }
@@ -28,7 +28,7 @@ void SPHBase::z_sort() {
 
 void SPHBase::compute_densities() {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < densities.size(); ++i) {
+    for (std::size_t i = 0; i < particle_count; ++i) {
         float density = cubic_k.W(glm::vec3{0.f});
         glm::vec3 xi = positions[i];
 
@@ -42,13 +42,13 @@ void SPHBase::compute_densities() {
 
 void SPHBase::update_positions(float delta) {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < positions.size(); ++i)
+    for (std::size_t i = 0; i < particle_count; ++i)
         positions[i] += delta * velocities[i];
 }
 
 void SPHBase::resolve_collisions() {
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < positions.size(); ++i) {
+    for (unsigned i = 0; i < particle_count; ++i) {
         if (positions[i].x - PARTICLE_RADIUS < bounding_box.min.x) {
             positions[i].x = bounding_box.min.x + PARTICLE_RADIUS;
             velocities[i].x *= -ELASTICITY;
@@ -82,7 +82,7 @@ void SPHBase::apply_non_pressure_forces(float delta) {
     delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
 
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < velocities.size(); ++i)
+    for (unsigned i = 0; i < particle_count; ++i)
         velocities[i] += delta * non_pressure_accel[i];
 
     compute_XSPH();
@@ -93,7 +93,7 @@ void SPHBase::compute_XSPH() {
         return;
 
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < velocities.size(); ++i) {
+    for (unsigned i = 0; i < particle_count; ++i) {
         glm::vec3 vi = velocities[i];
         glm::vec3 xi = positions[i];
         glm::vec3 sum{0.f};
@@ -111,7 +111,7 @@ void SPHBase::compute_viscosity() {
         return;
 
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < positions.size(); ++i) {
+    for (unsigned i = 0; i < particle_count; ++i) {
         glm::vec3 velocity_laplacian{0.f};
         glm::vec3 xi = positions[i];
         glm::vec3 vi = velocities[i];
@@ -133,7 +133,7 @@ void SPHBase::compute_surface_tension() {
     compute_surface_normals();
 
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < positions.size(); ++i) {
+    for (unsigned i = 0; i < particle_count; ++i) {
         glm::vec3 xi = positions[i];
         glm::vec3 ni = normals[i];
         glm::vec3 f{0.f};
@@ -151,7 +151,7 @@ void SPHBase::compute_surface_tension() {
 
 void SPHBase::compute_surface_normals() {
     #pragma omp parallel for schedule(static)
-    for (unsigned i = 0; i < normals.size(); ++i) {
+    for (unsigned i = 0; i < particle_count; ++i) {
         glm::vec3 xi = positions[i];
         glm::vec3 n{0.f};
 

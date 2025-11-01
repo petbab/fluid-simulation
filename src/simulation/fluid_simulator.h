@@ -25,6 +25,7 @@ private:
 
 protected:
     std::vector<glm::vec3> positions;
+    const unsigned particle_count;
     const BoundingBox &bounding_box;
     const unsigned grid_count;
     const bool is_2d;
