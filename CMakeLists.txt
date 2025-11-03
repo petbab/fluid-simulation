@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 
 # Find required packages
 find_package(OpenGL REQUIRED)
@@ -40,9 +41,10 @@ endif()
 file(GLOB_RECURSE SOURCE src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB_RECURSE CUDA_SOURCE src/*.cu)
+file(GLOB_RECURSE CUDA_HEADERS src/*.cuh)
 
 # Create executable
-add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS} ${CUDA_SOURCE})
+add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS} ${CUDA_SOURCE} ${CUDA_HEADERS})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -61,7 +63,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         USE_DOUBLE_PRECISION=OFF
         COMPACT_NSEARCH_STATIC_LIB
         GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
+        $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
+        $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>
 )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 
 # Platform-specific settings
 if(WIN32)
@@ -78,8 +86,6 @@ elseif(APPLE)
             ${COREVIDEO_LIBRARY}
     )
 endif()
-
-set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
 # GTest
 find_package(GTest CONFIG REQUIRED)

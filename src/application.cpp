@@ -3,13 +3,14 @@
 #include <ranges>
 #include "config.h"
 #include "debug.h"
+#include "cuda/SPH/sph.cuh"
 #include "render/asset_manager.h"
 #include "render/fluid.h"
 #include "render/box.h"
 #include "simulation/SPH/sph.h"
 
 
-using FluidSim = CUDASimulator;
+using FluidSim = CUDASPHSimulator;
 
 static constexpr float DEFAULT_TIME_STEP = 0.01;
 

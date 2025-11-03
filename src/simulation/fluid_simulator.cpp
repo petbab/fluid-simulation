@@ -1,7 +1,6 @@
 #include "fluid_simulator.h"
 
 #include <random>
-#include <glm/gtc/constants.hpp>
 
 
 template<int ELEM_SIZE>

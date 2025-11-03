@@ -24,7 +24,7 @@ public:
             procedural::quad(1, false, false), 1,
             std::vector{VertexAttribute{3, simulator->get_position_data()}});
 
-        if constexpr (std::is_same_v<S, CUDASimulator>)
+        if constexpr (std::is_base_of_v<CUDASimulator, S>)
             dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());
     }
 
@@ -40,7 +40,7 @@ public:
 
 private:
     void update_geometry() {
-        if constexpr (!std::is_same_v<S, CUDASimulator>)
+        if constexpr (!std::is_base_of_v<CUDASimulator, S>)
             inst_geom()->update_instance_data(simulator->get_position_data());
     }
 
