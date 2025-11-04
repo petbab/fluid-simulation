@@ -37,10 +37,10 @@ __global__ void apply_pressure_force_k(const float* positions, const float* dens
     float dpi = pressures[i] / (di * di);
 
     for (unsigned j = 0; j < n; ++j) {
-        if (i == j)
+        glm::vec3 xj = get_pos(positions, j);
+        if (!is_neighbor(xi, xj, i, j))
             continue;
 
-        glm::vec3 xj = get_pos(positions, j);
         float dj = densities[j];
         float dpj = pressures[j] / (dj * dj);
 
@@ -66,7 +66,7 @@ void CUDASPHSimulator::update(float delta) {
 
     compute_densities(positions_ptr);
 
-    apply_non_pressure_forces(delta);
+    apply_non_pressure_forces(positions_ptr, delta);
 
     delta = std::clamp(delta, MIN_TIME_STEP, MAX_TIME_STEP);
 
@@ -74,7 +74,6 @@ void CUDASPHSimulator::update(float delta) {
     apply_pressure_force(positions_ptr, delta);
 
     update_positions(positions_ptr, delta);
-    resolve_collisions(positions_ptr);
 }
 
 void CUDASPHSimulator::reset() {

@@ -9,14 +9,17 @@
 
 static constexpr dim3 COMPUTE_DENSITY_BLOCK_SIZE = {128};
 static constexpr dim3 UPDATE_POSITIONS_BLOCK_SIZE = {128};
-static constexpr dim3 RESOLVE_COLLISIONS_BLOCK_SIZE = {128};
-static constexpr dim3 APPLY_NON_PRESSURE_FORCES_BLOCK_SIZE = {128};
+static constexpr dim3 UPDATE_VELOCITIES_BLOCK_SIZE = {128};
+static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
+static constexpr dim3 COMPUTE_VISCOSITY_BLOCK_SIZE = {128};
+static constexpr dim3 COMPUTE_SURFACE_TENSION_BLOCK_SIZE = {128};
+static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 
 ///////////////////////////////////////////////////////////////////////////////
 ////                                KERNELS                                ////
 ///////////////////////////////////////////////////////////////////////////////
 
-__global__ void compute_densities_k(const float *positions, float *densities, unsigned n) {
+__global__ void compute_densities_k(const float* positions, float* densities, unsigned n) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -31,20 +34,8 @@ __global__ void compute_densities_k(const float *positions, float *densities, un
     densities[i] = density * CUDASPHBase::PARTICLE_MASS;
 }
 
-__global__ void update_positions_k(float* positions, const glm::vec3* velocities, unsigned n, float delta) {
+__device__ void resolve_collisions(float* positions, glm::vec3* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
-
-    glm::vec3 pos = get_pos(positions, i);
-    pos += delta * velocities[i];
-    set_pos(positions, i, pos);
-}
-
-__global__ void resolve_collisions_k(float* positions, glm::vec3* velocities, unsigned n, BoundingBox bb) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
 
     glm::vec3 pos = get_pos(positions, i);
     glm::vec3 pos_begin = pos;
@@ -77,28 +68,118 @@ __global__ void resolve_collisions_k(float* positions, glm::vec3* velocities, un
     }
 }
 
-__global__ void apply_non_pressure_forces_k(glm::vec3* non_pressure_accel, glm::vec3* velocities, unsigned n, float delta) {
+__global__ void update_positions_k(float* positions, glm::vec3* velocities, unsigned n, float delta, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    // '*' takes the vector by reference
-    const glm::vec3 g = CUDASPHBase::GRAVITY;
-    velocities[i] += delta * g;
+    glm::vec3 pos = get_pos(positions, i);
+    pos += delta * velocities[i];
+    set_pos(positions, i, pos);
+
+    resolve_collisions(positions, velocities, bb);
+}
+
+__global__ void update_velocities_k(glm::vec3* velocities, const glm::vec3* acceleration, unsigned n, float delta) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    velocities[i] += acceleration[i] * delta;
+}
+
+__global__ void compute_viscosity_k(const float* positions, const glm::vec3* velocities, const float* densities,
+                                    glm::vec3* acceleration, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    glm::vec3 velocity_laplacian{0.f};
+    glm::vec3 xi = get_pos(positions, i);
+    glm::vec3 vi = velocities[i];
+
+    for (unsigned j = 0; j < n; ++j) {
+        glm::vec3 xj = get_pos(positions, j);
+        if (!is_neighbor(xi, xj, i, j))
+            continue;
+
+        glm::vec3 x_ij = xi - xj;
+        glm::vec3 v_ij = vi - velocities[j];
+        float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
+
+        velocity_laplacian += glm::dot(v_ij, x_ij) * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS)
+            * x_ij / (densities[j] * (glm::dot(x_ij, x_ij)
+                + 0.01f * CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::SUPPORT_RADIUS));
+    }
+
+    velocity_laplacian *= 10 * CUDASPHBase::PARTICLE_MASS;
+
+    acceleration[i] += CUDASPHBase::VISCOSITY * velocity_laplacian;
+}
+
+__global__ void compute_surface_tension_k(const float* positions, const float* densities,
+                                          const glm::vec3* normals, glm::vec3* acceleration,
+                                          unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    glm::vec3 xi = get_pos(positions, i);
+    glm::vec3 ni = normals[i];
+    float di = densities[i];
+    glm::vec3 f{0.f};
+
+    for (unsigned j = 0; j < n; ++j) {
+        glm::vec3 xj = get_pos(positions, j);
+        if (!is_neighbor(xi, xj, i, j))
+            continue;
+
+        glm::vec3 x_ij = xi - get_pos(positions, j);
+        float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
+        if (glm::dot(x_ij, x_ij) > 1e-6)
+            f += (CUDASPHBase::PARTICLE_MASS * glm::normalize(x_ij)
+                * cohesion(q, CUDASPHBase::SUPPORT_RADIUS) + ni - normals[j]) / (di + densities[j]);
+    }
+
+    acceleration[i] -= CUDASPHBase::SURFACE_TENSION_ALPHA * 2.f * CUDASPHBase::REST_DENSITY * f;
+}
+
+__global__ void compute_surface_normals_k(const float* positions, const float* densities,
+                                          glm::vec3* normals, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    glm::vec3 xi = get_pos(positions, i);
+    glm::vec3 normal{0.f};
+
+    for (unsigned j = 0; j < n; ++j) {
+        glm::vec3 xj = get_pos(positions, j);
+        if (!is_neighbor(xi, xj, i, j))
+            continue;
+
+        glm::vec3 r = xi - xj;
+        float q = r_to_q(r, CUDASPHBase::SUPPORT_RADIUS);
+        normal += r * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS) / densities[j];
+    }
+
+    normals[i] = CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::PARTICLE_MASS * normal;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 ////                              CUDASPHBase                              ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHBase::CUDASPHBase(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d)
+CUDASPHBase::CUDASPHBase(unsigned grid_count, const BoundingBox& bounding_box, bool is_2d)
     : CUDASimulator(grid_count, bounding_box, is_2d),
       density(particle_count),
       velocity(particle_count),
-      non_pressure_accel(particle_count) {}
+      non_pressure_accel(particle_count),
+      normal(particle_count) {
+}
 
-void CUDASPHBase::compute_densities(const float *positions_dev_ptr) {
-    float *densities_ptr = thrust::raw_pointer_cast(density.data());
+void CUDASPHBase::compute_densities(const float* positions_dev_ptr) {
+    float* densities_ptr = thrust::raw_pointer_cast(density.data());
 
     const dim3 grid_size{particle_count / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
     compute_densities_k<<<COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
@@ -106,32 +187,24 @@ void CUDASPHBase::compute_densities(const float *positions_dev_ptr) {
     cudaCheckError();
 }
 
-void CUDASPHBase::update_positions(float *positions_dev_ptr, float delta) {
-    glm::vec3 *velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+void CUDASPHBase::update_positions(float* positions_dev_ptr, float delta) {
+    glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
 
     const dim3 grid_size{particle_count / UPDATE_POSITIONS_BLOCK_SIZE.x + 1};
     update_positions_k<<<UPDATE_POSITIONS_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, velocities_ptr, particle_count, delta);
+        positions_dev_ptr, velocities_ptr, particle_count, delta, bounding_box);
     cudaCheckError();
 }
 
-void CUDASPHBase::resolve_collisions(float *positions_dev_ptr) {
-    glm::vec3 *velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+void CUDASPHBase::apply_non_pressure_forces(const float* positions_dev_ptr, float delta) {
+    thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), GRAVITY);
 
-    const dim3 grid_size{particle_count / RESOLVE_COLLISIONS_BLOCK_SIZE.x + 1};
-    resolve_collisions_k<<<RESOLVE_COLLISIONS_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, velocities_ptr, particle_count, bounding_box);
-    cudaCheckError();
-}
+    compute_viscosity(positions_dev_ptr);
+    compute_surface_tension(positions_dev_ptr);
 
-void CUDASPHBase::apply_non_pressure_forces(float delta) {
-    glm::vec3 *velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-    glm::vec3 *non_pressure_accel_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
+    update_velocities(delta);
 
-    const dim3 grid_size{particle_count / APPLY_NON_PRESSURE_FORCES_BLOCK_SIZE.x + 1};
-    apply_non_pressure_forces_k<<<APPLY_NON_PRESSURE_FORCES_BLOCK_SIZE, grid_size>>>(
-        non_pressure_accel_ptr, velocities_ptr, particle_count, delta);
-    cudaCheckError();
+    compute_XSPH(positions_dev_ptr);
 }
 
 void CUDASPHBase::reset() {
@@ -140,4 +213,60 @@ void CUDASPHBase::reset() {
     thrust::fill(density.begin(), density.end(), 0);
     thrust::fill(velocity.begin(), velocity.end(), glm::vec3{0});
     thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), glm::vec3{0});
+    thrust::fill(normal.begin(), normal.end(), glm::vec3{0});
+}
+
+void CUDASPHBase::update_velocities(float delta) {
+    delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
+
+    glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+    const glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
+
+    const dim3 grid_size{particle_count / UPDATE_VELOCITIES_BLOCK_SIZE.x + 1};
+    update_velocities_k<<<UPDATE_VELOCITIES_BLOCK_SIZE, grid_size>>>(
+        velocities_ptr, acceleration_ptr, particle_count, delta);
+    cudaCheckError();
+}
+
+void CUDASPHBase::compute_XSPH(const float* positions_dev_ptr) {
+    if constexpr (XSPH_ALPHA == 0.f)
+        return;
+    // TODO
+}
+
+void CUDASPHBase::compute_viscosity(const float* positions_dev_ptr) {
+    if constexpr (VISCOSITY == 0.f)
+        return;
+
+    const float* densities_ptr = thrust::raw_pointer_cast(density.data());
+    const glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+    glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
+
+    const dim3 grid_size{particle_count / COMPUTE_VISCOSITY_BLOCK_SIZE.x + 1};
+    compute_viscosity_k<<<COMPUTE_VISCOSITY_BLOCK_SIZE, grid_size>>>(
+        positions_dev_ptr, velocities_ptr, densities_ptr, acceleration_ptr, particle_count);
+    cudaCheckError();
+}
+
+void CUDASPHBase::compute_surface_tension(const float* positions_dev_ptr) {
+    compute_surface_normals(positions_dev_ptr);
+
+    const float* densities_ptr = thrust::raw_pointer_cast(density.data());
+    const glm::vec3* normals_ptr = thrust::raw_pointer_cast(normal.data());
+    glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
+
+    const dim3 grid_size{particle_count / COMPUTE_SURFACE_TENSION_BLOCK_SIZE.x + 1};
+    compute_surface_tension_k<<<COMPUTE_SURFACE_TENSION_BLOCK_SIZE, grid_size>>>(
+        positions_dev_ptr, densities_ptr, normals_ptr, acceleration_ptr, particle_count);
+    cudaCheckError();
+}
+
+void CUDASPHBase::compute_surface_normals(const float* positions_dev_ptr) {
+    const float* densities_ptr = thrust::raw_pointer_cast(density.data());
+    glm::vec3* normals_ptr = thrust::raw_pointer_cast(normal.data());
+
+    const dim3 grid_size{particle_count / COMPUTE_SURFACE_NORMALS_BLOCK_SIZE.x + 1};
+    compute_surface_normals_k<<<COMPUTE_SURFACE_NORMALS_BLOCK_SIZE, grid_size>>>(
+        positions_dev_ptr, densities_ptr, normals_ptr, particle_count);
+    cudaCheckError();
 }

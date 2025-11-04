@@ -48,3 +48,15 @@ __device__ inline float spiky_grad(float q, float support_radius) {
     float r_len = q * support_radius;
     return factor * (1.f - q) * (1.f - q) / (support_radius * r_len);
 }
+
+__device__ inline float cohesion(float q, float support_radius) {
+    const float factor = 32.f / (glm::pi<float>() * support_radius*support_radius*support_radius);
+
+    const float iq3 = powf(1 - q, 3.f);
+    const float q3 = q*q*q;
+    if (q <= 0.5f)
+        return factor * (2.f * q3 * iq3 - 1.f / 64.f);
+    if (q <= 1.f)
+        return factor * q3 * iq3;
+    return 0.f;
+}

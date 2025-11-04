@@ -6,18 +6,6 @@
 #include "../simulator.h"
 
 
-__device__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
-    unsigned ii = 3 * i;
-    return {positions[ii], positions[ii + 1], positions[ii + 2]};
-}
-
-__device__ inline void set_pos(float *positions, unsigned i, glm::vec3 pos) {
-    unsigned ii = 3 * i;
-    positions[ii] = pos.x;
-    positions[ii + 1] = pos.y;
-    positions[ii + 2] = pos.z;
-}
-
 class CUDASPHBase : public CUDASimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -44,14 +32,57 @@ public:
 protected:
     void compute_densities(const float *positions_dev_ptr);
     void update_positions(float *positions_dev_ptr, float delta);
-    void resolve_collisions(float *positions_dev_ptr);
-    void apply_non_pressure_forces(float delta);
+    void apply_non_pressure_forces(const float* positions_dev_ptr, float delta);
 
     void reset() override;
 
+private:
+    void update_velocities(float delta);
+
+    /**
+     * Simulates viscosity by smoothing the velocity field [SPH Tutorial, eq. 103].
+     */
+    void compute_XSPH(const float* positions_dev_ptr);
+
+    /**
+     * Computes and applies the viscous force using an explicit viscosity model.
+     * Approximates the Laplacian of the velocity field via finite differences
+     * [SPH Tutorial, eq. 102].
+     */
+    void compute_viscosity(const float* positions_dev_ptr);
+
+    /**
+     * Simulates surface tension using the macroscopic approach by Akinci et al. (2013).
+     */
+    void compute_surface_tension(const float* positions_dev_ptr);
+
+    /**
+     * Computes surface normals used to calculate the curvature force
+     * in compute_surface_tension [SPH Tutorial, eq. 125].
+     */
+    void compute_surface_normals(const float* positions_dev_ptr);
+
+protected:
     thrust::device_vector<float> density;
     thrust::device_vector<glm::vec3> velocity;
 
 private:
-    thrust::device_vector<glm::vec3> non_pressure_accel;
+    thrust::device_vector<glm::vec3> non_pressure_accel, normal;
 };
+
+__device__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
+    unsigned ii = 3 * i;
+    return {positions[ii], positions[ii + 1], positions[ii + 2]};
+}
+
+__device__ inline void set_pos(float *positions, unsigned i, glm::vec3 pos) {
+    unsigned ii = 3 * i;
+    positions[ii] = pos.x;
+    positions[ii + 1] = pos.y;
+    positions[ii + 2] = pos.z;
+}
+
+__device__ inline bool is_neighbor(glm::vec3 xi, glm::vec3 xj, unsigned i, unsigned j) {
+    glm::vec3 r = xi - xj;
+    return i != j && glm::dot(r, r) <= CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::SUPPORT_RADIUS;
+}

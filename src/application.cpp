@@ -58,7 +58,7 @@ void Application::run() {
 void Application::setup_scene() {
     Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-1, -0.75, -0.75}, glm::vec3{1, 0.75, 0.75},
                                              glm::vec4{0.65, 0.6, 0.6, 1.});
-    AssetManager::make<Fluid<FluidSim>>("fluid", 20, fluid_box->bounding_box());
+    AssetManager::make<Fluid<FluidSim>>("fluid", 25, fluid_box->bounding_box());
 
     auto *axes_shader = AssetManager::make<Shader>(
         "axes_shader",
