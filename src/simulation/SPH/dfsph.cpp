@@ -18,7 +18,7 @@ DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, const BoundingBox &bound
 }
 
 void DFSPHSimulator::update(float delta) {
-    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
+    delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS);
 
     apply_non_pressure_forces(delta);
 

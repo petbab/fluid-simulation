@@ -1,10 +1,17 @@
 cmake_minimum_required(VERSION 3.22)
 
-# Local settings:
-# `nvidia-smi --query-gpu=name,compute_cap --format=csv`
-# `which nvcc`
-set(CMAKE_CUDA_ARCHITECTURES 75)
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
+# Check if local CMake config exists
+if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/CMakeUserConfig.cmake")
+    include(cmake/CMakeUserConfig.cmake)
+else()
+    message(FATAL_ERROR
+            "CMake configuration not found!\n"
+            "Please copy cmake/CMakeUserConfig.cmake.in to cmake/CMakeUserConfig.cmake"
+            " and configure it for your system."
+    )
+endif()
+set(CMAKE_INSTALL_PREFIX "~/.local/bin")
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 project(fluid_simulation LANGUAGES CXX CUDA)
 
@@ -13,7 +20,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -std=c++20")
+
+# Needed for CMake < 3.25
+if(NOT DEFINED CMAKE_CUDA20_STANDARD_COMPILE_OPTION)
+    set(CMAKE_CUDA20_STANDARD_COMPILE_OPTION "")
+    set(CMAKE_CUDA20_EXTENSION_COMPILE_OPTION "")
+endif()
 
 # Find required packages
 find_package(OpenGL REQUIRED)
@@ -69,7 +82,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
-        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
+        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 # Platform-specific settings
 if(WIN32)

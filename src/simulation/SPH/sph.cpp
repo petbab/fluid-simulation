@@ -12,7 +12,7 @@ void SPHSimulator::update(float delta) {
 
     apply_non_pressure_forces(delta);
 
-    delta = adapt_time_step<MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS>(delta);
+    delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP, SUPPORT_RADIUS);
 
     compute_pressure();
     apply_pressure_force(delta);

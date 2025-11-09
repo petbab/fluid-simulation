@@ -3,9 +3,14 @@
 #include "window.h"
 #include "cuda/init.h"
 #include "render/asset_manager.h"
+#include <exception>
 
 
 int main() {
+#ifndef DEBUG
+    try {
+#endif
+
     // Initialize GLFW
     GLFW glfw{};
 
@@ -21,5 +26,12 @@ int main() {
         AssetManager::free();
     }
 
-    return 0;
+#ifndef DEBUG
+    } catch (const std::exception &e) {
+        std::cerr << "Exception thrown: " << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+#endif
+
+    return EXIT_SUCCESS;
 }

@@ -48,18 +48,17 @@ protected:
     }
 
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
-    template<float MIN_STEP, float MAX_STEP, float H>
-    float adapt_time_step(float delta) const {
+    float adapt_time_step(float delta, float min_step, float max_step, float h) const {
         float max_velocity = glm::length(std::ranges::max(velocities, std::less{}, [](const glm::vec3 &v){
             return glm::length(v);
         }));
 
         if (max_velocity < 1.e-9)
-            return MAX_STEP;
+            return max_step;
 
-        float cfl_max_time_step = CFL_FACTOR * H / MAX_STEP;
+        float cfl_max_time_step = CFL_FACTOR * h / max_step;
 
-        return std::min(std::clamp(delta, MIN_STEP, MAX_STEP), cfl_max_time_step);
+        return std::min(std::clamp(delta, min_step, max_step), cfl_max_time_step);
     }
 
 private:

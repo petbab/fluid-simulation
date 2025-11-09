@@ -2,6 +2,7 @@ vcpkg/
 *build*/
 .idea/
 vcpkg_installed/
+cmake/CMakeUserConfig.cmake
 
 # ==== Gitignore Template ====
 # Prerequisites
