@@ -1,3 +1,7 @@
+################################################################################
+##                            CMake Configuration                             ##
+################################################################################
+
 cmake_minimum_required(VERSION 3.22)
 
 # Check if local CMake config exists
@@ -28,6 +32,10 @@ if(NOT DEFINED CMAKE_CUDA20_STANDARD_COMPILE_OPTION)
     set(CMAKE_CUDA20_EXTENSION_COMPILE_OPTION "")
 endif()
 
+################################################################################
+##                           External Dependencies                            ##
+################################################################################
+
 # Find required packages
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
@@ -51,6 +59,25 @@ if(TARGET CompactNSearch)
     target_compile_features(CompactNSearch PRIVATE cxx_std_20)
 endif()
 
+find_library(KTT_LIBRARY
+        NAMES ktt libktt
+        HINTS ${KTT_DIR}/Build ${KTT_DIR}/Build/x86_64_Release ${KTT_DIR}/Build/x86_64_Debug
+        PATHS /usr/lib /usr/local/lib
+        REQUIRED
+)
+find_path(KTT_INCLUDE_DIR
+        NAMES Ktt.h
+        HINTS ${KTT_DIR}/Source ${KTT_DIR}/include
+        PATHS /usr/include /usr/local/include
+        REQUIRED
+)
+message(STATUS "KTT Library: ${KTT_LIBRARY}")
+message(STATUS "KTT Include Directory: ${KTT_INCLUDE_DIR}")
+
+################################################################################
+##                            Target Configuration                            ##
+################################################################################
+
 file(GLOB_RECURSE SOURCE src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB_RECURSE CUDA_SOURCE src/*.cu)
@@ -67,6 +94,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenMP::OpenMP_CXX
         CompactNSearch
         CUDA::cudart
+        ${KTT_LIBRARY}
+)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${KTT_INCLUDE_DIR}
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE  $<$<CONFIG:Release>:-O3>)
@@ -101,7 +132,11 @@ elseif(APPLE)
     )
 endif()
 
-# GTest
+
+################################################################################
+##                                  Testing                                   ##
+################################################################################
+
 find_package(GTest CONFIG REQUIRED)
 
 # For Windows: Prevent overriding the parent project's compiler/linker settings
