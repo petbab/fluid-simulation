@@ -5,4 +5,5 @@ set(CMAKE_CUDA_COMPILER "/path/to/nvcc" CACHE STRING "Path to NVCC compiler")
 set(CMAKE_CUDA_ARCHITECTURES "00" CACHE STRING "CUDA architecture (e.g., 75, 86, 89),
     try `nvidia-smi --query-gpu=name,compute_cap --format=csv`")
 set(CUDA_VERSION 0000 CACHE STRING "CUDA version code (e.g., 7500, 8600, 8900)")
+set(VCPKG_ROOT "path/to/vcpkg" CACHE PATH "Path to the vcpkg installation directory")
 set(KTT_DIR "path/to/KTT" CACHE PATH "Path to KTT installation directory")

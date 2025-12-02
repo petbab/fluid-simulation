@@ -15,7 +15,7 @@ else()
     )
 endif()
 set(CMAKE_INSTALL_PREFIX "~/.local/bin")
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
 project(fluid_simulation LANGUAGES CXX CUDA)
 
@@ -61,14 +61,12 @@ endif()
 
 find_library(KTT_LIBRARY
         NAMES ktt libktt
-        HINTS ${KTT_DIR}/Build ${KTT_DIR}/Build/x86_64_Release ${KTT_DIR}/Build/x86_64_Debug
-        PATHS /usr/lib /usr/local/lib
+        PATHS "${KTT_DIR}/Build/${CMAKE_SYSTEM_PROCESSOR}_${CMAKE_BUILD_TYPE}"
         REQUIRED
 )
 find_path(KTT_INCLUDE_DIR
         NAMES Ktt.h
-        HINTS ${KTT_DIR}/Source ${KTT_DIR}/include
-        PATHS /usr/include /usr/local/include
+        PATHS "${KTT_DIR}/Source" "${KTT_DIR}/include"
         REQUIRED
 )
 message(STATUS "KTT Library: ${KTT_LIBRARY}")
@@ -94,6 +92,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenMP::OpenMP_CXX
         CompactNSearch
         CUDA::cudart
+        CUDA::cuda_driver
         ${KTT_LIBRARY}
 )
 target_include_directories(${PROJECT_NAME} PRIVATE

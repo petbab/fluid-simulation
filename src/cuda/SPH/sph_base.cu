@@ -19,21 +19,6 @@ static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 ////                                KERNELS                                ////
 ///////////////////////////////////////////////////////////////////////////////
 
-__global__ void compute_densities_k(const float* positions, float* densities, unsigned n) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
-
-    glm::vec3 xi = get_pos(positions, i);
-    float density = 0.f;
-    for (unsigned j = 0; j < n; ++j) {
-        glm::vec3 xj = get_pos(positions, j);
-        float q = r_to_q(xi - xj, CUDASPHBase::SUPPORT_RADIUS);
-        density += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
-    }
-    densities[i] = density * CUDASPHBase::PARTICLE_MASS;
-}
-
 __device__ void resolve_collisions(float* positions, glm::vec3* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -175,16 +160,13 @@ CUDASPHBase::CUDASPHBase(unsigned grid_count, const BoundingBox& bounding_box, b
       density(particle_count),
       velocity(particle_count),
       non_pressure_accel(particle_count),
-      normal(particle_count) {
+      normal(particle_count),
+      density_tuner(particle_count) {
 }
 
-void CUDASPHBase::compute_densities(const float* positions_dev_ptr) {
+void CUDASPHBase::compute_densities(float* positions_dev_ptr) {
     float* densities_ptr = thrust::raw_pointer_cast(density.data());
-
-    const dim3 grid_size{particle_count / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
-    compute_densities_k<<<COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, particle_count);
-    cudaCheckError();
+    density_tuner.run(positions_dev_ptr, densities_ptr, particle_count);
 }
 
 void CUDASPHBase::update_positions(float* positions_dev_ptr, float delta) {

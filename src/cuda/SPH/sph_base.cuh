@@ -4,6 +4,7 @@
 
 #include <thrust/device_vector.h>
 #include "../simulator.h"
+#include "../tuning/density_tuner.cuh"
 
 
 class CUDASPHBase : public CUDASimulator {
@@ -30,7 +31,7 @@ public:
     CUDASPHBase(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
 
 protected:
-    void compute_densities(const float *positions_dev_ptr);
+    void compute_densities(float *positions_dev_ptr);
     void update_positions(float *positions_dev_ptr, float delta);
     void apply_non_pressure_forces(const float* positions_dev_ptr, float delta);
 
@@ -68,6 +69,7 @@ protected:
 
 private:
     thrust::device_vector<glm::vec3> non_pressure_accel, normal;
+    DensityTuner density_tuner;
 };
 
 __device__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
