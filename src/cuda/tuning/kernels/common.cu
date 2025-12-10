@@ -54,37 +54,3 @@ __device__ inline float cubic_spline(float q, float support_radius) {
         return factor * 2.f * powf(1.f - q, 3.f);
     return 0.f;
 }
-
-__global__ void compute_densities(const float* positions, float* densities, unsigned n) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
-
-    vec3 xi = get_pos(positions, i);
-    float density = 0.f;
-
-#if UNROLL_FACTOR > 1
-    unsigned j = 0;
-    for (; j + UNROLL_FACTOR <= n; j += UNROLL_FACTOR) {
-        #pragma unroll
-        for (int k = 0; k < UNROLL_FACTOR; ++k) {
-            vec3 xj = get_pos(positions, j + k);
-            float q = r_to_q(xi - xj, SUPPORT_RADIUS);
-            density += cubic_spline(q, SUPPORT_RADIUS);
-        }
-    }
-    // Handle remainder
-    for (; j < n; ++j) {
-        vec3 xj = get_pos(positions, j);
-        float q = r_to_q(xi - xj, SUPPORT_RADIUS);
-        density += cubic_spline(q, SUPPORT_RADIUS);
-    }
-#else
-    for (unsigned j = 0; j < n; ++j) {
-        vec3 xj = get_pos(positions, j);
-        float q = r_to_q(xi - xj, SUPPORT_RADIUS);
-        density += cubic_spline(q, SUPPORT_RADIUS);
-    }
-#endif
-    densities[i] = density * PARTICLE_MASS;
-}

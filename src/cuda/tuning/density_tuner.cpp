@@ -1,32 +1,14 @@
-#include "density_tuner.cuh"
+#include "density_tuner.h"
 
-#include "../../debug.h"
 #include "../../config.h"
-#include <cuda.h>
 #include <bit>
-#include <iostream>
+#include <cassert>
 
 
 static const std::string COMPUTE_DENSITIES_KERNEL = "compute_densities";
 
 DensityTuner::DensityTuner(unsigned particles) {
-    CUcontext context;
-    cuCtxGetCurrent(&context);
-    cudaCheckError();
-
-    CUstream stream;
-    cuStreamCreate(&stream, CU_STREAM_DEFAULT);
-    cudaCheckError();
-
-#ifdef DEBUG
-    ktt::Tuner::SetLoggingLevel(ktt::LoggingLevel::Info);
-#else
-    ktt::Tuner::SetLoggingLevel(ktt::LoggingLevel::Warning);
-#endif
-
-    // Create compute API initializer which specifies context and streams that will be utilized by the tuner.
-    ktt::ComputeApiInitializer initializer{context, std::vector<ktt::ComputeQueue>{stream}};
-    tuner = std::make_unique<ktt::Tuner>(ktt::ComputeApi::CUDA, initializer);
+    assert(tuner != nullptr);
 
     const ktt::DimensionVector gridDimensions(std::bit_ceil(particles));
     const ktt::DimensionVector blockDimensions;
@@ -46,10 +28,6 @@ DensityTuner::DensityTuner(unsigned particles) {
     tuner->AddParameter(kernel, "UNROLL_FACTOR", std::vector<uint64_t>{1, 2, 4, 8, 16, 32});
 }
 
-DensityTuner::~DensityTuner() {
-    print_best_config();
-}
-
 void DensityTuner::run(float *positions_dev_ptr, float* densities_dev_ptr, unsigned particles) {
     // Add user-created buffer to tuner by providing its handle and size in bytes.
     const ktt::ArgumentId positions_id = tuner->AddArgumentVector<float>(
@@ -62,14 +40,4 @@ void DensityTuner::run(float *positions_dev_ptr, float* densities_dev_ptr, unsig
     tuner->SetArguments(definition, {positions_id, densities_id, n_id});
 
     ktt::KernelResult result = tuner->TuneIteration(kernel, {});
-}
-
-void DensityTuner::print_best_config() const {
-    auto bestConfig = tuner->GetBestConfiguration(kernel);
-    std::cout << "Best configuration:" << std::endl;
-
-    for (const auto& param : bestConfig.GetPairs()) {
-        std::cout << "  " << param.GetName() << " = "
-            << std::get<uint64_t>(param.GetValue()) << std::endl;
-    }
 }

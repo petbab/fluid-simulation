@@ -81,6 +81,9 @@ file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB_RECURSE CUDA_SOURCE src/*.cu)
 file(GLOB_RECURSE CUDA_HEADERS src/*.cuh)
 
+list(FILTER CUDA_SOURCE EXCLUDE REGEX "src/cuda/tuning/kernels/.*\\.cu$")
+list(FILTER CUDA_HEADERS EXCLUDE REGEX "src/cuda/tuning/kernels/.*\\.cuh$")
+
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS} ${CUDA_SOURCE} ${CUDA_HEADERS})
 

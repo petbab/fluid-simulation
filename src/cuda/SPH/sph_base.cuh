@@ -4,7 +4,7 @@
 
 #include <thrust/device_vector.h>
 #include "../simulator.h"
-#include "../tuning/density_tuner.cuh"
+#include "../tuning/density_tuner.h"
 
 
 class CUDASPHBase : public CUDASimulator {
