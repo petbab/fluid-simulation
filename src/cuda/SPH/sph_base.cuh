@@ -4,6 +4,7 @@
 
 #include <thrust/device_vector.h>
 #include "../simulator.h"
+#include "../nsearch/nsearch.h"
 
 
 class CUDASPHBase : public CUDASimulator {
@@ -65,15 +66,16 @@ private:
 protected:
     thrust::device_vector<float> density;
     thrust::device_vector<glm::vec3> velocity;
+    NSearchWrapper n_search;
 
 private:
     thrust::device_vector<glm::vec3> non_pressure_accel, normal;
 };
 
-__device__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
-    unsigned ii = 3 * i;
-    return {positions[ii], positions[ii + 1], positions[ii + 2]};
-}
+// __device__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
+//     unsigned ii = 3 * i;
+//     return {positions[ii], positions[ii + 1], positions[ii + 2]};
+// }
 
 __device__ inline void set_pos(float *positions, unsigned i, glm::vec3 pos) {
     unsigned ii = 3 * i;

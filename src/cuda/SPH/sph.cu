@@ -64,6 +64,8 @@ void CUDASPHSimulator::update(float delta) {
     auto lock = cuda_gl_positions->lock();
     float* positions_ptr = lock.get_ptr();
 
+    n_search.rebuild(positions_ptr, particle_count);
+
     compute_densities(positions_ptr);
 
     apply_non_pressure_forces(positions_ptr, delta);

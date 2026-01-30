@@ -19,46 +19,52 @@ static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 ////                                KERNELS                                ////
 ///////////////////////////////////////////////////////////////////////////////
 
-__global__ void compute_densities_k(const float* positions, float* densities, unsigned n) {
+__global__ void compute_densities_k(const float* positions, float* densities,
+                                    unsigned n, const NSearch *dev_n_search) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
     glm::vec3 xi = get_pos(positions, i);
-    float density = 0.f;
-    for (unsigned j = 0; j < n; ++j) {
-        glm::vec3 xj = get_pos(positions, j);
-        float q = r_to_q(xi - xj, CUDASPHBase::SUPPORT_RADIUS);
-        density += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
-    }
+
+    float density = cubic_spline(0.f, CUDASPHBase::SUPPORT_RADIUS);
+    dev_n_search->for_neighbors(xi, [=, &density] __device__ (unsigned n_i) {
+        glm::vec3 xj = get_pos(positions, n_i);
+        if (is_neighbor(xi, xj, i, n_i)) {
+            float q = r_to_q(xi - xj, CUDASPHBase::SUPPORT_RADIUS);
+            density += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
+        }
+    });
     densities[i] = density * CUDASPHBase::PARTICLE_MASS;
 }
 
 __device__ void resolve_collisions(float* positions, glm::vec3* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
+    static constexpr float OFFSET = 0.000;
+
     glm::vec3 pos = get_pos(positions, i);
     glm::vec3 pos_begin = pos;
     glm::vec3 vel = velocities[i];
     if (pos.x - CUDASPHBase::PARTICLE_RADIUS < bb.min.x) {
-        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS;
+        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.x *= -CUDASPHBase::ELASTICITY;
     } else if (pos.x + CUDASPHBase::PARTICLE_RADIUS > bb.max.x) {
-        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS;
+        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.x *= -CUDASPHBase::ELASTICITY;
     }
     if (pos.y - CUDASPHBase::PARTICLE_RADIUS < bb.min.y) {
-        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS;
+        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.y *= -CUDASPHBase::ELASTICITY;
     } else if (pos.y + CUDASPHBase::PARTICLE_RADIUS > bb.max.y) {
-        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS;
+        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.y *= -CUDASPHBase::ELASTICITY;
     }
     if (pos.z - CUDASPHBase::PARTICLE_RADIUS < bb.min.z) {
-        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS;
+        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.z *= -CUDASPHBase::ELASTICITY;
     } else if (pos.z + CUDASPHBase::PARTICLE_RADIUS > bb.max.z) {
-        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS;
+        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.z *= -CUDASPHBase::ELASTICITY;
     }
 
@@ -174,6 +180,7 @@ CUDASPHBase::CUDASPHBase(unsigned grid_count, const BoundingBox& bounding_box, b
     : CUDASimulator(grid_count, bounding_box, is_2d),
       density(particle_count),
       velocity(particle_count),
+      n_search{2.f * SUPPORT_RADIUS},
       non_pressure_accel(particle_count),
       normal(particle_count) {
 }
@@ -183,7 +190,7 @@ void CUDASPHBase::compute_densities(const float* positions_dev_ptr) {
 
     const dim3 grid_size{particle_count / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
     compute_densities_k<<<COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, particle_count);
+        positions_dev_ptr, densities_ptr, particle_count, n_search.dev_ptr());
     cudaCheckError();
 }
 
