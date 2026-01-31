@@ -41,30 +41,28 @@ __global__ void compute_densities_k(const float* positions, float* densities,
 __device__ void resolve_collisions(float* positions, glm::vec3* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    static constexpr float OFFSET = 0.000;
-
     glm::vec3 pos = get_pos(positions, i);
     glm::vec3 pos_begin = pos;
     glm::vec3 vel = velocities[i];
     if (pos.x - CUDASPHBase::PARTICLE_RADIUS < bb.min.x) {
-        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
+        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS;
         vel.x *= -CUDASPHBase::ELASTICITY;
     } else if (pos.x + CUDASPHBase::PARTICLE_RADIUS > bb.max.x) {
-        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
+        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS;
         vel.x *= -CUDASPHBase::ELASTICITY;
     }
     if (pos.y - CUDASPHBase::PARTICLE_RADIUS < bb.min.y) {
-        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
+        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS;
         vel.y *= -CUDASPHBase::ELASTICITY;
     } else if (pos.y + CUDASPHBase::PARTICLE_RADIUS > bb.max.y) {
-        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
+        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS;
         vel.y *= -CUDASPHBase::ELASTICITY;
     }
     if (pos.z - CUDASPHBase::PARTICLE_RADIUS < bb.min.z) {
-        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
+        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS;
         vel.z *= -CUDASPHBase::ELASTICITY;
     } else if (pos.z + CUDASPHBase::PARTICLE_RADIUS > bb.max.z) {
-        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
+        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS;
         vel.z *= -CUDASPHBase::ELASTICITY;
     }
 

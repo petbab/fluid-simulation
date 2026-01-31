@@ -122,17 +122,11 @@ target_link_libraries(
         "${PROJECT_NAME}_tests_cuda"
         GTest::gtest
         CUDA::cudart
-        OpenGL::GL
-        glfw
-        glad::glad
         OpenMP::OpenMP_CXX
-        CompactNSearch
 )
 target_compile_definitions("${PROJECT_NAME}_tests_cuda" PRIVATE
         ROOT_DIR="${CMAKE_SOURCE_DIR}"
         $<$<CONFIG:Debug>:DEBUG>
-        USE_DOUBLE_PRECISION=OFF
-        COMPACT_NSEARCH_STATIC_LIB
         GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
         $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
         $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>

@@ -202,3 +202,29 @@ __host__ inline void rebuild_n_search(
 
     rebuild_n_search_k<<<BLOCK_SIZE, n / BLOCK_SIZE + 1>>>(dev_n_search, particle_positions, n);
 }
+
+struct NSearchHost {
+    static NSearchHost copy_from_device(const NSearch *dev_n_search) {
+        NSearch h_n_search;
+        cudaMemcpy(&h_n_search, dev_n_search, sizeof(NSearch), cudaMemcpyDeviceToHost);
+        cudaCheckError();
+
+        NSearchHost n_search;
+        n_search.table.resize(NSearch::TABLE_SIZE);
+        n_search.particle_indices.resize(NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL);
+        n_search.cell_size = h_n_search.cell_size;
+
+        cudaMemcpy(n_search.table.data(), h_n_search.table,
+        sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE, cudaMemcpyDeviceToHost);
+        cudaCheckError();
+        cudaMemcpy(n_search.particle_indices.data(), h_n_search.particle_indices,
+            sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL, cudaMemcpyDeviceToHost);
+        cudaCheckError();
+
+        return n_search;
+    }
+
+    std::vector<NSearch::hash_t> table;
+    std::vector<unsigned> particle_indices;
+    float cell_size = 0.f;
+};
