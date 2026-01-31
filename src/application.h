@@ -29,10 +29,5 @@ private:
     double last_glfw_time = 0.;
     bool first_mouse_move = true;
     glm::vec2 last_mouse_pos{0.f};
-
-#ifdef DEBUG
     bool paused = true;
-#else
-    bool paused = false;
-#endif
 };

@@ -19,8 +19,10 @@ static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 ////                                KERNELS                                ////
 ///////////////////////////////////////////////////////////////////////////////
 
-__global__ void compute_densities_k(const float* positions, float* densities,
-                                    unsigned n, const NSearch *dev_n_search) {
+__global__ void compute_densities_k(
+    const float* positions, float* densities,
+    unsigned n, const NSearch *dev_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -28,9 +30,10 @@ __global__ void compute_densities_k(const float* positions, float* densities,
     glm::vec3 xi = get_pos(positions, i);
 
     float density = cubic_spline(0.f, CUDASPHBase::SUPPORT_RADIUS);
-    dev_n_search->for_neighbors(xi, [=, &density] __device__ (unsigned n_i) {
-        glm::vec3 xj = get_pos(positions, n_i);
-        if (is_neighbor(xi, xj, i, n_i)) {
+    dev_n_search->for_neighbors(xi, [=, &density] __device__ (unsigned j) {
+        glm::vec3 xj = get_pos(positions, j);
+
+        if (is_neighbor(xi, xj, i, j)) {
             float q = r_to_q(xi - xj, CUDASPHBase::SUPPORT_RADIUS);
             density += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
         }
@@ -92,8 +95,11 @@ __global__ void update_velocities_k(glm::vec3* velocities, const glm::vec3* acce
     velocities[i] += acceleration[i] * delta;
 }
 
-__global__ void compute_viscosity_k(const float* positions, const glm::vec3* velocities, const float* densities,
-                                    glm::vec3* acceleration, unsigned n) {
+__global__ void compute_viscosity_k(
+    const float* positions, const glm::vec3* velocities,
+    const float* densities, glm::vec3* acceleration,
+    unsigned n, const NSearch *dev_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -102,28 +108,29 @@ __global__ void compute_viscosity_k(const float* positions, const glm::vec3* vel
     glm::vec3 xi = get_pos(positions, i);
     glm::vec3 vi = velocities[i];
 
-    for (unsigned j = 0; j < n; ++j) {
+    dev_n_search->for_neighbors(xi, [=, &velocity_laplacian] __device__ (unsigned j) {
         glm::vec3 xj = get_pos(positions, j);
-        if (!is_neighbor(xi, xj, i, j))
-            continue;
 
-        glm::vec3 x_ij = xi - xj;
-        glm::vec3 v_ij = vi - velocities[j];
-        float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
+        if (is_neighbor(xi, xj, i, j)) {
+            glm::vec3 x_ij = xi - xj;
+            glm::vec3 v_ij = vi - velocities[j];
+            float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
 
-        velocity_laplacian += glm::dot(v_ij, x_ij) * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS)
-            * x_ij / (densities[j] * (glm::dot(x_ij, x_ij)
-                + 0.01f * CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::SUPPORT_RADIUS));
-    }
+            velocity_laplacian += glm::dot(v_ij, x_ij) * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS)
+                * x_ij / (densities[j] * (glm::dot(x_ij, x_ij)
+                    + 0.01f * CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::SUPPORT_RADIUS));
+        }
+    });
 
     velocity_laplacian *= 10 * CUDASPHBase::PARTICLE_MASS;
-
     acceleration[i] += CUDASPHBase::VISCOSITY * velocity_laplacian;
 }
 
-__global__ void compute_surface_tension_k(const float* positions, const float* densities,
-                                          const glm::vec3* normals, glm::vec3* acceleration,
-                                          unsigned n) {
+__global__ void compute_surface_tension_k(
+    const float* positions, const float* densities,
+    const glm::vec3* normals, glm::vec3* acceleration,
+    unsigned n, const NSearch *dev_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -133,23 +140,26 @@ __global__ void compute_surface_tension_k(const float* positions, const float* d
     float di = densities[i];
     glm::vec3 f{0.f};
 
-    for (unsigned j = 0; j < n; ++j) {
+    dev_n_search->for_neighbors(xi, [=, &f] __device__ (unsigned j) {
         glm::vec3 xj = get_pos(positions, j);
-        if (!is_neighbor(xi, xj, i, j))
-            continue;
 
-        glm::vec3 x_ij = xi - get_pos(positions, j);
-        float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
-        if (glm::dot(x_ij, x_ij) > 1e-6)
-            f += (CUDASPHBase::PARTICLE_MASS * glm::normalize(x_ij)
-                * cohesion(q, CUDASPHBase::SUPPORT_RADIUS) + ni - normals[j]) / (di + densities[j]);
-    }
+        if (is_neighbor(xi, xj, i, j)) {
+            glm::vec3 x_ij = xi - get_pos(positions, j);
+            float q = r_to_q(x_ij, CUDASPHBase::SUPPORT_RADIUS);
+            if (glm::dot(x_ij, x_ij) > 1e-6)
+                f += (CUDASPHBase::PARTICLE_MASS * glm::normalize(x_ij)
+                    * cohesion(q, CUDASPHBase::SUPPORT_RADIUS) + ni - normals[j]) / (di + densities[j]);
+        }
+    });
 
     acceleration[i] -= CUDASPHBase::SURFACE_TENSION_ALPHA * 2.f * CUDASPHBase::REST_DENSITY * f;
 }
 
-__global__ void compute_surface_normals_k(const float* positions, const float* densities,
-                                          glm::vec3* normals, unsigned n) {
+__global__ void compute_surface_normals_k(
+    const float* positions, const float* densities,
+    glm::vec3* normals, unsigned n,
+    const NSearch *dev_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -157,15 +167,15 @@ __global__ void compute_surface_normals_k(const float* positions, const float* d
     glm::vec3 xi = get_pos(positions, i);
     glm::vec3 normal{0.f};
 
-    for (unsigned j = 0; j < n; ++j) {
+    dev_n_search->for_neighbors(xi, [=, &normal] __device__ (unsigned j) {
         glm::vec3 xj = get_pos(positions, j);
-        if (!is_neighbor(xi, xj, i, j))
-            continue;
 
-        glm::vec3 r = xi - xj;
-        float q = r_to_q(r, CUDASPHBase::SUPPORT_RADIUS);
-        normal += r * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS) / densities[j];
-    }
+        if (is_neighbor(xi, xj, i, j)) {
+            glm::vec3 r = xi - xj;
+            float q = r_to_q(r, CUDASPHBase::SUPPORT_RADIUS);
+            normal += r * cubic_spline_grad(q, CUDASPHBase::SUPPORT_RADIUS) / densities[j];
+        }
+    });
 
     normals[i] = CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::PARTICLE_MASS * normal;
 }
@@ -249,7 +259,8 @@ void CUDASPHBase::compute_viscosity(const float* positions_dev_ptr) {
 
     const dim3 grid_size{particle_count / COMPUTE_VISCOSITY_BLOCK_SIZE.x + 1};
     compute_viscosity_k<<<COMPUTE_VISCOSITY_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, velocities_ptr, densities_ptr, acceleration_ptr, particle_count);
+        positions_dev_ptr, velocities_ptr, densities_ptr,
+        acceleration_ptr, particle_count, n_search.dev_ptr());
     cudaCheckError();
 }
 
@@ -262,7 +273,8 @@ void CUDASPHBase::compute_surface_tension(const float* positions_dev_ptr) {
 
     const dim3 grid_size{particle_count / COMPUTE_SURFACE_TENSION_BLOCK_SIZE.x + 1};
     compute_surface_tension_k<<<COMPUTE_SURFACE_TENSION_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, normals_ptr, acceleration_ptr, particle_count);
+        positions_dev_ptr, densities_ptr, normals_ptr,
+        acceleration_ptr, particle_count, n_search.dev_ptr());
     cudaCheckError();
 }
 
@@ -272,6 +284,7 @@ void CUDASPHBase::compute_surface_normals(const float* positions_dev_ptr) {
 
     const dim3 grid_size{particle_count / COMPUTE_SURFACE_NORMALS_BLOCK_SIZE.x + 1};
     compute_surface_normals_k<<<COMPUTE_SURFACE_NORMALS_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, normals_ptr, particle_count);
+        positions_dev_ptr, densities_ptr, normals_ptr,
+        particle_count, n_search.dev_ptr());
     cudaCheckError();
 }

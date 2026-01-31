@@ -24,9 +24,11 @@ __global__ void compute_pressure_k(const float* densities, float* pressures, uns
         (powf(d / CUDASPHSimulator::REST_DENSITY, CUDASPHSimulator::EXPONENT) - 1.f);
 }
 
-__global__ void apply_pressure_force_k(const float* positions, const float* densities,
-                                       const float* pressures, glm::vec3* velocities,
-                                       unsigned n, float delta) {
+__global__ void apply_pressure_force_k(
+    const float* positions, const float* densities,
+    const float* pressures, glm::vec3* velocities,
+    unsigned n, float delta, const NSearch *dev_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
@@ -36,18 +38,18 @@ __global__ void apply_pressure_force_k(const float* positions, const float* dens
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
 
-    for (unsigned j = 0; j < n; ++j) {
+    dev_n_search->for_neighbors(xi, [=, &p_accel] __device__ (unsigned j) {
         glm::vec3 xj = get_pos(positions, j);
-        if (!is_neighbor(xi, xj, i, j))
-            continue;
 
-        float dj = densities[j];
-        float dpj = pressures[j] / (dj * dj);
+        if (is_neighbor(xi, xj, i, j)) {
+            float dj = densities[j];
+            float dpj = pressures[j] / (dj * dj);
 
-        glm::vec3 r = xi - xj;
-        float q = r_to_q(r, CUDASPHSimulator::SUPPORT_RADIUS);
-        p_accel -= (dpi + dpj) * spiky_grad(q, CUDASPHSimulator::SUPPORT_RADIUS) * r;
-    }
+            glm::vec3 r = xi - xj;
+            float q = r_to_q(r, CUDASPHSimulator::SUPPORT_RADIUS);
+            p_accel -= (dpi + dpj) * spiky_grad(q, CUDASPHSimulator::SUPPORT_RADIUS) * r;
+        }
+    });
 
     velocities[i] += delta * CUDASPHSimulator::PARTICLE_MASS * p_accel;
 }
@@ -101,6 +103,7 @@ void CUDASPHSimulator::apply_pressure_force(const float* positions_dev_ptr, floa
 
     const dim3 grid_size{particle_count / APPLY_PRESSURE_FORCE_BLOCK_SIZE.x + 1};
     apply_pressure_force_k<<<APPLY_PRESSURE_FORCE_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, pressures_ptr, velocities_ptr, particle_count, delta);
+        positions_dev_ptr, densities_ptr, pressures_ptr, velocities_ptr,
+        particle_count, delta, n_search.dev_ptr());
     cudaCheckError();
 }

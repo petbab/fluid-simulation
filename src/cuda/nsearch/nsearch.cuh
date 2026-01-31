@@ -8,6 +8,11 @@
 #include "morton.cuh"
 
 
+__device__ __host__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
+    unsigned ii = 3 * i;
+    return {positions[ii], positions[ii + 1], positions[ii + 2]};
+}
+
 struct NSearch {
     using cell_t = uint3;
     using hash_t = unsigned long long;
@@ -78,37 +83,30 @@ struct NSearch {
 
     // Expects buffer to have size >= 27 * MAX_PARTICLES_IN_CELL
     __device__ __host__ unsigned list_neighbors(glm::vec3 pos, unsigned *buffer) const {
-        // TODO: rewrite with for_neighbors
-
-        cell_t cell = cell_coord(pos, cell_size);
-
         unsigned i = 0;
-        #pragma unroll
-        for (int x = -1; x <= 1; ++x) {
-            #pragma unroll
-            for (int y = -1; y <= 1; ++y) {
-                #pragma unroll
-                for (int z = -1; z <= 1; ++z) {
-                    cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
-                    unsigned *indices_start = indices_in_cell(n_cell);
-
-                    if (indices_start == nullptr)
-                        continue;
-
-                    for (unsigned j = 0; j < MAX_PARTICLES_IN_CELL; ++j) {
-                        if (indices_start[j] == EMPTY_IDX)
-                            break;
-
-                        buffer[i] = indices_start[j];
-                        ++i;
-                    }
-                }
-            }
-        }
-        return i;
+        unsigned *i_ptr = &i;
+        return for_neighbors(pos, [=] __device__ __host__ (unsigned p_j) {
+            buffer[*i_ptr] = p_j;
+            ++*i_ptr;
+        });
     }
 
-    __device__ __host__ void for_neighbors(glm::vec3 pos, auto f) const {
+    // For neighbors with real neighbor check
+    template<typename F>
+    __device__ __host__ unsigned for_neighbors(const float *positions, unsigned p_i, float support_radius, F f) const {
+        glm::vec3 xi = get_pos(positions, p_i);
+        return for_neighbors(xi, [=] __device__ __host__ (unsigned p_j) -> void {
+            if (p_i == p_j)
+                return;
+
+            glm::vec3 r = xi - get_pos(positions, p_j);
+            if (glm::dot(r, r) <= support_radius * support_radius)
+                f(p_j);
+        });
+    }
+
+    template<typename F>
+    __device__ __host__ unsigned for_neighbors(glm::vec3 pos, F f) const {
         cell_t cell = cell_coord(pos, cell_size);
 
         unsigned i = 0;
@@ -134,6 +132,7 @@ struct NSearch {
                 }
             }
         }
+        return i;
     }
 
     // Stores hashes of cells or empty
@@ -175,11 +174,6 @@ __host__ inline void delete_n_search(NSearch* dev_n_search, const NSearch& host_
     cudaFree(host_n_search.table); cudaCheckError();
     cudaFree(host_n_search.particle_indices); cudaCheckError();
     cudaFree(dev_n_search); cudaCheckError();
-}
-
-__device__ __host__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
-    unsigned ii = 3 * i;
-    return {positions[ii], positions[ii + 1], positions[ii + 2]};
 }
 
 __global__ inline void rebuild_n_search_k(NSearch *dev_n_search, const float *particle_positions, unsigned n) {
