@@ -7,7 +7,7 @@
 
 class CUDASimulator : public FluidSimulator {
 public:
-    CUDASimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d);
+    CUDASimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
 
     void init_buffer(GLuint vbo);
 

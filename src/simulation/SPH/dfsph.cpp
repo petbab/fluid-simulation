@@ -4,9 +4,9 @@
 //#include <iostream>
 
 
-DFSPHSimulator::DFSPHSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
-    : SPHBase(grid_count, bounding_box, SUPPORT_RADIUS, is_2d),
-      kernel{SUPPORT_RADIUS, is_2d} {
+DFSPHSimulator::DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box)
+    : SPHBase(grid_dims, bounding_box, SUPPORT_RADIUS),
+      kernel{SUPPORT_RADIUS} {
     predicted_densities.resize(particle_count);
     alphas.resize(particle_count);
     divergence_errors.resize(particle_count);

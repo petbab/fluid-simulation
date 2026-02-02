@@ -14,7 +14,7 @@ concept Simulator = std::is_base_of_v<FluidSimulator, S>;
 template<Simulator S>
 class Fluid : public Object {
 public:
-    Fluid(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false) : simulator{std::make_unique<S>(grid_count, bounding_box, is_2d)} {
+    Fluid(FluidSimulator::grid_dims_t grid_dims, const BoundingBox &bounding_box) : simulator{std::make_unique<S>(grid_dims, bounding_box)} {
         shader = AssetManager::make<Shader>(
             "instanced_ball_shader",
             cfg::shaders_dir/"instanced_ball.vert",
@@ -27,6 +27,7 @@ public:
         if constexpr (std::is_base_of_v<CUDASimulator, S>)
             dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());
     }
+    Fluid(unsigned grid_count, const BoundingBox &bounding_box) : Fluid({grid_count, grid_count, grid_count},bounding_box) {}
 
     void update(float delta) override {
         simulator->update(delta);

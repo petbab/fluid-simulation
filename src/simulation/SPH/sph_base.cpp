@@ -1,10 +1,10 @@
 #include "sph_base.h"
 
 
-SPHBase::SPHBase(unsigned int grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d)
-    : FluidSimulator{grid_count, bounding_box, is_2d},
+SPHBase::SPHBase(grid_dims_t grid_dims, const BoundingBox &bounding_box, float support_radius)
+    : FluidSimulator{grid_dims, bounding_box},
       n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)},
-      cubic_k{SUPPORT_RADIUS, is_2d},
+      cubic_k{SUPPORT_RADIUS},
       cohesion_k{SUPPORT_RADIUS} {
     densities.resize(particle_count);
     velocities.resize(particle_count);
