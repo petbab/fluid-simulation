@@ -58,8 +58,8 @@ __global__ void apply_pressure_force_k(
 ////                           CUDASPHSimulator                            ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHSimulator::CUDASPHSimulator(unsigned grid_count, const BoundingBox& bounding_box, bool is_2d)
-    : CUDASPHBase(grid_count, bounding_box, is_2d), pressure(particle_count) {
+CUDASPHSimulator::CUDASPHSimulator(grid_dims_t grid_dims, const BoundingBox& bounding_box)
+    : CUDASPHBase(grid_dims, bounding_box), pressure(particle_count) {
 }
 
 void CUDASPHSimulator::update(float delta) {

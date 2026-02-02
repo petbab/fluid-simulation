@@ -2,6 +2,7 @@
 
 #include "../render/object.h"
 
+
 class FluidSimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -11,7 +12,11 @@ public:
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
     ///////////////////////////////////////////////////////////////////////////////
 
-    FluidSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
+    struct grid_dims_t {
+        unsigned x, y, z;
+    };
+
+    FluidSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
     virtual ~FluidSimulator() = default;
 
     virtual void update(float delta) = 0;
@@ -27,6 +32,5 @@ protected:
     std::vector<glm::vec3> positions;
     const unsigned particle_count;
     const BoundingBox &bounding_box;
-    const unsigned grid_count;
-    const bool is_2d;
+    const grid_dims_t grid_dims;
 };

@@ -8,9 +8,9 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulator::FluidSimulator(unsigned int grid_count, const BoundingBox &bounding_box, bool is_2d)
-    : particle_count{grid_count * grid_count * (is_2d ? 1 : grid_count)},
-      bounding_box{bounding_box}, grid_count{grid_count}, is_2d{is_2d} {
+FluidSimulator::FluidSimulator(const grid_dims_t grid_dims, const BoundingBox &bounding_box)
+    : particle_count{grid_dims.x * grid_dims.y *  grid_dims.z},
+      bounding_box{bounding_box}, grid_dims{grid_dims} {
     init_positions();
 }
 
@@ -19,10 +19,16 @@ auto FluidSimulator::get_position_data() -> std::span<const float> {
 }
 
 void FluidSimulator::init_positions() {
-    assert(grid_count > 1);
+    assert(grid_dims.x > 1);
+    assert(grid_dims.y > 1);
+    assert(grid_dims.z > 1);
 
     const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
-    const glm::vec3 grid_start = center - glm::vec3{static_cast<float>(grid_count - 1)} * PARTICLE_RADIUS + glm::vec3{0.1, -0.1, 0};
+    const glm::vec3 grid_start = center - glm::vec3{
+            static_cast<float>(grid_dims.x - 1),
+            static_cast<float>(grid_dims.y - 1),
+            static_cast<float>(grid_dims.z - 1)
+        } * PARTICLE_RADIUS + glm::vec3{0.1, -0.1, 0};
 
     assert(grid_start.x >= bounding_box.min.x);
     assert(grid_start.y >= bounding_box.min.y);
@@ -30,26 +36,16 @@ void FluidSimulator::init_positions() {
 
     positions.resize(particle_count);
     unsigned i = 0;
-    for (unsigned x = 0; x < grid_count; ++x)
-        for (unsigned y = 0; y < grid_count; ++y) {
-            if (!is_2d) {
-                for (unsigned z = 0; z < grid_count; ++z) {
-                    positions[i] = grid_start + glm::vec3{
-                        static_cast<float>(x) * PARTICLE_SPACING,
-                        static_cast<float>(y) * PARTICLE_SPACING,
-                        static_cast<float>(z) * PARTICLE_SPACING
-                    };
-                    ++i;
-                }
-            } else {
-                positions[i] = grid_start + glm::vec3{
-                    static_cast<float>(x) * PARTICLE_SPACING,
-                    static_cast<float>(y) * PARTICLE_SPACING,
-                    center.z
-                };
-                ++i;
-            }
-        }
+    for (unsigned x = 0; x < grid_dims.x; ++x)
+    for (unsigned y = 0; y < grid_dims.y; ++y)
+    for (unsigned z = 0; z < grid_dims.z; ++z) {
+        positions[i] = grid_start + glm::vec3{
+            static_cast<float>(x) * PARTICLE_SPACING,
+            static_cast<float>(y) * PARTICLE_SPACING,
+            static_cast<float>(z) * PARTICLE_SPACING
+        };
+        ++i;
+    }
 }
 
 void FluidSimulator::reset() {
