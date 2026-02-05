@@ -13,7 +13,8 @@ struct VertexAttribute {
 
 class Geometry {
 public:
-    Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes);
+    Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes,
+        std::span<unsigned> indices = {});
 
     static Geometry from_file(const std::filesystem::path& file_path, bool normalize_mesh = true);
 
@@ -29,15 +30,17 @@ public:
 protected:
     GLenum mode;
     unsigned vbo = 0,
-             vao = 0;
-    int vertices_count;
+             vao = 0,
+             ebo = 0;
+    unsigned vertices_count, indices_count;
 };
 
 class InstancedGeometry : public Geometry {
 public:
     InstancedGeometry(GLenum mode,
         const std::vector<VertexAttribute> &attributes,
-        const std::vector<VertexAttribute> &instance_attributes);
+        const std::vector<VertexAttribute> &instance_attributes,
+        std::span<unsigned> indices = {});
     InstancedGeometry(Geometry geometry, std::size_t attribute_count,
         const std::vector<VertexAttribute> &instance_attributes);
     ~InstancedGeometry() override;
@@ -48,7 +51,7 @@ public:
 
 private:
     unsigned instance_vbo = 0;
-    int instance_count;
+    unsigned instance_count;
 };
 
 namespace procedural {

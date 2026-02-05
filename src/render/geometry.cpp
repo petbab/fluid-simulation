@@ -4,8 +4,10 @@
 #include "../tiny_obj_loader.h"
 
 
-Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
-    : mode{mode}, vertices_count{static_cast<int>(attributes[0].data.size() / attributes[0].elem_size)} {
+Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute>& attributes, std::span<unsigned> indices)
+    : mode{mode},
+      vertices_count{static_cast<unsigned>(attributes[0].data.size() / attributes[0].elem_size)},
+      indices_count{static_cast<unsigned>(indices.size())} {
     assert(!attributes.empty());
 
     int stride = 0;
@@ -20,11 +22,17 @@ Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
                 vertex_data.push_back(attr.data[i * attr.elem_size + j]);
 
     glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-
     glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertex_data.size() * sizeof(float)), vertex_data.data(), GL_STATIC_DRAW);
+
+    if (indices_count > 0) {
+        glGenBuffers(1, &ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned), indices.data(), GL_STATIC_DRAW);
+    }
 
     unsigned offset = 0;
     for (unsigned j = 0; j < attributes.size(); ++j) {
@@ -35,7 +43,6 @@ Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
         offset += attributes[j].elem_size;
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glCheckError();
 }
@@ -137,43 +144,53 @@ Geometry::Geometry(Geometry &&other) noexcept {
 }
 
 Geometry &Geometry::operator=(Geometry &&other) noexcept {
-    glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
     glCheckError();
 
     mode = other.mode;
     vao = other.vao;
     vbo = other.vbo;
+    ebo = other.ebo;
+
     vertices_count = other.vertices_count;
+    indices_count = other.indices_count;
 
     other.vao = 0;
     other.vbo = 0;
+    other.ebo = 0;
 
     return *this;
 }
 
 Geometry::~Geometry() {
     glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
     glDeleteVertexArrays(1, &vao);
     glCheckError();
 }
 
 void Geometry::draw() const {
     glBindVertexArray(vao);
-    glDrawArrays(mode, 0, vertices_count);
+    if (indices_count > 0)
+        glDrawElements(mode, indices_count, GL_UNSIGNED_INT, nullptr);
+    else
+        glDrawArrays(mode, 0, vertices_count);
     glBindVertexArray(0);
     glCheckError();
 }
 
 InstancedGeometry::InstancedGeometry(GLenum mode,
      const std::vector<VertexAttribute> &attributes,
-     const std::vector<VertexAttribute> &instance_attributes)
-     : InstancedGeometry{{mode, attributes}, attributes.size(), instance_attributes} {}
+     const std::vector<VertexAttribute> &instance_attributes,
+     std::span<unsigned> indices)
+     : InstancedGeometry{{mode, attributes, indices}, attributes.size(), instance_attributes} {}
 
 InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
                                      const std::vector<VertexAttribute> &instance_attributes)
     : Geometry{std::move(geom)},
-      instance_count{static_cast<int>(instance_attributes[0].data.size() / instance_attributes[0].elem_size)} {
+      instance_count{static_cast<unsigned>(instance_attributes[0].data.size() / instance_attributes[0].elem_size)} {
 
     int stride = 0;
     for (const auto &attr : instance_attributes)
@@ -215,7 +232,10 @@ InstancedGeometry::~InstancedGeometry() {
 
 void InstancedGeometry::draw() const {
     glBindVertexArray(vao);
-    glDrawArraysInstanced(mode, 0, vertices_count, instance_count);
+    if (indices_count > 0)
+        glDrawElementsInstanced(mode, indices_count, GL_UNSIGNED_INT, nullptr, instance_count);
+    else
+        glDrawArraysInstanced(mode, 0, vertices_count, instance_count);
     glBindVertexArray(0);
     glCheckError();
 }
