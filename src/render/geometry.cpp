@@ -1,6 +1,7 @@
 #include <cassert>
 #include "geometry.h"
 #include "../debug.h"
+#include "../tiny_obj_loader.h"
 
 
 Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
@@ -37,6 +38,98 @@ Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glCheckError();
+}
+
+Geometry Geometry::from_file(const std::filesystem::path& file_path, bool normalize_mesh) {
+    tinyobj::ObjReader reader;
+    if (!reader.ParseFromFile(file_path)) {
+        std::string err = reader.Error().empty() ? "" : (": " + reader.Error());
+        throw std::runtime_error{"TinyObjReader: failed to load " + file_path.string() + err};
+    }
+
+    if (!reader.Warning().empty()) {
+        std::cerr << "TinyObjReader: " << reader.Warning();
+    }
+
+    // Use only the first shape
+    // TODO: more shapes?
+    const tinyobj::shape_t& shape = reader.GetShapes()[0];
+    const tinyobj::attrib_t& attrib = reader.GetAttrib();
+
+    std::vector<float> positions, normals, tex_coords;
+    positions.reserve(shape.mesh.indices.size() * 3);
+    normals.reserve(shape.mesh.indices.size() * 3);
+    tex_coords.reserve(shape.mesh.indices.size() * 2);
+
+    glm::vec3 min{std::numeric_limits<float>::max()};
+    glm::vec3 max{std::numeric_limits<float>::min()};
+
+    // Index offset for the current shape
+    unsigned index_offset = 0;
+
+    // Iterate over all faces in the shape
+    for (unsigned f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
+        // Get the number of vertices for this face
+        unsigned fv = shape.mesh.num_face_vertices[f];
+
+        if (fv > 3)
+            throw std::runtime_error{"In " + file_path.string() + ": face " + std::to_string(f) + " has "
+                + std::to_string(fv) + " vertices (not a triangle)"};
+
+        // Iterate over the 3 vertices of the triangle
+        for (unsigned v = 0; v < fv; v++) {
+            // Access to vertex indices
+            tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
+
+            // Get vertex position
+            float vx = attrib.vertices[3 * idx.vertex_index];
+            float vy = attrib.vertices[3 * idx.vertex_index + 1];
+            float vz = attrib.vertices[3 * idx.vertex_index + 2];
+
+            positions.insert(positions.end(), {vx, vy, vz});
+
+            if (normalize_mesh) {
+                min.x = std::min(min.x, vx);
+                min.y = std::min(min.y, vy);
+                min.z = std::min(min.z, vz);
+                max.x = std::max(max.x, vx);
+                max.y = std::max(max.y, vy);
+                max.z = std::max(max.z, vz);
+            }
+
+            // Get normal if available
+            float nx = 0, ny = 0, nz = 0;
+            if (idx.normal_index >= 0) {
+                nx = attrib.normals[3 * idx.normal_index];
+                ny = attrib.normals[3 * idx.normal_index + 1];
+                nz = attrib.normals[3 * idx.normal_index + 2];
+            }
+            normals.insert(normals.end(), {nx, ny, nz});
+
+            // Get texture coordinate if available
+            float tx = 0, ty = 0;
+            if (idx.texcoord_index >= 0) {
+                tx = attrib.texcoords[2 * idx.texcoord_index];
+                ty = attrib.texcoords[2 * idx.texcoord_index + 1];
+            }
+            tex_coords.insert(tex_coords.end(), {tx, ty});
+        }
+
+        index_offset += fv;
+    }
+
+    if (normalize_mesh) {
+        glm::vec3 center = (min + max) * 0.5f;
+        glm::vec3 diff = max - min;
+        float max_diff = std::max(std::max(diff.x, diff.y), diff.z);
+        for (int i = 0; i < positions.size(); i += 3) {
+            positions[i] = (positions[i] - center.x) / max_diff;
+            positions[i + 1] = (positions[i + 1] - center.y) / max_diff;
+            positions[i + 2] = (positions[i + 2] - center.z) / max_diff;
+        }
+    }
+
+    return {GL_TRIANGLES, {{3, positions}, {3, normals}, {2, tex_coords}}};
 }
 
 Geometry::Geometry(Geometry &&other) noexcept {

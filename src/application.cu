@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 #include "application.h"
 #include <ranges>
+#include <glm/ext/matrix_transform.hpp>
 #include "config.h"
 #include "debug.h"
 #include "cuda/SPH/sph.cuh"
@@ -61,16 +62,27 @@ void Application::setup_scene() {
         glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
     AssetManager::make<Fluid<FluidSim>>("fluid", 33, fluid_box->bounding_box());
 
-    auto *axes_shader = AssetManager::make<Shader>(
-        "axes_shader",
-        cfg::shaders_dir/"axes.vert",
-        cfg::shaders_dir/"axes.frag");
-    auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
-    AssetManager::make<Object>("axes", axes_shader, axes_geom);
+    // auto *axes_shader = AssetManager::make<Shader>(
+    //     "axes_shader",
+    //     cfg::shaders_dir/"axes.vert",
+    //     cfg::shaders_dir/"axes.frag");
+    // auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
+    // AssetManager::make<Object>("axes", axes_shader, axes_geom);
+
+    auto *lit_shader = AssetManager::make<Shader>("lit_shader",
+        cfg::shaders_dir/"lit.vert",
+        cfg::shaders_dir/"lit.frag");
+    auto *dragon_geom = AssetManager::make<Geometry>(
+        "dragon_geometry", Geometry::from_file(cfg::models_dir / "stanford-dragon.obj"));
+    auto *dragon_obj = AssetManager::make<Object>("dragon", lit_shader, dragon_geom);
+    dragon_obj->set_material(glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, 32., 1.);
+    dragon_obj->set_model(glm::rotate(glm::mat4{1.f}, -glm::pi<float>() * 0.5f, glm::vec3{1., 0., 0.}));
 
     lights = std::make_unique<LightArray>();
     lights->set_ambient_light(glm::vec3{0.1f});
     lights->add_directional_light(glm::vec3{0.2, 1., 0.4}, glm::vec3{0.2f}, glm::vec3{0.9f, 0.85, 0.8}, glm::vec3{1.0f});
+    lights->add_point_light(glm::vec3{-0.7, 0.2, 0.4}, glm::vec3{0., 0., 0.1},
+        glm::vec3{0.1f, 0.1, 0.8}, glm::vec3{1.0f}, 1., 0.7, 1.8);
     lights->upload_data();
 }
 

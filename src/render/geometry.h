@@ -3,6 +3,7 @@
 #include <vector>
 #include <glad/glad.h>
 #include <span>
+#include <filesystem>
 
 
 struct VertexAttribute {
@@ -13,6 +14,8 @@ struct VertexAttribute {
 class Geometry {
 public:
     Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes);
+
+    static Geometry from_file(const std::filesystem::path& file_path, bool normalize_mesh = true);
 
     Geometry(const Geometry&) = delete;
     Geometry& operator=(const Geometry&) = delete;
