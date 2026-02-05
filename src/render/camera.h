@@ -29,6 +29,8 @@ public:
     };
     void on_key_move(move m, float delta);
 
+    void bind_ubo(unsigned binding) const { ubo.bind(binding); }
+
 private:
     void set_view();
     void set_projection(int width, int height);
@@ -38,8 +40,8 @@ private:
 layout(std140, binding = 0) uniform CameraData {
     mat4 projection;
     mat4 view;
-    vec3 position;
-} camera;
+    vec3 eye_position;
+};
     */
     struct CameraData {
         glm::mat4 projection;

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <memory>
 #include <GLFW/glfw3.h>
 #include "render/camera.h"
+#include "render/light.h"
 
 
 class Application {
@@ -25,6 +27,7 @@ private:
 
     GLFWwindow *window;
     Camera camera;
+    std::unique_ptr<LightArray> lights;
 
     double last_glfw_time = 0.;
     bool first_mouse_move = true;

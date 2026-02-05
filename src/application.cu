@@ -56,8 +56,9 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
-    Box *fluid_box = AssetManager::make<Box>("fluid_box", glm::vec3{-1.5, -0.75, -0.75}, glm::vec3{1.5, 0.75, 0.75},
-                                             glm::vec4{0.65, 0.6, 0.6, 1.});
+    Box *fluid_box = AssetManager::make<Box>(
+        "fluid_box", glm::vec3{-1.5, -0.75, -0.75},
+        glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
     AssetManager::make<Fluid<FluidSim>>("fluid", 33, fluid_box->bounding_box());
 
     auto *axes_shader = AssetManager::make<Shader>(
@@ -66,9 +67,17 @@ void Application::setup_scene() {
         cfg::shaders_dir/"axes.frag");
     auto *axes_geom = AssetManager::make<Geometry>("axes_geometry", procedural::axes(10));
     AssetManager::make<Object>("axes", axes_shader, axes_geom);
+
+    lights = std::make_unique<LightArray>();
+    lights->set_ambient_light(glm::vec3{0.1f});
+    lights->add_directional_light(glm::vec3{0.2, 1., 0.4}, glm::vec3{0.2f}, glm::vec3{0.9f, 0.85, 0.8}, glm::vec3{1.0f});
+    lights->upload_data();
 }
 
 void Application::render_scene() {
+    camera.bind_ubo(UBO<void>::CAMERA_UBO_BINDING);
+    lights->bind_ubo(UBO<void>::LIGHTS_UBO_BINDING);
+
     for (auto object : AssetManager::container<Object>())
         object->render();
 }

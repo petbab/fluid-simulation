@@ -34,7 +34,7 @@ out VertexData
 void main()
 {
     out_data.position_ws = vec3(model * position);
-    out_data.normal_ws = -normalize(model_it * normal);
+    out_data.normal_ws = normalize(model_it * normal);
 
     gl_Position = projection * view * model * position;
 }

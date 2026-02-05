@@ -119,15 +119,14 @@ static Geometry box_geometry(glm::vec3 half_size) {
     return {GL_TRIANGLES, {{3, positions}, {3, normals}}};
 }
 
-Box::Box(glm::vec3 min, glm::vec3 max, glm::vec4 color)
+Box::Box(glm::vec3 min, glm::vec3 max, glm::vec3 color)
     : Object{
-          AssetManager::make<Shader>("box_shader", cfg::shaders_dir / "box.vert", cfg::shaders_dir / "box.frag"),
+          AssetManager::make<Shader>("box_shader", cfg::shaders_dir / "box.vert", cfg::shaders_dir / "lit.frag"),
           AssetManager::make<Geometry>("box_geometry", box_geometry((max - min) / 2.f)),
       }, bb{std::make_unique<BoundingBox>(min, max)} {
-    shader->set_uniform("color", color);
-
     glm::vec3 center = (min + max) / 2.f;
     set_model(glm::translate(center));
+    set_material(color, color, color, 32.f, 1.f);
 }
 
 void Box::render() const {
