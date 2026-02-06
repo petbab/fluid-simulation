@@ -57,11 +57,6 @@ void Application::run() {
 }
 
 void Application::setup_scene() {
-    Box *fluid_box = AssetManager::make<Box>(
-        "fluid_box", glm::vec3{-1.5, -0.75, -0.75},
-        glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
-    AssetManager::make<Fluid<FluidSim>>("fluid", 33, fluid_box->bounding_box());
-
     // auto *axes_shader = AssetManager::make<Shader>(
     //     "axes_shader",
     //     cfg::shaders_dir/"axes.vert",
@@ -77,6 +72,13 @@ void Application::setup_scene() {
     auto *dragon_obj = AssetManager::make<Object>("dragon", lit_shader, dragon_geom);
     dragon_obj->set_material(glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, 32., 1.);
     dragon_obj->set_model(glm::rotate(glm::mat4{1.f}, -glm::pi<float>() * 0.5f, glm::vec3{1., 0., 0.}));
+
+    Box *fluid_box = AssetManager::make<Box>(
+        "fluid_box", glm::vec3{-1.5, -0.75, -0.75},
+        glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
+
+    const std::vector<const Object*> collision_objects{fluid_box};
+    AssetManager::make<Fluid<FluidSim>>("fluid", 33, fluid_box->bounding_box(), collision_objects);
 
     lights = std::make_unique<LightArray>();
     lights->set_ambient_light(glm::vec3{0.1f});

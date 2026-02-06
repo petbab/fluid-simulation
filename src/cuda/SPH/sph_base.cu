@@ -184,30 +184,31 @@ __global__ void compute_surface_normals_k(
 ////                              CUDASPHBase                              ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHBase::CUDASPHBase(grid_dims_t grid_dims, const BoundingBox& bounding_box)
-    : CUDASimulator(grid_dims, bounding_box),
-      density(particle_count),
-      velocity(particle_count),
+CUDASPHBase::CUDASPHBase(grid_dims_t grid_dims, const BoundingBox& bounding_box,
+    const std::vector<const Object*> &collision_objects)
+    : CUDASimulator(grid_dims, bounding_box, collision_objects),
+      density(fluid_particles),
+      velocity(fluid_particles),
       n_search{2.f * SUPPORT_RADIUS},
-      non_pressure_accel(particle_count),
-      normal(particle_count) {
+      non_pressure_accel(fluid_particles),
+      normal(fluid_particles) {
 }
 
 void CUDASPHBase::compute_densities(const float* positions_dev_ptr) {
     float* densities_ptr = thrust::raw_pointer_cast(density.data());
 
-    const dim3 grid_size{particle_count / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
     compute_densities_k<<<COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, particle_count, n_search.dev_ptr());
+        positions_dev_ptr, densities_ptr, fluid_particles, n_search.dev_ptr());
     cudaCheckError();
 }
 
 void CUDASPHBase::update_positions(float* positions_dev_ptr, float delta) {
     glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
 
-    const dim3 grid_size{particle_count / UPDATE_POSITIONS_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / UPDATE_POSITIONS_BLOCK_SIZE.x + 1};
     update_positions_k<<<UPDATE_POSITIONS_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, velocities_ptr, particle_count, delta, bounding_box);
+        positions_dev_ptr, velocities_ptr, fluid_particles, delta, bounding_box);
     cudaCheckError();
 }
 
@@ -237,9 +238,9 @@ void CUDASPHBase::update_velocities(float delta) {
     glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
     const glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
 
-    const dim3 grid_size{particle_count / UPDATE_VELOCITIES_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / UPDATE_VELOCITIES_BLOCK_SIZE.x + 1};
     update_velocities_k<<<UPDATE_VELOCITIES_BLOCK_SIZE, grid_size>>>(
-        velocities_ptr, acceleration_ptr, particle_count, delta);
+        velocities_ptr, acceleration_ptr, fluid_particles, delta);
     cudaCheckError();
 }
 
@@ -257,10 +258,10 @@ void CUDASPHBase::compute_viscosity(const float* positions_dev_ptr) {
     const glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
     glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
 
-    const dim3 grid_size{particle_count / COMPUTE_VISCOSITY_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / COMPUTE_VISCOSITY_BLOCK_SIZE.x + 1};
     compute_viscosity_k<<<COMPUTE_VISCOSITY_BLOCK_SIZE, grid_size>>>(
         positions_dev_ptr, velocities_ptr, densities_ptr,
-        acceleration_ptr, particle_count, n_search.dev_ptr());
+        acceleration_ptr, fluid_particles, n_search.dev_ptr());
     cudaCheckError();
 }
 
@@ -271,10 +272,10 @@ void CUDASPHBase::compute_surface_tension(const float* positions_dev_ptr) {
     const glm::vec3* normals_ptr = thrust::raw_pointer_cast(normal.data());
     glm::vec3* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
 
-    const dim3 grid_size{particle_count / COMPUTE_SURFACE_TENSION_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / COMPUTE_SURFACE_TENSION_BLOCK_SIZE.x + 1};
     compute_surface_tension_k<<<COMPUTE_SURFACE_TENSION_BLOCK_SIZE, grid_size>>>(
         positions_dev_ptr, densities_ptr, normals_ptr,
-        acceleration_ptr, particle_count, n_search.dev_ptr());
+        acceleration_ptr, fluid_particles, n_search.dev_ptr());
     cudaCheckError();
 }
 
@@ -282,9 +283,9 @@ void CUDASPHBase::compute_surface_normals(const float* positions_dev_ptr) {
     const float* densities_ptr = thrust::raw_pointer_cast(density.data());
     glm::vec3* normals_ptr = thrust::raw_pointer_cast(normal.data());
 
-    const dim3 grid_size{particle_count / COMPUTE_SURFACE_NORMALS_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / COMPUTE_SURFACE_NORMALS_BLOCK_SIZE.x + 1};
     compute_surface_normals_k<<<COMPUTE_SURFACE_NORMALS_BLOCK_SIZE, grid_size>>>(
         positions_dev_ptr, densities_ptr, normals_ptr,
-        particle_count, n_search.dev_ptr());
+        fluid_particles, n_search.dev_ptr());
     cudaCheckError();
 }

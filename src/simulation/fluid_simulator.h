@@ -16,7 +16,8 @@ public:
         unsigned x, y, z;
     };
 
-    FluidSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
+    FluidSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects);
     virtual ~FluidSimulator() = default;
 
     virtual void update(float delta) = 0;
@@ -25,12 +26,16 @@ public:
 
     virtual void reset();
 
+    unsigned get_fluid_particles() const { return fluid_particles; }
+
 private:
     void init_positions();
+    void init_boundary_particles(const std::vector<const Object*> &collision_objects);
 
 protected:
     std::vector<glm::vec3> positions;
-    const unsigned particle_count;
+    unsigned total_particles, fluid_particles, boundary_particles;
+
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
 };

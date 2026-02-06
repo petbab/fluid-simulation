@@ -20,7 +20,8 @@ public:
     static constexpr int MAX_DENSITY_ITERATIONS = 100;
     ///////////////////////////////////////////////////////////////////////////////
 
-    DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
+    DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects);
 
     void update(float delta) override;
 

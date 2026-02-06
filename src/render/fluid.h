@@ -14,7 +14,13 @@ concept Simulator = std::is_base_of_v<FluidSimulator, S>;
 template<Simulator S>
 class Fluid : public Object {
 public:
-    Fluid(FluidSimulator::grid_dims_t grid_dims, const BoundingBox &bounding_box) : simulator{std::make_unique<S>(grid_dims, bounding_box)} {
+    Fluid(unsigned grid_size, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects = {})
+        : Fluid({grid_size, grid_size, grid_size}, bounding_box, collision_objects) {}
+
+    Fluid(FluidSimulator::grid_dims_t grid_dims, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects = {})
+            : simulator{std::make_unique<S>(grid_dims, bounding_box, collision_objects)} {
         shader = AssetManager::make<Shader>(
             "instanced_ball_shader",
             cfg::shaders_dir/"instanced_ball.vert",
@@ -32,6 +38,12 @@ public:
     void update(float delta) override {
         simulator->update(delta);
         update_geometry();
+    }
+
+    void render() const override {
+        shader->use();
+        shader->set_uniform("fluid_particles", simulator->get_fluid_particles());
+        Object::render();
     }
 
     void reset() {

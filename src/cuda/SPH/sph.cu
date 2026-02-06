@@ -58,15 +58,16 @@ __global__ void apply_pressure_force_k(
 ////                           CUDASPHSimulator                            ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHSimulator::CUDASPHSimulator(grid_dims_t grid_dims, const BoundingBox& bounding_box)
-    : CUDASPHBase(grid_dims, bounding_box), pressure(particle_count) {
+CUDASPHSimulator::CUDASPHSimulator(grid_dims_t grid_dims, const BoundingBox& bounding_box,
+    const std::vector<const Object*> &collision_objects)
+    : CUDASPHBase(grid_dims, bounding_box, collision_objects), pressure(fluid_particles) {
 }
 
 void CUDASPHSimulator::update(float delta) {
     auto lock = cuda_gl_positions->lock();
     float* positions_ptr = lock.get_ptr();
 
-    n_search.rebuild(positions_ptr, particle_count);
+    n_search.rebuild(positions_ptr, fluid_particles);
 
     compute_densities(positions_ptr);
 
@@ -90,9 +91,9 @@ void CUDASPHSimulator::compute_pressure() {
     const float* densities_ptr = thrust::raw_pointer_cast(density.data());
     float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
 
-    const dim3 grid_size{particle_count / COMPUTE_PRESSURE_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / COMPUTE_PRESSURE_BLOCK_SIZE.x + 1};
     compute_pressure_k<<<COMPUTE_PRESSURE_BLOCK_SIZE, grid_size>>>(
-        densities_ptr, pressures_ptr, particle_count);
+        densities_ptr, pressures_ptr, fluid_particles);
     cudaCheckError();
 }
 
@@ -101,9 +102,9 @@ void CUDASPHSimulator::apply_pressure_force(const float* positions_dev_ptr, floa
     const float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
     glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
 
-    const dim3 grid_size{particle_count / APPLY_PRESSURE_FORCE_BLOCK_SIZE.x + 1};
+    const dim3 grid_size{fluid_particles / APPLY_PRESSURE_FORCE_BLOCK_SIZE.x + 1};
     apply_pressure_force_k<<<APPLY_PRESSURE_FORCE_BLOCK_SIZE, grid_size>>>(
         positions_dev_ptr, densities_ptr, pressures_ptr, velocities_ptr,
-        particle_count, delta, n_search.dev_ptr());
+        fluid_particles, delta, n_search.dev_ptr());
     cudaCheckError();
 }

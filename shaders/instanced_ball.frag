@@ -3,6 +3,7 @@
 in VertexData {
     vec2 centered_pos;
     vec3 center_view;
+    vec3 color;
 } in_data;
 
 out vec4 frag_color;
@@ -28,6 +29,5 @@ void main() {
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
-    const vec3 base_color = vec3(0., 0.5, 1.);
-    frag_color = vec4(base_color * dot(n, vec3(0., 0., 1.)), 1.);
+    frag_color = vec4(in_data.color * dot(n, vec3(0., 0., 1.)), 1.);
 }

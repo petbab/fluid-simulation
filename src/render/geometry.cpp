@@ -10,7 +10,7 @@ Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute>& attributes, 
       indices_count{static_cast<unsigned>(indices.size())} {
     assert(!attributes.empty());
 
-    int stride = 0;
+    stride = 0;
     for (const auto &attr : attributes)
         stride += static_cast<int>(attr.elem_size);
 
@@ -156,6 +156,7 @@ Geometry &Geometry::operator=(Geometry &&other) noexcept {
 
     vertices_count = other.vertices_count;
     indices_count = other.indices_count;
+    stride = other.stride;
 
     other.vao = 0;
     other.vbo = 0;
@@ -181,6 +182,30 @@ void Geometry::draw() const {
     glCheckError();
 }
 
+void Geometry::load_triangles(std::vector<glm::vec3> &triangle_vertices, const glm::mat4 &model) const {
+    assert(mode == GL_TRIANGLES);
+    assert(ebo == 0 && indices_count == 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    // Map the buffer to CPU memory
+    const float* buffer = static_cast<float*>(glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY));
+    glCheckError();
+    if (buffer == nullptr)
+        throw std::runtime_error{"Failed to map triangle VBO."};
+
+    unsigned offset = 0;
+    triangle_vertices.resize(vertices_count);
+    for (glm::vec3 &v : triangle_vertices) {
+        v = model * glm::vec4(buffer[offset], buffer[offset + 1], buffer[offset + 2], 1.0f);
+        offset += stride;
+    }
+
+    // Unmap when done
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 InstancedGeometry::InstancedGeometry(GLenum mode,
      const std::vector<VertexAttribute> &attributes,
      const std::vector<VertexAttribute> &instance_attributes,
@@ -192,12 +217,12 @@ InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
     : Geometry{std::move(geom)},
       instance_count{static_cast<unsigned>(instance_attributes[0].data.size() / instance_attributes[0].elem_size)} {
 
-    int stride = 0;
+    instance_stride = 0;
     for (const auto &attr : instance_attributes)
-        stride += static_cast<int>(attr.elem_size);
+        instance_stride += static_cast<int>(attr.elem_size);
 
     std::vector<float> instance_data;
-    instance_data.reserve(stride * instance_count);
+    instance_data.reserve(instance_stride * instance_count);
     for (int i = 0; i < instance_count; ++i)
         for (const auto &attr : instance_attributes)
             for (unsigned j = 0; j < attr.elem_size; ++j)
@@ -212,7 +237,7 @@ InstancedGeometry::InstancedGeometry(Geometry geom, std::size_t attribute_count,
     for (unsigned j = 0; j < instance_attributes.size(); ++j) {
         unsigned gl_idx = j + attribute_count;
         glVertexAttribPointer(gl_idx, static_cast<GLint>(instance_attributes[j].elem_size),
-                              GL_FLOAT, GL_FALSE, stride * sizeof(float),
+                              GL_FLOAT, GL_FALSE, instance_stride * sizeof(float),
                               (void *) (offset * sizeof(float)));
         glEnableVertexAttribArray(gl_idx);
         glVertexAttribDivisor(gl_idx, 1);

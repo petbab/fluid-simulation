@@ -28,7 +28,8 @@ public:
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
     ///////////////////////////////////////////////////////////////////////////////
 
-    CUDASPHBase(grid_dims_t grid_dims, const BoundingBox &bounding_box);
+    CUDASPHBase(grid_dims_t grid_dims, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects);
 
 protected:
     void compute_densities(const float *positions_dev_ptr);

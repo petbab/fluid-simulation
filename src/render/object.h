@@ -25,6 +25,9 @@ public:
         material.set(ambient, diffuse, specular, shininess, alpha);
     }
 
+    const Geometry *get_geometry() const { return geometry; }
+    const glm::mat4& get_model() const { return model.get_model(); }
+
 protected:
     Object() = default;
 

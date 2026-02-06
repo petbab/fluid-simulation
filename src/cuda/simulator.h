@@ -7,7 +7,8 @@
 
 class CUDASimulator : public FluidSimulator {
 public:
-    CUDASimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
+    CUDASimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
+        const std::vector<const Object*> &collision_objects);
 
     void init_buffer(GLuint vbo);
 

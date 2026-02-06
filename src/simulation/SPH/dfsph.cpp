@@ -4,14 +4,15 @@
 //#include <iostream>
 
 
-DFSPHSimulator::DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box)
-    : SPHBase(grid_dims, bounding_box, SUPPORT_RADIUS),
+DFSPHSimulator::DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
+    const std::vector<const Object*> &collision_objects)
+    : SPHBase(grid_dims, bounding_box, collision_objects, SUPPORT_RADIUS),
       kernel{SUPPORT_RADIUS} {
-    predicted_densities.resize(particle_count);
-    alphas.resize(particle_count);
-    divergence_errors.resize(particle_count);
-    divergence_kappas.resize(particle_count);
-    density_kappas.resize(particle_count);
+    predicted_densities.resize(fluid_particles);
+    alphas.resize(fluid_particles);
+    divergence_errors.resize(fluid_particles);
+    divergence_kappas.resize(fluid_particles);
+    density_kappas.resize(fluid_particles);
 
     compute_densities();
     compute_alphas();
@@ -40,7 +41,7 @@ void DFSPHSimulator::update(float delta) {
 
 void DFSPHSimulator::compute_alphas() {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < particle_count; ++i) {
+    for (std::size_t i = 0; i < fluid_particles; ++i) {
         float sum_grad_sq = 0.f;
         glm::vec3 sum_grad{0.f};
         glm::vec3 xi = positions[i];
@@ -66,7 +67,7 @@ void DFSPHSimulator::correct_density_error(float delta) {
         density_error = 0.f;
 
         // Predict densities
-        for (std::size_t i = 0; i < particle_count; ++i) {
+        for (std::size_t i = 0; i < fluid_particles; ++i) {
             float density_delta = 0.f;
             glm::vec3 xi = positions[i];
             glm::vec3 vi = velocities[i];
@@ -80,10 +81,10 @@ void DFSPHSimulator::correct_density_error(float delta) {
 
             density_error += predicted_densities[i];
         }
-        density_error = std::abs(density_error / static_cast<float>(particle_count) - REST_DENSITY) / REST_DENSITY;
+        density_error = std::abs(density_error / static_cast<float>(fluid_particles) - REST_DENSITY) / REST_DENSITY;
 
         // Adapt velocities
-        for (std::size_t i = 0; i < particle_count; ++i) {
+        for (std::size_t i = 0; i < fluid_particles; ++i) {
             float kappa_i = std::max(predicted_densities[i] - REST_DENSITY, 0.f) * alphas[i] / static_cast<float>(delta * delta);
             density_kappas[i] += kappa_i;
 
@@ -112,7 +113,7 @@ void DFSPHSimulator::correct_divergence_error(float delta) {
     for (int iter = 0; (divergence_error > MAX_DIVERGENCE_ERROR || iter < 1) && iter < MAX_DIVERGENCE_ITERATIONS; ++iter) {
         divergence_error = 0.f;
 
-        for (std::size_t i = 0; i < particle_count; ++i) {
+        for (std::size_t i = 0; i < fluid_particles; ++i) {
             // Compute divergence error of particle i (Equation 9.)
             float divergence = 0.f;
             glm::vec3 xi = positions[i];
@@ -128,10 +129,10 @@ void DFSPHSimulator::correct_divergence_error(float delta) {
 
             divergence_error += std::abs(divergence);
         }
-        divergence_error /= static_cast<float>(particle_count);
+        divergence_error /= static_cast<float>(fluid_particles);
 
         // Adapt velocities
-        for (std::size_t i = 0; i < particle_count; ++i) {
+        for (std::size_t i = 0; i < fluid_particles; ++i) {
             float kappa_i = divergence_errors[i] * alphas[i] / static_cast<float>(delta);
             divergence_kappas[i] += kappa_i;
 
@@ -153,7 +154,7 @@ void DFSPHSimulator::correct_divergence_error(float delta) {
 
 void DFSPHSimulator::warm_start_density(float delta) {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < particle_count; ++i) {
+    for (std::size_t i = 0; i < fluid_particles; ++i) {
         float kappa_i = density_kappas[i];
 
         glm::vec3 vel_correction{0.f};
@@ -172,7 +173,7 @@ void DFSPHSimulator::warm_start_density(float delta) {
 
 void DFSPHSimulator::warm_start_divergence(float delta) {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < particle_count; ++i) {
+    for (std::size_t i = 0; i < fluid_particles; ++i) {
         float kappa_i = divergence_kappas[i];
 
         glm::vec3 vel_correction{0.f};
