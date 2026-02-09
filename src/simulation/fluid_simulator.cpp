@@ -12,11 +12,13 @@ FluidSimulator::FluidSimulator(
     const grid_dims_t grid_dims,
     const BoundingBox &bounding_box,
     const std::vector<const Object*> &collision_objects
-) : fluid_particles{grid_dims.x * grid_dims.y * grid_dims.z}, boundary_particles{0},
+) : fluid_particles{grid_dims.x * grid_dims.y * grid_dims.z},
         bounding_box{bounding_box}, grid_dims{grid_dims} {
-    total_particles = fluid_particles;
     init_positions();
     init_boundary_particles(collision_objects);
+
+    total_particles = positions.size();
+    boundary_particles = total_particles - fluid_particles;
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {

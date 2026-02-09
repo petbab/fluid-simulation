@@ -34,6 +34,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 find_package(CUDAToolkit REQUIRED)
+find_package(Open3D REQUIRED)
 
 # CompactNSearch
 include(FetchContent)
@@ -67,6 +68,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         OpenMP::OpenMP_CXX
         CompactNSearch
         CUDA::cudart
+        Open3D::Open3D
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE  $<$<CONFIG:Release>:-O3>)
@@ -89,6 +91,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 if(WIN32)
     # Windows-specific settings
     set_property(TARGET ${PROJECT_NAME} PROPERTY WIN32_EXECUTABLE TRUE)
+
+    # On Windows if BUILD_SHARED_LIBS is enabled, copy .dll files to the executable directory
+    get_target_property(open3d_type Open3D::Open3D TYPE)
+    if(open3d_type STREQUAL "SHARED_LIBRARY")
+        set(copy_dlls "${CMAKE_INSTALL_PREFIX}/bin/tbb12$<$<CONFIG:Debug>:_debug>.dll"
+                "${CMAKE_INSTALL_PREFIX}/bin/Open3D.dll")
+    else()
+        set(copy_dlls "${CMAKE_INSTALL_PREFIX}/bin/tbb12$<$<CONFIG:Debug>:_debug>.dll")
+    endif()
+    # For CUDA builds, we must also copy the CUDA DLLs. Alternately, add
+    # $Env:CUDA_PATH/bin to $Env:PATH to avoid this copy.
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${copy_dlls}
+            ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>
+            COMMENT "Copying Open3D DLLs to ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 elseif(APPLE)
     # macOS-specific settings
     find_library(COCOA_LIBRARY Cocoa)
