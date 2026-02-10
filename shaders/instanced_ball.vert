@@ -14,7 +14,7 @@ uniform uint fluid_particles;
 out VertexData {
     vec2 centered_pos;
     vec3 center_view;
-    vec3 color;
+    flat bool is_boundary;
 } out_data;
 
 const float RADIUS = 0.02;
@@ -31,5 +31,5 @@ void main() {
 
     out_data.centered_pos = vec2(vertex_position) * 2.;
     out_data.center_view = vec3(view * vec4(instance_position, 1.));
-    out_data.color = (gl_InstanceID < fluid_particles) ? vec3(0., 0.5, 1.) : vec3(1., 0.5, 0.);
+    out_data.is_boundary = gl_InstanceID >= fluid_particles;
 }

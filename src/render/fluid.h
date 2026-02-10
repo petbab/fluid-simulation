@@ -43,6 +43,7 @@ public:
     void render() const override {
         shader->use();
         shader->set_uniform("fluid_particles", simulator->get_fluid_particles());
+        shader->set_uniform("show_boundary", show_boundary);
         Object::render();
     }
 
@@ -50,6 +51,8 @@ public:
         simulator->reset();
         update_geometry();
     }
+
+    void toggle_show_boundary() { show_boundary = !show_boundary; }
 
 private:
     void update_geometry() {
@@ -60,4 +63,5 @@ private:
     const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
     std::unique_ptr<FluidSimulator> simulator;
+    bool show_boundary = false;
 };

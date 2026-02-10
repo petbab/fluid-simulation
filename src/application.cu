@@ -151,6 +151,9 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
         if (app->paused)
             app->update_objects(DEFAULT_TIME_STEP);
         break;
+    case GLFW_KEY_B:
+        AssetManager::get<Fluid<SPHSimulator>>("fluid")->toggle_show_boundary();
+        break;
     }
 }
 

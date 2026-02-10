@@ -3,7 +3,7 @@
 in VertexData {
     vec2 centered_pos;
     vec3 center_view;
-    vec3 color;
+    flat bool is_boundary;
 } in_data;
 
 out vec4 frag_color;
@@ -15,9 +15,16 @@ layout(std140, binding = 0) uniform CameraData {
     vec3 eye_position;
 };
 
+uniform bool show_boundary;
+
 const float RADIUS = 0.02;
+const vec3 FLUID_COLOR = vec3(0., 0.5, 1.);
+const vec3 BOUNDARY_COLOR = vec3(1., 0.5, 0.);
 
 void main() {
+    if (in_data.is_boundary && !show_boundary)
+        discard;
+
     vec3 n = vec3(in_data.centered_pos,
         1 - (in_data.centered_pos.x*in_data.centered_pos.x + in_data.centered_pos.y*in_data.centered_pos.y));
     if (n.z < 0.)
@@ -29,5 +36,6 @@ void main() {
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
-    frag_color = vec4(in_data.color * dot(n, vec3(0., 0., 1.)), 1.);
+    vec3 color = in_data.is_boundary ? BOUNDARY_COLOR : FLUID_COLOR;
+    frag_color = vec4(color * dot(n, vec3(0., 0., 1.)), 1.);
 }
