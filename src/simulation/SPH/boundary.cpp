@@ -3,6 +3,8 @@
 #include <cassert>
 
 
+static constexpr float SPACING_MULT = 0.5f;
+
 unsigned generate_boundary_particles(
     std::vector<glm::vec3>& positions,
     const std::vector<glm::vec3>& triangle_vertices,
@@ -22,7 +24,8 @@ unsigned generate_boundary_particles(
     for (unsigned i = 0; i < num_triangles; i++)
         mesh.triangles_.emplace_back(i * 3, i * 3 + 1, i * 3 + 2);
 
-    auto voxel_grid = open3d::geometry::VoxelGrid::CreateFromTriangleMesh(mesh, 2.f * particle_radius);
+    auto voxel_grid = open3d::geometry::VoxelGrid::CreateFromTriangleMesh(
+        mesh, 2.f * particle_radius * SPACING_MULT);
     for (const open3d::geometry::Voxel &v : voxel_grid->GetVoxels()) {
         auto center = voxel_grid->GetVoxelCenterCoordinate(v.grid_index_);
         positions.emplace_back(center[0], center[1], center[2]);
