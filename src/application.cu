@@ -61,7 +61,7 @@ void Application::setup_scene() {
         "fluid_box", glm::vec3{-1.5, -0.75, -0.75},
         glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
 
-    FluidSimulator::opts_t fluid_opts{{33, 33, 33}, fluid_box->bounding_box()};
+    FluidSimulator::opts_t fluid_opts{{0.5, 0., 0.}, {33, 33, 33}, fluid_box->bounding_box()};
     AssetManager::make<Fluid<FluidSim>>("fluid", fluid_opts);
 
     // auto *axes_shader = AssetManager::make<Shader>(

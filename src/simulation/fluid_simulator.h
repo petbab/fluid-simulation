@@ -17,6 +17,7 @@ public:
     };
 
     struct opts_t {
+        glm::vec3 origin;
         grid_dims_t grid_dims;
         const BoundingBox &bounding_box;
     };
@@ -38,4 +39,5 @@ protected:
     const unsigned particle_count;
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
+    const glm::vec3 origin;
 };
