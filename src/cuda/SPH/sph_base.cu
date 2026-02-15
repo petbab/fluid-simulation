@@ -184,8 +184,8 @@ __global__ void compute_surface_normals_k(
 ////                              CUDASPHBase                              ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHBase::CUDASPHBase(grid_dims_t grid_dims, const BoundingBox& bounding_box)
-    : CUDASimulator(grid_dims, bounding_box),
+CUDASPHBase::CUDASPHBase(const opts_t &opts)
+    : CUDASimulator(opts),
       density(particle_count),
       velocity(particle_count),
       n_search{2.f * SUPPORT_RADIUS},

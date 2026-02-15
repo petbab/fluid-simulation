@@ -8,9 +8,9 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulator::FluidSimulator(const grid_dims_t grid_dims, const BoundingBox &bounding_box)
-    : particle_count{grid_dims.x * grid_dims.y *  grid_dims.z},
-      bounding_box{bounding_box}, grid_dims{grid_dims} {
+FluidSimulator::FluidSimulator(const opts_t &opts)
+    : particle_count{opts.grid_dims.x * opts.grid_dims.y * opts.grid_dims.z},
+      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims} {
     init_positions();
 }
 

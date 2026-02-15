@@ -2,8 +2,8 @@
 #include <algorithm>
 
 
-SPHSimulator::SPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box)
-    : SPHBase(grid_dims, bounding_box, SUPPORT_RADIUS), spiky_k{SUPPORT_RADIUS} {
+SPHSimulator::SPHSimulator(const opts_t &opts)
+    : SPHBase(opts, SUPPORT_RADIUS), spiky_k{SUPPORT_RADIUS} {
     pressure.resize(particle_count);
 }
 

@@ -16,7 +16,12 @@ public:
         unsigned x, y, z;
     };
 
-    FluidSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box);
+    struct opts_t {
+        grid_dims_t grid_dims;
+        const BoundingBox &bounding_box;
+    };
+
+    FluidSimulator(const opts_t &opts);
     virtual ~FluidSimulator() = default;
 
     virtual void update(float delta) = 0;

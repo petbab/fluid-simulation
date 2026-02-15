@@ -1,8 +1,8 @@
 #include "sph_base.h"
 
 
-SPHBase::SPHBase(grid_dims_t grid_dims, const BoundingBox &bounding_box, float support_radius)
-    : FluidSimulator{grid_dims, bounding_box},
+SPHBase::SPHBase(const opts_t &opts, float support_radius)
+    : FluidSimulator{opts},
       n_search{std::make_unique<CompactNSearch::NeighborhoodSearch>(support_radius)},
       cubic_k{SUPPORT_RADIUS},
       cohesion_k{SUPPORT_RADIUS} {
