@@ -5,11 +5,12 @@
 #include "../render/shader.h"
 #include <type_traits>
 
+namespace detail_ {
 
 template<typename T>
-class ParticleDataVisualizer {
+class TypeVisualizer {
 public:
-    ParticleDataVisualizer(unsigned particles) : ssbo{particles},
+    explicit TypeVisualizer(unsigned particles) : ssbo{particles},
         cuda_gl_buffer{ssbo.get_id(), cudaGraphicsRegisterFlagsWriteDiscard},
         particles{particles} {}
 
@@ -45,4 +46,26 @@ private:
     SSBO<T> ssbo;
     CUDAGLBuffer cuda_gl_buffer;
     unsigned particles;
+};
+
+}
+
+
+class ParticleDataVisualizer {
+public:
+    explicit ParticleDataVisualizer(unsigned particles)
+        : float_visualizer{particles}, vec_visualizer{particles} {}
+
+    void visualize(Shader* shader, const float* data) { float_visualizer.visualize(shader, data); }
+    void visualize(Shader* shader, const float* data, float min_value, float max_value) {
+        float_visualizer.visualize(shader, data, min_value, max_value);
+    }
+    void visualize(Shader* shader, const float4* data) { vec_visualizer.visualize(shader, data); }
+    void visualize(Shader* shader, const float4* data, float min_value, float max_value) {
+        vec_visualizer.visualize(shader, data, min_value, max_value);
+    }
+
+private:
+    detail_::TypeVisualizer<float> float_visualizer;
+    detail_::TypeVisualizer<float4> vec_visualizer;
 };

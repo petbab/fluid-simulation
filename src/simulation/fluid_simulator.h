@@ -45,6 +45,5 @@ protected:
     const grid_dims_t grid_dims;
     const glm::vec3 origin;
 
-    ParticleDataVisualizer<float4> vec_visualizer;
-    ParticleDataVisualizer<float> float_visualizer;
+    ParticleDataVisualizer visualizer;
 };

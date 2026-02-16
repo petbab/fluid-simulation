@@ -81,7 +81,7 @@ void CUDASPHSimulator::update(float delta) {
 }
 
 void CUDASPHSimulator::visualize(Shader* shader) {
-    float_visualizer.visualize(shader, thrust::raw_pointer_cast(density.data()),
+    visualizer.visualize(shader, thrust::raw_pointer_cast(density.data()),
         REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
 }
 
