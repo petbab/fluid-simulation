@@ -12,7 +12,7 @@ public:
     static constexpr unsigned LIGHTS_UBO_BINDING = 2;
     static constexpr unsigned MATERIAL_UBO_BINDING = 3;
 
-    explicit UBO() {
+    UBO() {
         glCreateBuffers(1, &ubo);
         glNamedBufferStorage(ubo, sizeof(DATA), nullptr, GL_DYNAMIC_STORAGE_BIT);
         glCheckError();

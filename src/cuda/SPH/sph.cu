@@ -64,7 +64,7 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t &opts)
 
 void CUDASPHSimulator::update(float delta) {
     auto lock = cuda_gl_positions->lock();
-    float* positions_ptr = lock.get_ptr();
+    float* positions_ptr = static_cast<float*>(lock.get_ptr());
 
     n_search.rebuild(positions_ptr, particle_count);
 
@@ -78,6 +78,11 @@ void CUDASPHSimulator::update(float delta) {
     apply_pressure_force(positions_ptr, delta);
 
     update_positions(positions_ptr, delta);
+}
+
+void CUDASPHSimulator::visualize(Shader* shader) {
+    float_visualizer.visualize(shader, thrust::raw_pointer_cast(density.data()),
+        REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
 }
 
 void CUDASPHSimulator::reset() {

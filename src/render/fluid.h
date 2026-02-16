@@ -34,6 +34,11 @@ public:
         update_geometry();
     }
 
+    void render() const override {
+        simulator->visualize(shader);
+        Object::render();
+    }
+
     void reset() {
         simulator->reset();
         update_geometry();

@@ -16,22 +16,16 @@ CUDAGLBuffer::CUDALock::~CUDALock() {
     cudaCheckError();
 }
 
-float* CUDAGLBuffer::CUDALock::get_ptr() const {
-    float* ptr;
-    cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&ptr), nullptr, cuda_resource);
+void* CUDAGLBuffer::CUDALock::get_ptr() const {
+    void* ptr;
+    cudaGraphicsResourceGetMappedPointer(&ptr, nullptr, cuda_resource);
     cudaCheckError();
     return ptr;
 }
 
-CUDAGLBuffer::CUDAGLBuffer(unsigned vbo) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glCheckError();
-
-    // Register buffer with CUDA
-    cudaGraphicsGLRegisterBuffer(&cuda_resource, vbo, cudaGraphicsMapFlagsNone);
+CUDAGLBuffer::CUDAGLBuffer(unsigned gl_id, cudaGraphicsRegisterFlags flags) {
+    cudaGraphicsGLRegisterBuffer(&cuda_resource, gl_id, flags);
     cudaCheckError();
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 CUDAGLBuffer::~CUDAGLBuffer() {

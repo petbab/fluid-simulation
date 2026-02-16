@@ -18,6 +18,8 @@ public:
 
     void update(float delta) override;
 
+    void visualize(Shader* shader) override;
+
     void reset() override;
 
 private:

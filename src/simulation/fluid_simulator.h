@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../cuda/particle_data_visualizer.cuh"
 #include "../render/object.h"
 
 
@@ -31,13 +32,19 @@ public:
 
     virtual void reset();
 
+    virtual void visualize(Shader *shader) {}
+
 private:
     void init_positions();
 
 protected:
     std::vector<glm::vec3> positions;
     const unsigned particle_count;
+
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
     const glm::vec3 origin;
+
+    ParticleDataVisualizer<float4> vec_visualizer;
+    ParticleDataVisualizer<float> float_visualizer;
 };

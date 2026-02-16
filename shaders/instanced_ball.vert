@@ -12,6 +12,7 @@ layout(std140, binding = 0) uniform CameraData {
 out VertexData {
     vec2 centered_pos;
     vec3 center_view;
+    flat uint p_id;
 } out_data;
 
 const float RADIUS = 0.02;
@@ -28,4 +29,5 @@ void main() {
 
     out_data.centered_pos = vec2(vertex_position) * 2.;
     out_data.center_view = vec3(view * vec4(instance_position, 1.));
+    out_data.p_id = gl_InstanceID;
 }
