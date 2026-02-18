@@ -13,13 +13,13 @@ public:
         CUDALock &operator=(CUDALock &&) = delete;
         ~CUDALock();
 
-        float* get_ptr() const;
+        void* get_ptr() const;
 
     private:
         cudaGraphicsResource* cuda_resource = nullptr;
     };
 
-    explicit CUDAGLBuffer(unsigned vbo);
+    CUDAGLBuffer(unsigned gl_id, cudaGraphicsRegisterFlags flags = cudaGraphicsRegisterFlagsNone);
     CUDAGLBuffer(const CUDAGLBuffer &) = delete;
     CUDAGLBuffer &operator=(const CUDAGLBuffer &) = delete;
     ~CUDAGLBuffer();

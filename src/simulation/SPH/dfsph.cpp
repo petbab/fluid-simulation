@@ -4,9 +4,8 @@
 //#include <iostream>
 
 
-DFSPHSimulator::DFSPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
-    const std::vector<const Object*> &collision_objects)
-    : SPHBase(grid_dims, bounding_box, collision_objects, SUPPORT_RADIUS),
+DFSPHSimulator::DFSPHSimulator(const opts_t &opts)
+    : SPHBase(opts, SUPPORT_RADIUS),
       kernel{SUPPORT_RADIUS} {
     predicted_densities.resize(fluid_particles);
     alphas.resize(fluid_particles);

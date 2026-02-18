@@ -26,26 +26,26 @@ __global__ void compute_pressure_k(const float* densities, float* pressures, uns
 
 __global__ void apply_pressure_force_k(
     const float* positions, const float* densities,
-    const float* pressures, glm::vec3* velocities,
+    const float* pressures, float4* velocities,
     unsigned n, float delta, const NSearch *dev_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    glm::vec3 p_accel{0.f};
-    glm::vec3 xi = get_pos(positions, i);
+    float4 p_accel{0.f};
+    float4 xi = get_pos(positions, i);
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
 
     dev_n_search->for_neighbors(xi, [=, &p_accel] __device__ (unsigned j) {
-        glm::vec3 xj = get_pos(positions, j);
+        float4 xj = get_pos(positions, j);
 
         if (is_neighbor(xi, xj, i, j)) {
             float dj = densities[j];
             float dpj = pressures[j] / (dj * dj);
 
-            glm::vec3 r = xi - xj;
+            float4 r = xi - xj;
             float q = r_to_q(r, CUDASPHSimulator::SUPPORT_RADIUS);
             p_accel -= (dpi + dpj) * spiky_grad(q, CUDASPHSimulator::SUPPORT_RADIUS) * r;
         }
@@ -58,14 +58,13 @@ __global__ void apply_pressure_force_k(
 ////                           CUDASPHSimulator                            ////
 ///////////////////////////////////////////////////////////////////////////////
 
-CUDASPHSimulator::CUDASPHSimulator(grid_dims_t grid_dims, const BoundingBox& bounding_box,
-    const std::vector<const Object*> &collision_objects)
-    : CUDASPHBase(grid_dims, bounding_box, collision_objects), pressure(fluid_particles) {
+CUDASPHSimulator::CUDASPHSimulator(const opts_t &opts)
+    : CUDASPHBase(opts), pressure(fluid_particles) {
 }
 
 void CUDASPHSimulator::update(float delta) {
     auto lock = cuda_gl_positions->lock();
-    float* positions_ptr = lock.get_ptr();
+    float* positions_ptr = static_cast<float*>(lock.get_ptr());
 
     n_search.rebuild(positions_ptr, fluid_particles);
 
@@ -79,6 +78,11 @@ void CUDASPHSimulator::update(float delta) {
     apply_pressure_force(positions_ptr, delta);
 
     update_positions(positions_ptr, delta);
+}
+
+void CUDASPHSimulator::visualize(Shader* shader) {
+    visualizer.visualize(shader, thrust::raw_pointer_cast(density.data()),
+        REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
 }
 
 void CUDASPHSimulator::reset() {
@@ -100,7 +104,7 @@ void CUDASPHSimulator::compute_pressure() {
 void CUDASPHSimulator::apply_pressure_force(const float* positions_dev_ptr, float delta) {
     const float* densities_ptr = thrust::raw_pointer_cast(density.data());
     const float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
-    glm::vec3* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+    float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
 
     const dim3 grid_size{fluid_particles / APPLY_PRESSURE_FORCE_BLOCK_SIZE.x + 1};
     apply_pressure_force_k<<<APPLY_PRESSURE_FORCE_BLOCK_SIZE, grid_size>>>(

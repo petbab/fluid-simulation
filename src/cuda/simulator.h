@@ -7,10 +7,11 @@
 
 class CUDASimulator : public FluidSimulator {
 public:
-    CUDASimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
-        const std::vector<const Object*> &collision_objects);
+    using FluidSimulator::FluidSimulator;
 
-    void init_buffer(GLuint vbo);
+    void init_buffer(GLuint vbo) {
+        cuda_gl_positions = std::make_unique<CUDAGLBuffer>(vbo);
+    }
 
 protected:
     std::unique_ptr<CUDAGLBuffer> cuda_gl_positions;

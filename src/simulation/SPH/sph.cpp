@@ -2,9 +2,8 @@
 #include <algorithm>
 
 
-SPHSimulator::SPHSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
-    const std::vector<const Object*> &collision_objects)
-    : SPHBase(grid_dims, bounding_box, collision_objects, SUPPORT_RADIUS), spiky_k{SUPPORT_RADIUS} {
+SPHSimulator::SPHSimulator(const opts_t &opts)
+    : SPHBase(opts, SUPPORT_RADIUS), spiky_k{SUPPORT_RADIUS} {
     pressure.resize(fluid_particles);
 }
 

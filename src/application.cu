@@ -77,8 +77,8 @@ void Application::setup_scene() {
         "fluid_box", glm::vec3{-1.5, -0.75, -0.75},
         glm::vec3{1.5, 0.75, 0.75}, glm::vec3{0.9});
 
-    const std::vector<const Object*> collision_objects{fluid_box};
-    AssetManager::make<Fluid<FluidSim>>("fluid", 33, fluid_box->bounding_box(), collision_objects);
+    FluidSimulator::opts_t fluid_opts{{0.5, 0., 0.}, {33, 33, 33}, fluid_box->bounding_box(), {fluid_box}};
+    AssetManager::make<Fluid<FluidSim>>("fluid", fluid_opts);
 
     lights = std::make_unique<LightArray>();
     lights->set_ambient_light(glm::vec3{0.1f});

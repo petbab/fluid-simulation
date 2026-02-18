@@ -2,13 +2,12 @@
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <glm/glm.hpp>
-
+#include "../math.cuh"
 #include "../../debug.h"
 #include "morton.cuh"
 
 
-__device__ __host__ inline glm::vec3 get_pos(const float *positions, unsigned i) {
+__device__ __host__ inline float4 get_pos(const float *positions, unsigned i) {
     unsigned ii = 3 * i;
     return {positions[ii], positions[ii + 1], positions[ii + 2]};
 }
@@ -26,11 +25,11 @@ struct NSearch {
         return 73856093*c.x ^ 19349663*c.y ^ 83492791*c.z;
     }
 
-    __device__ __host__ static hash_t pos_to_cell_hash(glm::vec3 pos, float cell_size) {
+    __device__ __host__ static hash_t pos_to_cell_hash(float4 pos, float cell_size) {
         return cell_hash(cell_coord(pos, cell_size));
     }
 
-    __device__ __host__ static cell_t cell_coord(glm::vec3 pos, float cell_size) {
+    __device__ __host__ static cell_t cell_coord(float4 pos, float cell_size) {
         return {
             signed_to_unsigned(static_cast<int>(floorf(pos.x / cell_size))),
             signed_to_unsigned(static_cast<int>(floorf(pos.y / cell_size))),
@@ -49,7 +48,7 @@ struct NSearch {
         // TODO: binary search
     }
 
-    __device__ void insert(glm::vec3 pos, unsigned p_idx) {
+    __device__ void insert(float4 pos, unsigned p_idx) {
         hash_t h = pos_to_cell_hash(pos, cell_size);
         unsigned i = h % TABLE_SIZE;
 
@@ -77,12 +76,12 @@ struct NSearch {
         return nullptr;
     }
 
-    __device__ __host__ unsigned* indices_in_cell(glm::vec3 pos) const {
+    __device__ __host__ unsigned* indices_in_cell(float4 pos) const {
         return indices_in_cell(cell_coord(pos, cell_size));
     }
 
     // Expects buffer to have size >= 27 * MAX_PARTICLES_IN_CELL
-    __device__ __host__ unsigned list_neighbors(glm::vec3 pos, unsigned *buffer) const {
+    __device__ __host__ unsigned list_neighbors(float4 pos, unsigned *buffer) const {
         unsigned i = 0;
         unsigned *i_ptr = &i;
         return for_neighbors(pos, [=] __device__ __host__ (unsigned p_j) {
@@ -94,19 +93,19 @@ struct NSearch {
     // For neighbors with real neighbor check
     template<typename F>
     __device__ __host__ unsigned for_neighbors(const float *positions, unsigned p_i, float support_radius, F f) const {
-        glm::vec3 xi = get_pos(positions, p_i);
+        float4 xi = get_pos(positions, p_i);
         return for_neighbors(xi, [=] __device__ __host__ (unsigned p_j) -> void {
             if (p_i == p_j)
                 return;
 
-            glm::vec3 r = xi - get_pos(positions, p_j);
-            if (glm::dot(r, r) <= support_radius * support_radius)
+            float4 r = xi - get_pos(positions, p_j);
+            if (dot(r, r) <= support_radius * support_radius)
                 f(p_j);
         });
     }
 
     template<typename F>
-    __device__ __host__ unsigned for_neighbors(glm::vec3 pos, F f) const {
+    __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord(pos, cell_size);
 
         unsigned i = 0;
@@ -180,7 +179,7 @@ __global__ inline void rebuild_n_search_k(NSearch *dev_n_search, const float *pa
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    glm::vec3 pos = get_pos(particle_positions, i);
+    float4 pos = get_pos(particle_positions, i);
     dev_n_search->insert(pos, i);
 }
 

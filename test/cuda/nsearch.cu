@@ -64,7 +64,7 @@ TEST(NSearch, SingleCellListNeighbors) {
     NSearch fd_n_search = fake_dev_n_search(h_n_search);
 
     std::array<unsigned, 27 * NSearch::MAX_PARTICLES_IN_CELL> neighbors{};
-    unsigned nbr_len = fd_n_search.list_neighbors(glm::vec3{0.}, neighbors.data());
+    unsigned nbr_len = fd_n_search.list_neighbors(make_float4(0.), neighbors.data());
     EXPECT_EQ(nbr_len, particles);
 
     for (unsigned i = 0; i < nbr_len; ++i) {
@@ -101,7 +101,7 @@ TEST(NSearch, TwoCellListNeighbors) {
     NSearch fd_n_search = fake_dev_n_search(h_n_search);
 
     std::array<unsigned, 27 * NSearch::MAX_PARTICLES_IN_CELL> neighbors{};
-    for (auto pos : {glm::vec3{.1f}, glm::vec3{1.1f}}) {
+    for (auto pos : {make_float4(.1f), make_float4(1.1f)}) {
         unsigned nbr_len = fd_n_search.list_neighbors(pos, neighbors.data());
         EXPECT_EQ(nbr_len, particles);
 
@@ -145,7 +145,7 @@ TEST(NSearch, ThreeCellListNeighbors) {
 
     std::array<unsigned, 27 * NSearch::MAX_PARTICLES_IN_CELL> neighbors{};
 
-    unsigned nbr_len = fd_n_search.list_neighbors(glm::vec3{0.1f}, neighbors.data());
+    unsigned nbr_len = fd_n_search.list_neighbors(make_float4(0.1f), neighbors.data());
     EXPECT_EQ(nbr_len, 60);
     for (unsigned i = 0; i < nbr_len; ++i) {
         unsigned idx = neighbors[i];
@@ -153,7 +153,7 @@ TEST(NSearch, ThreeCellListNeighbors) {
         EXPECT_LT(idx, 60);
     }
 
-    nbr_len = fd_n_search.list_neighbors(glm::vec3{1.1f}, neighbors.data());
+    nbr_len = fd_n_search.list_neighbors(make_float4(1.1f), neighbors.data());
     EXPECT_EQ(nbr_len, particles);
     for (unsigned i = 0; i < nbr_len; ++i) {
         unsigned idx = neighbors[i];
@@ -161,7 +161,7 @@ TEST(NSearch, ThreeCellListNeighbors) {
         EXPECT_LT(idx, particles);
     }
 
-    nbr_len = fd_n_search.list_neighbors(glm::vec3{2.1f}, neighbors.data());
+    nbr_len = fd_n_search.list_neighbors(make_float4(2.1f), neighbors.data());
     EXPECT_EQ(nbr_len, 60);
     for (unsigned i = 0; i < nbr_len; ++i) {
         unsigned idx = neighbors[i];

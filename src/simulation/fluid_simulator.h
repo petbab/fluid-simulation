@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../cuda/particle_data_visualizer.cuh"
 #include "../render/object.h"
 
 
@@ -16,8 +17,14 @@ public:
         unsigned x, y, z;
     };
 
-    FluidSimulator(grid_dims_t grid_dims, const BoundingBox &bounding_box,
-        const std::vector<const Object*> &collision_objects);
+    struct opts_t {
+        glm::vec3 origin;
+        grid_dims_t grid_dims;
+        const BoundingBox &bounding_box;
+        const std::vector<const Object*> &collision_objects;
+    };
+
+    FluidSimulator(const opts_t &opts);
     virtual ~FluidSimulator() = default;
 
     virtual void update(float delta) = 0;
@@ -27,6 +34,8 @@ public:
     virtual void reset();
 
     unsigned get_fluid_particles() const { return fluid_particles; }
+
+    virtual void visualize(Shader *shader) {}
 
 private:
     void init_positions();
@@ -38,4 +47,7 @@ protected:
 
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
+    const glm::vec3 origin;
+
+    ParticleDataVisualizer visualizer;
 };

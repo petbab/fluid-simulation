@@ -103,6 +103,20 @@ void Shader::set_uniform(const std::string& name, unsigned n) {
     glCheckError();
 }
 
+void Shader::set_uniform(const std::string& name, bool v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1i(loc, v);
+    glCheckError();
+}
+
+void Shader::set_uniform(const std::string& name, float v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1f(loc, v);
+    glCheckError();
+}
+
 void Shader::set_uniform(const std::string &name, glm::vec3 v) {
     GLint loc = get_uniform_location(name);
     use();

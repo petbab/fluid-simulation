@@ -8,14 +8,12 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
     return {reinterpret_cast<const float *>(v.data()), v.size() * ELEM_SIZE};
 }
 
-FluidSimulator::FluidSimulator(
-    const grid_dims_t grid_dims,
-    const BoundingBox &bounding_box,
-    const std::vector<const Object*> &collision_objects
-) : fluid_particles{grid_dims.x * grid_dims.y * grid_dims.z},
-        bounding_box{bounding_box}, grid_dims{grid_dims} {
+FluidSimulator::FluidSimulator(const opts_t &opts)
+    : fluid_particles{opts.grid_dims.x * opts.grid_dims.y * opts.grid_dims.z},
+      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims}, origin{opts.origin},
+      visualizer{fluid_particles} {
     init_positions();
-    init_boundary_particles(collision_objects);
+    init_boundary_particles(opts.collision_objects);
 
     total_particles = positions.size();
     boundary_particles = total_particles - fluid_particles;
@@ -30,12 +28,11 @@ void FluidSimulator::init_positions() {
     assert(grid_dims.y > 1);
     assert(grid_dims.z > 1);
 
-    const glm::vec3 center = (bounding_box.min + bounding_box.max) / 2.f;
-    const glm::vec3 grid_start = center - glm::vec3{
+    const glm::vec3 grid_start = origin - glm::vec3{
             static_cast<float>(grid_dims.x - 1),
             static_cast<float>(grid_dims.y - 1),
             static_cast<float>(grid_dims.z - 1)
-        } * PARTICLE_RADIUS + glm::vec3{0.1, -0.1, 0};
+        } * PARTICLE_RADIUS;
 
     assert(grid_start.x >= bounding_box.min.x);
     assert(grid_start.y >= bounding_box.min.y);

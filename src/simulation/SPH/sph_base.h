@@ -27,8 +27,7 @@ public:
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
     ///////////////////////////////////////////////////////////////////////////////
 
-    SPHBase(grid_dims_t grid_dims, const BoundingBox &bounding_box,
-        const std::vector<const Object*> &collision_objects, float support_radius);
+    SPHBase(const opts_t &opts, float support_radius);
 
 protected:
     void compute_densities();
