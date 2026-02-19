@@ -14,6 +14,9 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     struct grid_dims_t {
+        grid_dims_t(unsigned x, unsigned y, unsigned z) : x(x), y(y), z(z) {}
+        grid_dims_t(unsigned x) : grid_dims_t{x, x, x} {}
+
         unsigned x, y, z;
     };
 
