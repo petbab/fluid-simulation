@@ -7,8 +7,10 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
     ///////////////////////////////////////////////////////////////////////////////
-    static constexpr float STIFFNESS = 1.f;
-    static constexpr float EXPONENT = 3.f;
+    // static constexpr float STIFFNESS = 1.f;
+    // static constexpr float EXPONENT = 3.f;
+    static constexpr float STIFFNESS = 0.1f;
+    static constexpr float EXPONENT = 7.f;
 
     static constexpr float MAX_TIME_STEP = 0.0005f;
     static constexpr float MIN_TIME_STEP = 0.00001f;

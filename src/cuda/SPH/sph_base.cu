@@ -1,6 +1,8 @@
 #include "sph_base.cuh"
 #include "../../debug.h"
 #include "kernel.cuh"
+#include <thrust/transform_reduce.h>
+#include <thrust/functional.h>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -14,6 +16,7 @@ static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_VISCOSITY_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_TENSION_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
+static constexpr dim3 COMPUTE_BOUNDARY_MASS_BLOCK_SIZE = {128};
 
 ///////////////////////////////////////////////////////////////////////////////
 ////                                KERNELS                                ////
@@ -21,6 +24,7 @@ static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 
 __global__ void compute_densities_k(
     const float* positions, float* densities,
+    const float *boundary_mass,
     unsigned n, const NSearch *dev_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -30,15 +34,21 @@ __global__ void compute_densities_k(
     float4 xi = get_pos(positions, i);
 
     float density = cubic_spline(0.f, CUDASPHBase::SUPPORT_RADIUS);
-    dev_n_search->for_neighbors(xi, [=, &density] __device__ (unsigned j) {
+    float boundary_density = 0.f;
+    dev_n_search->for_neighbors(xi, [=, &density, &boundary_density] __device__ (unsigned j) {
         float4 xj = get_pos(positions, j);
 
         if (is_neighbor(xi, xj, i, j)) {
             float q = r_to_q(xi - xj, CUDASPHBase::SUPPORT_RADIUS);
-            density += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
+            float W = cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
+
+            if (is_boundary(j, n))
+                boundary_density += W * get_mass(boundary_mass, j, n);
+            else
+                density += W;
         }
     });
-    densities[i] = density * CUDASPHBase::PARTICLE_MASS;
+    densities[i] = density * CUDASPHBase::PARTICLE_MASS + boundary_density;
 }
 
 __device__ void resolve_collisions(float* positions, float4* velocities, BoundingBox bb) {
@@ -115,6 +125,9 @@ __global__ void compute_viscosity_k(
     float4 vi = velocities[i];
 
     dev_n_search->for_neighbors(xi, [=, &velocity_laplacian] __device__ (unsigned j) {
+        if (is_boundary(j, n))
+            return;
+
         float4 xj = get_pos(positions, j);
 
         if (is_neighbor(xi, xj, i, j)) {
@@ -147,6 +160,9 @@ __global__ void compute_surface_tension_k(
     float4 f{0.f};
 
     dev_n_search->for_neighbors(xi, [=, &f] __device__ (unsigned j) {
+        if (is_boundary(j, n))
+            return;
+
         float4 xj = get_pos(positions, j);
 
         if (is_neighbor(xi, xj, i, j)) {
@@ -174,6 +190,9 @@ __global__ void compute_surface_normals_k(
     float4 normal{0.f};
 
     dev_n_search->for_neighbors(xi, [=, &normal] __device__ (unsigned j) {
+        if (is_boundary(j, n))
+            return;
+
         float4 xj = get_pos(positions, j);
 
         if (is_neighbor(xi, xj, i, j)) {
@@ -186,6 +205,32 @@ __global__ void compute_surface_normals_k(
     normals[i] = CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::PARTICLE_MASS * normal;
 }
 
+__global__ void compute_boundary_mass_k(
+    const float* positions, float* masses,
+    unsigned fluid_n, unsigned boundary_n,
+    const NSearch *dev_n_search
+) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= boundary_n)
+        return;
+
+    float4 xi = get_pos(positions, fluid_n + i);
+    float sum = cubic_spline(0.f, CUDASPHBase::SUPPORT_RADIUS);
+    dev_n_search->for_neighbors(xi, [=, &sum] __device__ (unsigned j) {
+        if (!is_boundary(j, fluid_n))
+            return;
+
+        float4 xj = get_pos(positions, j);
+        if (is_neighbor(xi, xj, i, j)) {
+            float4 r = xi - xj;
+            float q = r_to_q(r, CUDASPHBase::SUPPORT_RADIUS);
+            sum += cubic_spline(q, CUDASPHBase::SUPPORT_RADIUS);
+        }
+    });
+
+    masses[i] = CUDASPHBase::REST_DENSITY / sum;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ////                              CUDASPHBase                              ////
 ///////////////////////////////////////////////////////////////////////////////
@@ -193,6 +238,7 @@ __global__ void compute_surface_normals_k(
 CUDASPHBase::CUDASPHBase(const opts_t &opts)
     : CUDASimulator(opts),
       density(fluid_particles),
+      boundary_mass(boundary_particles),
       velocity(fluid_particles),
       n_search{2.f * SUPPORT_RADIUS},
       non_pressure_accel(fluid_particles),
@@ -201,10 +247,11 @@ CUDASPHBase::CUDASPHBase(const opts_t &opts)
 
 void CUDASPHBase::compute_densities(const float* positions_dev_ptr) {
     float* densities_ptr = thrust::raw_pointer_cast(density.data());
+    float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
 
     const dim3 grid_size{fluid_particles / COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
     compute_densities_k<<<COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
-        positions_dev_ptr, densities_ptr, fluid_particles, n_search.dev_ptr());
+        positions_dev_ptr, densities_ptr, boundary_mass_ptr, fluid_particles, n_search.dev_ptr());
     cudaCheckError();
 }
 
@@ -232,6 +279,7 @@ void CUDASPHBase::reset() {
     FluidSimulator::reset();
 
     thrust::fill(density.begin(), density.end(), 0);
+    thrust::fill(boundary_mass.begin(), boundary_mass.end(), 0);
     thrust::fill(velocity.begin(), velocity.end(), make_float4(0));
     thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), make_float4(0));
     thrust::fill(normal.begin(), normal.end(), make_float4(0));
@@ -292,5 +340,37 @@ void CUDASPHBase::compute_surface_normals(const float* positions_dev_ptr) {
     compute_surface_normals_k<<<COMPUTE_SURFACE_NORMALS_BLOCK_SIZE, grid_size>>>(
         positions_dev_ptr, densities_ptr, normals_ptr,
         fluid_particles, n_search.dev_ptr());
+    cudaCheckError();
+}
+
+struct float4_length_sq {
+    __host__ __device__ float operator()(const float4& v) const {
+        return length(v);
+    }
+};
+
+float CUDASPHBase::adapt_time_step(float delta, float min_step, float max_step) const {
+    float max_velocity = sqrtf(thrust::transform_reduce(
+        velocity.begin(),
+        velocity.end(),
+        float4_length_sq(),      // unary transform
+        0.0f,                    // initial value
+        thrust::maximum<float>() // reduction op
+    ));
+
+    if (max_velocity < 1.e-9)
+        return max_step;
+
+    float cfl_max_time_step = CFL_FACTOR * PARTICLE_SPACING / max_velocity;
+
+    return std::min(std::clamp(delta, min_step, max_step), cfl_max_time_step);
+}
+
+void CUDASPHBase::compute_boundary_mass(const float* positions_dev_ptr) {
+    float* masses_ptr = thrust::raw_pointer_cast(boundary_mass.data());
+
+    const dim3 grid_size{boundary_particles / COMPUTE_BOUNDARY_MASS_BLOCK_SIZE.x + 1};
+    compute_boundary_mass_k<<<COMPUTE_BOUNDARY_MASS_BLOCK_SIZE, grid_size>>>(
+        positions_dev_ptr, masses_ptr, fluid_particles, boundary_particles, n_search.dev_ptr());
     cudaCheckError();
 }

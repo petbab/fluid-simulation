@@ -3,7 +3,7 @@
 #include <cassert>
 
 
-static constexpr float SPACING_MULT = 0.5f;
+static constexpr float SPACING_MULT = 0.75f;
 
 unsigned generate_boundary_particles(
     std::vector<glm::vec3>& positions,
