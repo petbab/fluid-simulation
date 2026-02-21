@@ -69,4 +69,6 @@ Geometry quad(float side_length, bool tex_coord, bool color);
 
 Geometry axes(float half_size = 5.);
 
+Geometry cube(glm::vec3 half_size);
+
 }
