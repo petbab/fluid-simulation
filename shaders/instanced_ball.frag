@@ -32,6 +32,7 @@ uniform float max_value;
 
 uniform bool show_boundary;
 uniform uint fluid_particles;
+uniform bool visualize_boundary;
 
 const float RADIUS = 0.02;
 const vec3 FLUID_COLOR = vec3(0., 0.5, 1.);
@@ -53,16 +54,20 @@ void main() {
     float ndc_depth = clip_pos.z / clip_pos.w;
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
-    vec3 base_color;
-    if (visualize_vec)
-        base_color = vec_visualizer[in_data.p_id].xyz;
-    else if (visualize_float)
-        base_color = vec3(float_visualizer[in_data.p_id]);
-    else
-        base_color = is_boundary ? BOUNDARY_COLOR : FLUID_COLOR;
+    vec3 base_color = is_boundary ? BOUNDARY_COLOR : FLUID_COLOR;
+    if ((visualize_vec || visualize_float) && (is_boundary == visualize_boundary)) {
+        uint i = in_data.p_id;
+        if (visualize_boundary)
+            i -= fluid_particles;
 
-    if (norm)
-        base_color = (base_color - vec3(min_value)) / (max_value - min_value);
+        if (visualize_vec)
+            base_color *= dot(vec_visualizer[i].xyz, n);
+        else if (visualize_float)
+            base_color = vec3(float_visualizer[i]);
+
+        if (norm)
+            base_color = (base_color - vec3(min_value)) / (max_value - min_value);
+    }
 
     frag_color = vec4(base_color * dot(n, vec3(0., 0., 1.)), 1.);
 }

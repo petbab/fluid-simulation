@@ -81,8 +81,11 @@ void CUDASPHSimulator::update(float delta) {
 }
 
 void CUDASPHSimulator::visualize(Shader* shader) {
-    visualizer.visualize(shader, thrust::raw_pointer_cast(density.data()),
+    visualizer->visualize(shader, thrust::raw_pointer_cast(density.data()),
         REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
+    // visualizer->visualize(shader, thrust::raw_pointer_cast(velocity.data()));
+    // visualizer->visualize(shader, thrust::raw_pointer_cast(boundary_mass.data()),
+    //     0.f, PARTICLE_MASS * 2.f, true);
 }
 
 void CUDASPHSimulator::reset() {

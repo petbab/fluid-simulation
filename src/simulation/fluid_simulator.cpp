@@ -10,13 +10,14 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
 
 FluidSimulator::FluidSimulator(const opts_t &opts)
     : fluid_particles{opts.grid_dims.x * opts.grid_dims.y * opts.grid_dims.z},
-      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims}, origin{opts.origin},
-      visualizer{fluid_particles} {
+      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims}, origin{opts.origin} {
     init_positions();
     init_boundary_particles(opts.collision_objects);
 
     total_particles = positions.size();
     boundary_particles = total_particles - fluid_particles;
+
+    visualizer = std::make_unique<ParticleDataVisualizer>(total_particles, fluid_particles);
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {
