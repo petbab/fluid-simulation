@@ -51,36 +51,39 @@ __global__ void compute_densities_k(
     densities[i] = density * CUDASPHBase::PARTICLE_MASS + boundary_density;
 }
 
+static constexpr float OFFSET = 0.000f;
+static constexpr float COLLISION_BUFFER_MULT = 0.75f;
+
 __device__ void resolve_collisions(float* positions, float4* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
     float4 pos = get_pos(positions, i);
     float4 vel = velocities[i];
     bool changed_pos = false;
-    if (pos.x - CUDASPHBase::PARTICLE_RADIUS < bb.min.x) {
-        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS;
+    if (pos.x - CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.x) {
+        pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.x *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
-    } else if (pos.x + CUDASPHBase::PARTICLE_RADIUS > bb.max.x) {
-        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS;
+    } else if (pos.x + CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.x) {
+        pos.x = bb.max.x - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.x *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
     }
-    if (pos.y - CUDASPHBase::PARTICLE_RADIUS < bb.min.y) {
-        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS;
+    if (pos.y - CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.y) {
+        pos.y = bb.min.y + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.y *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
-    } else if (pos.y + CUDASPHBase::PARTICLE_RADIUS > bb.max.y) {
-        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS;
+    } else if (pos.y + CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.y) {
+        pos.y = bb.max.y - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.y *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
     }
-    if (pos.z - CUDASPHBase::PARTICLE_RADIUS < bb.min.z) {
-        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS;
+    if (pos.z - CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.z) {
+        pos.z = bb.min.z + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
         vel.z *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
-    } else if (pos.z + CUDASPHBase::PARTICLE_RADIUS > bb.max.z) {
-        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS;
+    } else if (pos.z + CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.z) {
+        pos.z = bb.max.z - CUDASPHBase::PARTICLE_RADIUS - OFFSET;
         vel.z *= -CUDASPHBase::ELASTICITY;
         changed_pos = true;
     }
