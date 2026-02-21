@@ -17,7 +17,7 @@ __device__ inline float cubic_spline(float q, float support_radius) {
 }
 
 // Returns coefficient that should be multiplied with the original vector to obtain the gradient.
-__device__ inline float cubic_spline_grad(float q, float support_radius) {
+__device__ __host__ inline float cubic_spline_grad(float q, float support_radius) {
     if (q < 1.e-9 || q > 1.)
         return 0.f;
 
@@ -29,7 +29,7 @@ __device__ inline float cubic_spline_grad(float q, float support_radius) {
     return -grad_factor * (1.f - q) * (1.f - q) / (support_radius * r_len);
 }
 
-__device__ inline float spiky(float q, float support_radius) {
+__device__ __host__ inline float spiky(float q, float support_radius) {
     if (q > 1.f)
         return 0.f;
 
@@ -38,7 +38,7 @@ __device__ inline float spiky(float q, float support_radius) {
 }
 
 // Returns coefficient that should be multiplied with the original vector to obtain the gradient.
-__device__ inline float spiky_grad(float q, float support_radius) {
+__device__ __host__ inline float spiky_grad(float q, float support_radius) {
     if (q < 1.e-9 || q > 1.)
         return 0.f;
 
@@ -48,7 +48,7 @@ __device__ inline float spiky_grad(float q, float support_radius) {
     return factor * (1.f - q) * (1.f - q) / (support_radius * r_len);
 }
 
-__device__ inline float cohesion(float q, float support_radius) {
+__device__ __host__ inline float cohesion(float q, float support_radius) {
     const float factor = 32.f / (PI * support_radius*support_radius*support_radius);
 
     const float iq3 = powf(1 - q, 3.f);

@@ -1,5 +1,5 @@
 #include "fluid_simulator.h"
-
+#include "SPH/boundary.h"
 #include <random>
 
 
@@ -9,10 +9,15 @@ static inline auto vec_to_span(const std::vector<glm::vec<ELEM_SIZE, float>> &v)
 }
 
 FluidSimulator::FluidSimulator(const opts_t &opts)
-    : particle_count{opts.grid_dims.x * opts.grid_dims.y * opts.grid_dims.z},
-      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims}, origin{opts.origin},
-      visualizer{particle_count} {
+    : fluid_particles{opts.grid_dims.x * opts.grid_dims.y * opts.grid_dims.z},
+      bounding_box{opts.bounding_box}, grid_dims{opts.grid_dims}, origin{opts.origin} {
     init_positions();
+    init_boundary_particles(opts.collision_objects);
+
+    total_particles = positions.size();
+    boundary_particles = total_particles - fluid_particles;
+
+    visualizer = std::make_unique<ParticleDataVisualizer>(total_particles, fluid_particles);
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {
@@ -34,7 +39,8 @@ void FluidSimulator::init_positions() {
     assert(grid_start.y >= bounding_box.min.y);
     assert(grid_start.z >= bounding_box.min.z);
 
-    positions.resize(particle_count);
+    if (positions.size() < fluid_particles)
+        positions.resize(fluid_particles);
     unsigned i = 0;
     for (unsigned x = 0; x < grid_dims.x; ++x)
     for (unsigned y = 0; y < grid_dims.y; ++y)
@@ -45,6 +51,14 @@ void FluidSimulator::init_positions() {
             static_cast<float>(z) * PARTICLE_SPACING
         };
         ++i;
+    }
+}
+
+void FluidSimulator::init_boundary_particles(const std::vector<const Object*>& collision_objects) {
+    std::vector<glm::vec3> triangle_vertices;
+    for (auto obj : collision_objects) {
+        obj->get_geometry()->load_triangles(triangle_vertices, obj->get_model());
+        generate_boundary_particles(positions, triangle_vertices, PARTICLE_RADIUS);
     }
 }
 

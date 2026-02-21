@@ -4,7 +4,7 @@
 
 SPHSimulator::SPHSimulator(const opts_t &opts)
     : SPHBase(opts, SUPPORT_RADIUS), spiky_k{SUPPORT_RADIUS} {
-    pressure.resize(particle_count);
+    pressure.resize(fluid_particles);
 }
 
 void SPHSimulator::update(float delta) {
@@ -24,7 +24,7 @@ void SPHSimulator::update(float delta) {
 
 void SPHSimulator::compute_pressure() {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < particle_count; ++i) {
+    for (std::size_t i = 0; i < fluid_particles; ++i) {
         float d = std::max(densities[i], REST_DENSITY);
         pressure[i] = STIFFNESS * (std::pow(d / REST_DENSITY, EXPONENT) - 1.f);
     }
@@ -32,7 +32,7 @@ void SPHSimulator::compute_pressure() {
 
 void SPHSimulator::apply_pressure_force(float delta) {
     #pragma omp parallel for schedule(static)
-    for (std::size_t i = 0; i < particle_count; ++i) {
+    for (std::size_t i = 0; i < fluid_particles; ++i) {
         glm::vec3 p_accel{0.f};
         glm::vec3 xi = positions[i];
         float dpi = pressure[i] / (densities[i] * densities[i]);

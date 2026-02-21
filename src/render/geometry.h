@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <span>
 #include <filesystem>
+#include <glm/glm.hpp>
 
 
 struct VertexAttribute {
@@ -27,12 +28,16 @@ public:
     virtual void draw() const;
     unsigned get_vbo() const { return vbo; }
 
+    void load_triangles(std::vector<glm::vec3> &triangle_vertices, const glm::mat4 &model = {1.f}) const;
+
 protected:
     GLenum mode;
     unsigned vbo = 0,
              vao = 0,
              ebo = 0;
     unsigned vertices_count, indices_count;
+    // Number of floats per vertex.
+    unsigned stride;
 };
 
 class InstancedGeometry : public Geometry {
@@ -52,6 +57,8 @@ public:
 private:
     unsigned instance_vbo = 0;
     unsigned instance_count;
+    // Number of floats per instance.
+    unsigned instance_stride;
 };
 
 namespace procedural {
@@ -61,5 +68,7 @@ Geometry triangle(bool color);
 Geometry quad(float side_length, bool tex_coord, bool color);
 
 Geometry axes(float half_size = 5.);
+
+Geometry cube(glm::vec3 half_size);
 
 }

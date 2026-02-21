@@ -25,6 +25,8 @@ public:
 
     void bind_ubo(unsigned binding) const { ubo.bind(binding); }
 
+    const glm::mat4& get_model() const { return data.model; }
+
 private:
     UBO<ModelData> ubo;
     ModelData data;

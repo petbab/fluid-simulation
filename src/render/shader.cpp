@@ -96,6 +96,13 @@ GLint Shader::get_uniform_location(const std::string &name) {
     return uniform_cache[name] = location;
 }
 
+void Shader::set_uniform(const std::string& name, unsigned n) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1ui(loc, n);
+    glCheckError();
+}
+
 void Shader::set_uniform(const std::string& name, bool v) {
     GLint loc = get_uniform_location(name);
     use();

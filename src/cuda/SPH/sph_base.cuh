@@ -33,8 +33,12 @@ protected:
     void compute_densities(const float *positions_dev_ptr);
     void update_positions(float *positions_dev_ptr, float delta);
     void apply_non_pressure_forces(const float* positions_dev_ptr, float delta);
+    void compute_boundary_mass(const float* positions_dev_ptr);
 
     void reset() override;
+
+    // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
+    float adapt_time_step(float delta, float min_step, float max_step) const;
 
 private:
     void update_velocities(float delta);
@@ -63,18 +67,13 @@ private:
     void compute_surface_normals(const float* positions_dev_ptr);
 
 protected:
-    thrust::device_vector<float> density;
+    thrust::device_vector<float> density, boundary_mass;
     thrust::device_vector<float4> velocity;
     NSearchWrapper n_search;
 
 private:
     thrust::device_vector<float4> non_pressure_accel, normal;
 };
-
-// __device__ inline float4 get_pos(const float *positions, unsigned i) {
-//     unsigned ii = 3 * i;
-//     return {positions[ii], positions[ii + 1], positions[ii + 2]};
-// }
 
 __device__ inline void set_pos(float *positions, unsigned i, float4 pos) {
     unsigned ii = 3 * i;
@@ -83,7 +82,15 @@ __device__ inline void set_pos(float *positions, unsigned i, float4 pos) {
     positions[ii + 2] = pos.z;
 }
 
-__device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
+__device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
     float4 r = xi - xj;
     return i != j && dot(r, r) <= CUDASPHBase::SUPPORT_RADIUS * CUDASPHBase::SUPPORT_RADIUS;
+}
+
+__device__ __host__ inline bool is_boundary(unsigned i, unsigned fluid_n) {
+    return i >= fluid_n;
+}
+
+__device__ inline float get_mass(const float *boundary_mass, unsigned total_i, unsigned fluid_n) {
+    return boundary_mass[total_i - fluid_n];
 }

@@ -14,6 +14,9 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     struct grid_dims_t {
+        grid_dims_t(unsigned x, unsigned y, unsigned z) : x(x), y(y), z(z) {}
+        grid_dims_t(unsigned x) : grid_dims_t{x, x, x} {}
+
         unsigned x, y, z;
     };
 
@@ -21,6 +24,7 @@ public:
         glm::vec3 origin;
         grid_dims_t grid_dims;
         const BoundingBox &bounding_box;
+        const std::vector<const Object*> &collision_objects;
     };
 
     FluidSimulator(const opts_t &opts);
@@ -32,18 +36,21 @@ public:
 
     virtual void reset();
 
+    unsigned get_fluid_particles() const { return fluid_particles; }
+
     virtual void visualize(Shader *shader) {}
 
 private:
     void init_positions();
+    void init_boundary_particles(const std::vector<const Object*> &collision_objects);
 
 protected:
     std::vector<glm::vec3> positions;
-    const unsigned particle_count;
+    unsigned total_particles, fluid_particles, boundary_particles;
 
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
     const glm::vec3 origin;
 
-    ParticleDataVisualizer visualizer;
+    std::unique_ptr<ParticleDataVisualizer> visualizer;
 };
