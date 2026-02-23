@@ -57,8 +57,10 @@ static constexpr float COLLISION_BUFFER_MULT = 0.75f;
 __device__ void resolve_collisions(float* positions, float4* velocities, BoundingBox bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    float4 pos = get_pos(positions, i);
-    float4 vel = velocities[i];
+    float4 pos_f4 = get_pos(positions, i);
+    glm::vec4 pos = bb.model_inv * glm::vec4{pos_f4.x, pos_f4.y, pos_f4.z, 1.};
+    float4 vel_f4 = velocities[i];
+    glm::vec4 vel = bb.model_inv * glm::vec4{vel_f4.x, vel_f4.y, vel_f4.z, 0.};
     bool changed_pos = false;
     if (pos.x - CUDASPHBase::PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.x) {
         pos.x = bb.min.x + CUDASPHBase::PARTICLE_RADIUS + OFFSET;
@@ -89,8 +91,10 @@ __device__ void resolve_collisions(float* positions, float4* velocities, Boundin
     }
 
     if (changed_pos) {
-        set_pos(positions, i, pos);
-        velocities[i] = vel;
+        pos = bb.model * pos;
+        set_pos(positions, i, make_float4(pos.x, pos.y, pos.z, 1.));
+        vel = bb.model * vel;
+        velocities[i] = make_float4(vel.x, vel.y, vel.z, 1.);
     }
 }
 

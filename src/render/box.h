@@ -5,24 +5,14 @@
 
 class Box : public Object {
 public:
-    Box(glm::vec3 min, glm::vec3 max, glm::vec3 color);
-    Box(BoundingBox bb, glm::vec4 color) : Box{bb.min, bb.max, color} {}
+    Box(glm::vec3 half_size, glm::vec3 color);
 
     const BoundingBox& bounding_box() const { return *bb; }
 
     void render() const override;
 
+    void set_model(const glm::mat4& m);
+
 protected:
     std::unique_ptr<BoundingBox> bb;
-};
-
-class MovingBox : public Box {
-public:
-    MovingBox(glm::vec3 min, glm::vec3 max, glm::vec4 color);
-
-    void update(float delta) override;
-
-private:
-    float time = 0.;
-    const BoundingBox initial_bb;
 };

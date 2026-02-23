@@ -8,6 +8,7 @@
 
 struct BoundingBox {
     glm::vec3 min, max;
+    glm::mat4 model, model_inv;
 };
 
 class Object {
