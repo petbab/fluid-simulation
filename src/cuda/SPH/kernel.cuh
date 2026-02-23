@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../math.cuh"
+#include <cuda/math.cuh>
 
 
 __device__ inline float r_to_q(float4 r, float support_radius) {

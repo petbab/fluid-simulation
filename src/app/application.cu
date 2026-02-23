@@ -2,23 +2,20 @@
 #include "application.h"
 #include <ranges>
 #include <glm/ext/matrix_transform.hpp>
-#include "config.h"
-#include "debug.h"
-#include "cuda/SPH/sph.cuh"
-#include "render/asset_manager.h"
-#include "render/fluid.h"
-#include "render/box.h"
-#include "simulation/SPH/sph.h"
+#include <config.h>
+#include <debug.h>
+#include <render/asset_manager.h>
+#include <render/fluid.h>
+#include <render/box.h>
 
-
-using FluidSim = CUDASPHSimulator;
-
-static constexpr float DEFAULT_TIME_STEP = 0.01;
 
 Application::Application(GLFWwindow *window, int width, int height)
     : window{window},
       camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height} {
     configure_window();
+}
+
+void Application::init() {
     setup_scene();
 }
 
@@ -173,12 +170,14 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
         return;
 
     Application *app = app_from_window(window);
+    auto *fluid = AssetManager::get<Fluid<FluidSim>>("fluid");
     switch (key) {
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, GL_TRUE);
         break;
     case GLFW_KEY_R:
-        AssetManager::get<Fluid<SPHSimulator>>("fluid")->reset();
+        if (fluid != nullptr)
+            fluid->reset();
         break;
     case GLFW_KEY_SPACE:
         app->paused = !app->paused;
@@ -188,7 +187,8 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
             app->update_objects(DEFAULT_TIME_STEP);
         break;
     case GLFW_KEY_B:
-        AssetManager::get<Fluid<SPHSimulator>>("fluid")->toggle_show_boundary();
+        if (fluid != nullptr)
+            fluid->toggle_show_boundary();
         break;
     }
 }

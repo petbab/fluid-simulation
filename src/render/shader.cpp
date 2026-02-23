@@ -1,6 +1,6 @@
 #include "shader.h"
-#include "../debug.h"
 
+#include <debug.h>
 #include <stdexcept>
 #include <fstream>
 #include <glm/gtc/type_ptr.hpp>

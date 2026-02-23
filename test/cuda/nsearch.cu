@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "../../src/cuda/nsearch/nsearch.h"
+#include <cuda/nsearch/nsearch.h>
 #include <thrust/device_vector.h>
 #include <array>
-#include "../../src/cuda/init.h"
+#include <cuda/init.h>
 
 
 TEST(NSearch, Constructor) {

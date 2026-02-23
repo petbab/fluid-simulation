@@ -1,8 +1,8 @@
 #pragma once
 
 #include "cuda_gl_buffer.h"
-#include "../render/ssbo.h"
-#include "../render/shader.h"
+#include <render/ssbo.h>
+#include <render/shader.h>
 #include <type_traits>
 
 namespace detail_ {

@@ -1,7 +1,7 @@
 #include <cassert>
 #include "geometry.h"
-#include "../debug.h"
-#include "../tiny_obj_loader.h"
+#include <debug.h>
+#include <tiny_obj_loader.h>
 
 
 Geometry::Geometry(GLenum mode, const std::vector<VertexAttribute>& attributes, std::span<unsigned> indices)

@@ -1,8 +1,8 @@
-#include "glfw.h"
-#include "application.h"
-#include "window.h"
-#include "cuda/init.h"
-#include "render/asset_manager.h"
+#include <glfw.h>
+#include <app/tilting_box.h>
+#include <window.h>
+#include <cuda/init.h>
+#include <render/asset_manager.h>
 #include <exception>
 
 
@@ -20,6 +20,7 @@ int main() {
 
     {
         Application application{window.get(), window.width(), window.height()};
+        application.init();
         application.run();
 
         // Free the entire application before terminating glfw

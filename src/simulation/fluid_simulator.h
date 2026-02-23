@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../cuda/particle_data_visualizer.cuh"
-#include "../render/object.h"
+#include <cuda/particle_data_visualizer.cuh>
+#include <render/object.h>
 
 
 class FluidSimulator {

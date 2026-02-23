@@ -2,10 +2,10 @@
 
 #include <type_traits>
 #include "object.h"
-#include "../simulation/fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 #include "asset_manager.h"
-#include "../config.h"
-#include "../cuda/simulator.h"
+#include <config.h>
+#include <cuda/simulator.h>
 
 
 template<class S>

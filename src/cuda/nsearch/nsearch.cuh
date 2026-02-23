@@ -2,8 +2,8 @@
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include "../math.cuh"
-#include "../../debug.h"
+#include <cuda/math.cuh>
+#include <debug.h>
 #include "morton.cuh"
 
 

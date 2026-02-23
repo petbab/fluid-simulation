@@ -1,9 +1,9 @@
 #pragma once
 
 #include <thrust/device_vector.h>
-#include "../simulator.h"
-#include "../nsearch/nsearch.h"
-#include "../math.cuh"
+#include <cuda/simulator.h>
+#include <cuda/nsearch/nsearch.h>
+#include <cuda/math.cuh>
 
 
 class CUDASPHBase : public CUDASimulator {

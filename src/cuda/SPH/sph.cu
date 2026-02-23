@@ -1,7 +1,7 @@
 #include "sph.cuh"
 
 #include "kernel.cuh"
-#include "../../debug.h"
+#include <debug.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 ////                        KERNEL HYPERPARAMETERS                         ////

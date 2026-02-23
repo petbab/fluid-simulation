@@ -1,6 +1,6 @@
 #include "cuda_gl_buffer.h"
 
-#include "../debug.h"
+#include <debug.h>
 #include <cuda_gl_interop.h>
 
 

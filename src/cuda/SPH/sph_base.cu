@@ -1,5 +1,5 @@
 #include "sph_base.cuh"
-#include "../../debug.h"
+#include <debug.h>
 #include "kernel.cuh"
 #include <thrust/transform_reduce.h>
 #include <thrust/functional.h>

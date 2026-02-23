@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 #include "cuda_gl_buffer.h"
-#include "../simulation/fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 
 
 class CUDASimulator : public FluidSimulator {

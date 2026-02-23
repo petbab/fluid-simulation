@@ -1,7 +1,8 @@
 #include "box.h"
 #include <glm/gtx/transform.hpp>
 #include "asset_manager.h"
-#include "../config.h"
+#include <config.h>
+
 
 Box::Box(glm::vec3 half_size, glm::vec3 color)
     : Object{

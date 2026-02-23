@@ -2,7 +2,7 @@
 
 #include <CompactNSearch>
 #include <memory>
-#include "../fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 #include "kernel.h"
 
 
