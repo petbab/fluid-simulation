@@ -41,5 +41,6 @@ void TiltingBoxApp::update_objects(float delta) {
         fluid_box->set_model(fluid_box_model);
     }
 
-    Application::update_objects(delta);
+    for (auto object : AssetManager::container<Object>())
+        object->update(delta);
 }

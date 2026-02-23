@@ -6,11 +6,6 @@
 #include "model.h"
 
 
-struct BoundingBox {
-    glm::vec3 min, max;
-    glm::mat4 model, model_inv;
-};
-
 class Object {
 public:
     Object(Shader* shader, Geometry* geometry);

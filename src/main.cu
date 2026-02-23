@@ -1,5 +1,5 @@
 #include <glfw.h>
-#include <app/tilting_box.h>
+#include <app/devel.h>
 #include <window.h>
 #include <cuda/init.h>
 #include <render/asset_manager.h>
@@ -19,7 +19,7 @@ int main() {
     cuda_init();
 
     {
-        Application application{window.get(), window.width(), window.height()};
+        DevelApp application{window.get(), window.width(), window.height()};
         application.init();
         application.run();
 

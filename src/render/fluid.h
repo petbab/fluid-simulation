@@ -27,11 +27,13 @@ public:
         if constexpr (std::is_base_of_v<CUDASimulator, S>)
             dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());
     }
-    Fluid(unsigned grid_count, const BoundingBox &bounding_box) : Fluid({grid_count, grid_count, grid_count},bounding_box) {}
 
     void update(float delta) override {
         simulator->update(delta);
-        update_geometry();
+
+        // Don't update if using CUDA (works directly with the data on the GPU, no transfer needed)
+        if constexpr (!std::is_base_of_v<CUDASimulator, S>)
+            inst_geom()->update_instance_data(simulator->get_position_data());
     }
 
     void render() const override {
@@ -44,17 +46,12 @@ public:
 
     void reset() {
         simulator->reset();
-        update_geometry();
+        inst_geom()->update_instance_data(simulator->get_position_data());
     }
 
     void toggle_show_boundary() { show_boundary = !show_boundary; }
 
 private:
-    void update_geometry() {
-        if constexpr (!std::is_base_of_v<CUDASimulator, S>)
-            inst_geom()->update_instance_data(simulator->get_position_data());
-    }
-
     const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
     std::unique_ptr<FluidSimulator> simulator;

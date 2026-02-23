@@ -23,8 +23,8 @@ protected:
     void render_scene();
     void update(float delta);
 
-    virtual void setup_scene();
-    virtual void update_objects(float delta);
+    virtual void setup_scene() {}
+    virtual void update_objects(float delta) {}
 
     static void on_resize(GLFWwindow* window, int width, int height);
     static void on_mouse_move(GLFWwindow* window, double x, double y);
