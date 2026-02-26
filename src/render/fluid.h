@@ -2,10 +2,10 @@
 
 #include <type_traits>
 #include "object.h"
-#include "../simulation/fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 #include "asset_manager.h"
-#include "../config.h"
-#include "../cuda/simulator.h"
+#include <config.h>
+#include <cuda/simulator.h>
 
 
 template<class S>
@@ -14,7 +14,7 @@ concept Simulator = std::is_base_of_v<FluidSimulator, S>;
 template<Simulator S>
 class Fluid : public Object {
 public:
-    Fluid(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false) : simulator{std::make_unique<S>(grid_count, bounding_box, is_2d)} {
+    Fluid(const FluidSimulator::opts_t &opts) : simulator{std::make_unique<S>(opts)} {
         shader = AssetManager::make<Shader>(
             "instanced_ball_shader",
             cfg::shaders_dir/"instanced_ball.vert",
@@ -30,21 +30,30 @@ public:
 
     void update(float delta) override {
         simulator->update(delta);
-        update_geometry();
-    }
 
-    void reset() {
-        simulator->reset();
-        update_geometry();
-    }
-
-private:
-    void update_geometry() {
+        // Don't update if using CUDA (works directly with the data on the GPU, no transfer needed)
         if constexpr (!std::is_base_of_v<CUDASimulator, S>)
             inst_geom()->update_instance_data(simulator->get_position_data());
     }
 
+    void render() const override {
+        shader->use();
+        shader->set_uniform("fluid_particles", simulator->get_fluid_particles());
+        shader->set_uniform("show_boundary", show_boundary);
+        simulator->visualize(shader);
+        Object::render();
+    }
+
+    void reset() {
+        simulator->reset();
+        inst_geom()->update_instance_data(simulator->get_position_data());
+    }
+
+    void toggle_show_boundary() { show_boundary = !show_boundary; }
+
+private:
     const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
     std::unique_ptr<FluidSimulator> simulator;
+    bool show_boundary = false;
 };

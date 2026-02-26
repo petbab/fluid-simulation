@@ -1,6 +1,6 @@
 #include "shader.h"
-#include "../debug.h"
 
+#include <debug.h>
 #include <stdexcept>
 #include <fstream>
 #include <glm/gtc/type_ptr.hpp>
@@ -42,7 +42,7 @@ Shader::Shader(const char *vertex, const char *fragment) {
     if (!success) {
         char info_log[512];
         glGetProgramInfoLog(program, 512, nullptr, info_log);
-        throw std::runtime_error{"Shader compilation failed: " + std::string{info_log} };
+        throw std::runtime_error{"Shader linkage failed: " + std::string{info_log} };
     }
 
     // Clean up shaders
@@ -62,8 +62,15 @@ static std::string read_file(const std::filesystem::path &path) {
     };
 }
 
-Shader::Shader(const std::filesystem::path &vertex, const std::filesystem::path &fragment)
-    : Shader{read_file(vertex).c_str(), read_file(fragment).c_str()} {}
+Shader::Shader(
+    const std::filesystem::path &vertex,
+    const std::filesystem::path &fragment
+) try : Shader{read_file(vertex).c_str(), read_file(fragment).c_str()} {
+} catch (const std::exception& e) {
+    throw std::runtime_error{
+        "Creating shader from: " + vertex.filename().string() + ", "
+        + fragment.filename().string() + ": " + std::string{e.what()}};
+}
 
 Shader::~Shader() {
     glDeleteProgram(program);
@@ -87,6 +94,27 @@ GLint Shader::get_uniform_location(const std::string &name) {
 
     glCheckError();
     return uniform_cache[name] = location;
+}
+
+void Shader::set_uniform(const std::string& name, unsigned n) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1ui(loc, n);
+    glCheckError();
+}
+
+void Shader::set_uniform(const std::string& name, bool v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1i(loc, v);
+    glCheckError();
+}
+
+void Shader::set_uniform(const std::string& name, float v) {
+    GLint loc = get_uniform_location(name);
+    use();
+    glUniform1f(loc, v);
+    glCheckError();
 }
 
 void Shader::set_uniform(const std::string &name, glm::vec3 v) {

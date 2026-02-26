@@ -2,7 +2,7 @@
 
 #include <CompactNSearch>
 #include <memory>
-#include "../fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 #include "kernel.h"
 
 
@@ -27,7 +27,7 @@ public:
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
     ///////////////////////////////////////////////////////////////////////////////
 
-    SPHBase(unsigned grid_count, const BoundingBox &bounding_box, float support_radius, bool is_2d = false);
+    SPHBase(const opts_t &opts, float support_radius);
 
 protected:
     void compute_densities();

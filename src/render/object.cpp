@@ -7,13 +7,9 @@ void Object::render() const {
     assert(shader != nullptr);
     assert(geometry != nullptr);
 
+    material.bind_ubo(UBO<void>::MATERIAL_UBO_BINDING);
+    model.bind_ubo(UBO<void>::MODEL_UBO_BINDING);
+
     shader->use();
     geometry->draw();
-}
-
-void Object::update(float) {}
-
-void Object::set_model(const glm::mat4 &m) {
-    assert(shader != nullptr);
-    shader->set_uniform("model", m);
 }

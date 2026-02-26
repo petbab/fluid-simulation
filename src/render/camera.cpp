@@ -5,8 +5,7 @@
 
 
 Camera::Camera(glm::vec3 position, float yaw, float pitch, int width, int height)
-    : ubo{UBO<CameraData>::CAMERA_UBO_BINDING},
-      data{{0.}, {0.}, position},
+    : ubo{}, data{{0.}, {0.}, position},
       yaw{yaw}, pitch{pitch} {
     update_vectors();
     set_projection(width, height);

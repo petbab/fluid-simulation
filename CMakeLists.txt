@@ -24,7 +24,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -std=c++20")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -std=c++20 --extended-lambda")
 
 # Needed for CMake < 3.25
 if(NOT DEFINED CMAKE_CUDA20_STANDARD_COMPILE_OPTION)
@@ -42,6 +42,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 find_package(CUDAToolkit REQUIRED)
+find_package(Open3D REQUIRED)
 
 # CompactNSearch
 include(FetchContent)
@@ -97,9 +98,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         CUDA::cudart
         CUDA::cuda_driver
         ${KTT_LIBRARY}
+        Open3D::Open3D
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${KTT_INCLUDE_DIR}
+    "${CMAKE_SOURCE_DIR}/src"
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE  $<$<CONFIG:Release>:-O3>)
@@ -122,6 +125,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 if(WIN32)
     # Windows-specific settings
     set_property(TARGET ${PROJECT_NAME} PROPERTY WIN32_EXECUTABLE TRUE)
+
+    # On Windows if BUILD_SHARED_LIBS is enabled, copy .dll files to the executable directory
+    get_target_property(open3d_type Open3D::Open3D TYPE)
+    if(open3d_type STREQUAL "SHARED_LIBRARY")
+        set(copy_dlls "${CMAKE_INSTALL_PREFIX}/bin/tbb12$<$<CONFIG:Debug>:_debug>.dll"
+                "${CMAKE_INSTALL_PREFIX}/bin/Open3D.dll")
+    else()
+        set(copy_dlls "${CMAKE_INSTALL_PREFIX}/bin/tbb12$<$<CONFIG:Debug>:_debug>.dll")
+    endif()
+    # For CUDA builds, we must also copy the CUDA DLLs. Alternately, add
+    # $Env:CUDA_PATH/bin to $Env:PATH to avoid this copy.
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${copy_dlls}
+            ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>
+            COMMENT "Copying Open3D DLLs to ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 elseif(APPLE)
     # macOS-specific settings
     find_library(COCOA_LIBRARY Cocoa)
@@ -147,11 +165,33 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 enable_testing()
 
 file(GLOB TESTS test/*.cpp)
-add_executable("${PROJECT_NAME}_test" ${TESTS})
+add_executable("${PROJECT_NAME}_tests" ${TESTS})
 target_link_libraries(
-        "${PROJECT_NAME}_test"
+        "${PROJECT_NAME}_tests"
         GTest::gtest_main
 )
+target_include_directories("${PROJECT_NAME}_tests" PUBLIC "${CMAKE_SOURCE_DIR}/src")
+
+file(GLOB TESTS_CUDA test/cuda/*.cu)
+add_executable("${PROJECT_NAME}_tests_cuda" ${TESTS_CUDA})
+target_link_libraries(
+        "${PROJECT_NAME}_tests_cuda"
+        GTest::gtest
+        CUDA::cudart
+        OpenMP::OpenMP_CXX
+)
+target_include_directories("${PROJECT_NAME}_tests_cuda" PUBLIC "${CMAKE_SOURCE_DIR}/src")
+target_compile_definitions("${PROJECT_NAME}_tests_cuda" PRIVATE
+        ROOT_DIR="${CMAKE_SOURCE_DIR}"
+        $<$<CONFIG:Debug>:DEBUG>
+        GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
+        $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
+        $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>
+)
+set_target_properties("${PROJECT_NAME}_tests_cuda" PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES}
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 include(GoogleTest)
-gtest_discover_tests("${PROJECT_NAME}_test")
+gtest_discover_tests("${PROJECT_NAME}_tests" "${PROJECT_NAME}_tests_cuda")

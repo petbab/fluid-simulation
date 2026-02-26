@@ -2,14 +2,16 @@
 
 #include <glad/glad.h>
 #include "cuda_gl_buffer.h"
-#include "../simulation/fluid_simulator.h"
+#include <simulation/fluid_simulator.h>
 
 
 class CUDASimulator : public FluidSimulator {
 public:
-    CUDASimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d);
+    using FluidSimulator::FluidSimulator;
 
-    void init_buffer(GLuint vbo);
+    void init_buffer(GLuint vbo) {
+        cuda_gl_positions = std::make_unique<CUDAGLBuffer>(vbo);
+    }
 
 protected:
     std::unique_ptr<CUDAGLBuffer> cuda_gl_positions;

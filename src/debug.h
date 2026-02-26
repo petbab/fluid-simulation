@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <cuda_runtime_api.h>
 
 
 std::ostream& operator<<(std::ostream &out, glm::vec3 v);
@@ -28,7 +29,12 @@ void APIENTRY glDebugOutput(GLenum source, GLenum type, unsigned int id,
                             GLenum severity, GLsizei length, const char *message,
                             const void *userParam);
 
-void cuda_check_error(const char *file, int line);
+inline void cuda_check_error(const char *file, int line) {
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+        std::cerr << "CUDA error " << cudaGetErrorName(err) << ": "
+            << cudaGetErrorString(err) << " at " << file << " (" << line << ")" << std::endl;
+}
 #ifdef DEBUG
 #define cudaCheckError() cuda_check_error(__FILE__, __LINE__)
 #else

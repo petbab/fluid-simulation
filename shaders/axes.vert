@@ -7,10 +7,10 @@ out vec3 vertexColor;
 layout(std140, binding = 0) uniform CameraData {
     mat4 projection;
     mat4 view;
-    vec3 position;
-} camera;
+    vec3 eye_position;
+};
 
 void main() {
-    gl_Position = camera.projection * camera.view * vec4(aPos, 1.0);
+    gl_Position = projection * view * vec4(aPos, 1.0);
     vertexColor = aColor;
 }

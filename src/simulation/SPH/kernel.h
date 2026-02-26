@@ -32,7 +32,7 @@ private:
 
 class CubicSpline final : public Kernel {
 public:
-    explicit CubicSpline(float support_radius, bool is_2d = false);
+    explicit CubicSpline(float support_radius);
 
 protected:
     float compute_W(float q) const override;

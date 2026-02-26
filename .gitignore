@@ -13,6 +13,7 @@ cmake/CMakeUserConfig.cmake
 *.lo
 *.o
 *.obj
+!models/*.obj
 
 # Precompiled Headers
 *.gch

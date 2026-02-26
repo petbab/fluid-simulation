@@ -3,6 +3,8 @@
 #include <vector>
 #include <glad/glad.h>
 #include <span>
+#include <filesystem>
+#include <glm/glm.hpp>
 
 
 struct VertexAttribute {
@@ -12,7 +14,10 @@ struct VertexAttribute {
 
 class Geometry {
 public:
-    Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes);
+    Geometry(GLenum mode, const std::vector<VertexAttribute> &attributes,
+        std::span<unsigned> indices = {});
+
+    static Geometry from_file(const std::filesystem::path& file_path, bool normalize_mesh = true);
 
     Geometry(const Geometry&) = delete;
     Geometry& operator=(const Geometry&) = delete;
@@ -23,18 +28,24 @@ public:
     virtual void draw() const;
     unsigned get_vbo() const { return vbo; }
 
+    void load_triangles(std::vector<glm::vec3> &triangle_vertices, const glm::mat4 &model = {1.f}) const;
+
 protected:
     GLenum mode;
     unsigned vbo = 0,
-             vao = 0;
-    int vertices_count;
+             vao = 0,
+             ebo = 0;
+    unsigned vertices_count, indices_count;
+    // Number of floats per vertex.
+    unsigned stride;
 };
 
 class InstancedGeometry : public Geometry {
 public:
     InstancedGeometry(GLenum mode,
         const std::vector<VertexAttribute> &attributes,
-        const std::vector<VertexAttribute> &instance_attributes);
+        const std::vector<VertexAttribute> &instance_attributes,
+        std::span<unsigned> indices = {});
     InstancedGeometry(Geometry geometry, std::size_t attribute_count,
         const std::vector<VertexAttribute> &instance_attributes);
     ~InstancedGeometry() override;
@@ -45,7 +56,9 @@ public:
 
 private:
     unsigned instance_vbo = 0;
-    int instance_count;
+    unsigned instance_count;
+    // Number of floats per instance.
+    unsigned instance_stride;
 };
 
 namespace procedural {
@@ -55,5 +68,7 @@ Geometry triangle(bool color);
 Geometry quad(float side_length, bool tex_coord, bool color);
 
 Geometry axes(float half_size = 5.);
+
+Geometry cube(glm::vec3 half_size);
 
 }

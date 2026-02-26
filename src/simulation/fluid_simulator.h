@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../render/object.h"
+#include <cuda/particle_data_visualizer.cuh>
+#include <render/box.h>
+
 
 class FluidSimulator {
 public:
@@ -11,7 +13,21 @@ public:
     static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
     ///////////////////////////////////////////////////////////////////////////////
 
-    FluidSimulator(unsigned grid_count, const BoundingBox &bounding_box, bool is_2d = false);
+    struct grid_dims_t {
+        grid_dims_t(unsigned x, unsigned y, unsigned z) : x(x), y(y), z(z) {}
+        grid_dims_t(unsigned x) : grid_dims_t{x, x, x} {}
+
+        unsigned x, y, z;
+    };
+
+    struct opts_t {
+        glm::vec3 origin;
+        grid_dims_t grid_dims;
+        const BoundingBox &bounding_box;
+        const std::vector<const Object*> &collision_objects;
+    };
+
+    FluidSimulator(const opts_t &opts);
     virtual ~FluidSimulator() = default;
 
     virtual void update(float delta) = 0;
@@ -20,13 +36,21 @@ public:
 
     virtual void reset();
 
+    unsigned get_fluid_particles() const { return fluid_particles; }
+
+    virtual void visualize(Shader *shader) {}
+
 private:
     void init_positions();
+    void init_boundary_particles(const std::vector<const Object*> &collision_objects);
 
 protected:
     std::vector<glm::vec3> positions;
-    const unsigned particle_count;
+    unsigned total_particles, fluid_particles, boundary_particles;
+
     const BoundingBox &bounding_box;
-    const unsigned grid_count;
-    const bool is_2d;
+    const grid_dims_t grid_dims;
+    const glm::vec3 origin;
+
+    std::unique_ptr<ParticleDataVisualizer> visualizer;
 };

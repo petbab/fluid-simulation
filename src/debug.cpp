@@ -85,10 +85,3 @@ void glDebugOutput(GLenum source, GLenum type, unsigned int id, GLenum severity,
     } std::cerr << std::endl;
     std::cerr << "---------------" << std::endl;
 }
-
-void cuda_check_error(const char *file, int line) {
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-        std::cerr << "CUDA error " << cudaGetErrorName(err) << ": "
-            << cudaGetErrorString(err) << " at " << file << " (" << line << ")" << std::endl;
-}

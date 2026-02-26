@@ -4,9 +4,11 @@
 
 namespace cfg {
 
-const std::filesystem::path root_dir{ROOT_DIR};
+static const std::filesystem::path root_dir{ROOT_DIR};
 
-const std::filesystem::path shaders_dir = root_dir / "shaders";
+static const std::filesystem::path shaders_dir = root_dir / "shaders";
+
+static const std::filesystem::path models_dir = root_dir / "models";
 
 const std::filesystem::path tuned_kernels_dir = root_dir / "src/cuda/tuning/kernels";
 

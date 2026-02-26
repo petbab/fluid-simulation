@@ -7,3 +7,4 @@ set(CMAKE_CUDA_ARCHITECTURES "00" CACHE STRING "CUDA architecture (e.g., 75, 86,
 set(CUDA_VERSION 0000 CACHE STRING "CUDA version code (e.g., 7500, 8600, 8900)")
 set(VCPKG_ROOT "path/to/vcpkg" CACHE PATH "Path to the vcpkg installation directory")
 set(KTT_DIR "path/to/KTT" CACHE PATH "Path to KTT installation directory")
+set(Open3D_ROOT "/path/to/open3d_install")

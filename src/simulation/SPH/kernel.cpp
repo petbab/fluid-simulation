@@ -38,16 +38,10 @@ float Kernel::sample(const table_t &t, float q) {
     return t[lo] + lambda * (t[lo + 1] - t[lo]);
 }
 
-CubicSpline::CubicSpline(float support_radius, bool is_2d)
+CubicSpline::CubicSpline(float support_radius)
     : Kernel{support_radius}, h{support_radius},
-      factor{is_2d
-        ? 40.f / (7.f * glm::pi<float>() * support_radius * support_radius)
-        : 8.f / (glm::pi<float>() * support_radius * support_radius * support_radius)
-      },
-      grad_factor{is_2d
-        ? 240.f / (7.f * glm::pi<float>() * support_radius * support_radius)
-        : 48.f / (glm::pi<float>() * support_radius * support_radius * support_radius)
-      } {
+      factor{8.f / (glm::pi<float>() * support_radius * support_radius * support_radius)},
+      grad_factor{48.f / (glm::pi<float>() * support_radius * support_radius * support_radius)} {
     populate_tables();
 }
 
