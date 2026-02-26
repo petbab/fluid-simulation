@@ -9,7 +9,7 @@
 
 class Application {
 public:
-    using FluidSim = CUDASPHSimulator;
+    using FluidSim = CUDASPHSimulator<>;
     static constexpr float DEFAULT_TIME_STEP = 0.01;
 
     Application(GLFWwindow *window, int width, int height);
