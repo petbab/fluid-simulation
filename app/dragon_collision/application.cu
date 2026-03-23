@@ -1,5 +1,5 @@
 #include <glad/glad.h>
-#include "fountain.h"
+#include "application.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <config.h>
 #include <render/asset_manager.h>
@@ -7,15 +7,7 @@
 #include <render/box.h>
 
 
-struct fountain_force {
-    __device__ float4 operator()(float4 pos) const {
-        return (pos.x*pos.x + pos.z*pos.z < .2f && pos.y < 0.f)
-            ? make_float4(0., 25., 0., 0.) : make_float4(0.f);
-    };
-};
-static_assert(ExternalForce<fountain_force>);
-
-void FountainApp::setup_scene() {
+void DragonCollisionApp::setup_scene() {
     auto *lit_shader = AssetManager::make<Shader>("lit_shader",
         cfg::shaders_dir/"lit.vert",
         cfg::shaders_dir/"lit.frag");
@@ -43,7 +35,7 @@ void FountainApp::setup_scene() {
      * Fluid
      */
     FluidSimulator::opts_t fluid_opts{{-1.5, 0., 0.}, 30, fluid_box->bounding_box(), {fluid_box, dragon_obj}};
-    AssetManager::make<Fluid<CUDASPHSimulator<fountain_force>>>("fluid", fluid_opts);
+    AssetManager::make<Fluid<FluidSim>>("fluid", fluid_opts);
 
     /*
      * Lights
@@ -56,7 +48,7 @@ void FountainApp::setup_scene() {
     lights->upload_data();
 }
 
-void FountainApp::update_objects(float delta) {
+void DragonCollisionApp::update_objects(float delta) {
     for (auto object : AssetManager::container<Object>())
         object->update(delta);
 }

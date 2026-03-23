@@ -1,5 +1,5 @@
 #include <glad/glad.h>
-#include "tilting_box.h"
+#include "application.h"
 
 #include <glm/gtx/transform.hpp>
 #include <render/asset_manager.h>

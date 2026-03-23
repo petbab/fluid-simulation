@@ -1,8 +1,8 @@
 #pragma once
-#include <app/application.h>
+#include <application.h>
 
 
-class FountainApp : public Application {
+class DevelApp : public Application {
     using Application::Application;
 
 protected:

@@ -1,15 +1,11 @@
 #pragma once
+#include <application.h>
 
-#include <app/application.h>
 
-
-class TiltingBoxApp : public Application {
+class FountainApp : public Application {
     using Application::Application;
 
 protected:
     void setup_scene() override;
     void update_objects(float delta) override;
-
-private:
-    float update_time = 0.f;
 };

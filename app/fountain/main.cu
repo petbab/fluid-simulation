@@ -1,5 +1,5 @@
 #include <glfw.h>
-#include <app/devel.h>
+#include "application.h"
 #include <window.h>
 #include <cuda/init.h>
 #include <render/asset_manager.h>
@@ -19,7 +19,7 @@ int main() {
     cuda_init();
 
     {
-        DevelApp application{window.get(), window.width(), window.height()};
+        FountainApp application{window.get(), window.width(), window.height()};
         application.init();
         application.run();
 

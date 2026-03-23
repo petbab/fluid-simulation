@@ -1,5 +1,5 @@
 #pragma once
-#include <app/application.h>
+#include <application.h>
 
 
 class DragonCollisionApp : public Application {
