@@ -114,6 +114,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
         $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
         $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>
+        NOT_IN_KTT
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

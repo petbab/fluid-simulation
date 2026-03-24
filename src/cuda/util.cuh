@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime.h>
-
 
 template<class F>
 __device__ void device_check(F f) {
@@ -12,6 +10,11 @@ template<class F>
 concept DeviceCallable = requires(F f) {
     device_check(f);
 };
+
+__device__ __host__ inline float4 get_pos(const float *positions, unsigned i) {
+    unsigned ii = 3 * i;
+    return {positions[ii], positions[ii + 1], positions[ii + 2]};
+}
 
 __device__ inline void set_pos(float *positions, unsigned i, float4 pos) {
     unsigned ii = 3 * i;

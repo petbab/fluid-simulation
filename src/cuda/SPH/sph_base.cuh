@@ -118,7 +118,8 @@ protected:
         //     positions_dev_ptr, densities_ptr, boundary_mass_ptr, fluid_particles, n_search.dev_ptr());
         // cudaCheckError();
         float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        density_tuner.run(positions_dev_ptr, densities_ptr, fluid_particles);
+        float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
+        density_tuner.run(positions_dev_ptr, densities_ptr, boundary_mass_ptr, n_search.dev_ptr(), total_particles, fluid_particles);
     }
 
     void update_positions(float* positions_dev_ptr, float delta) {

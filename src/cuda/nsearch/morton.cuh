@@ -1,9 +1,7 @@
 #pragma once
 
-#include <cuda_runtime.h>
-#include <cstdint>
 
-using morton_t = std::uint64_t;
+using morton_t = unsigned long long;
 
 // Spread bits of n by inserting two zeros between each bit
 __device__ __host__ inline morton_t part_by_3(morton_t n) {

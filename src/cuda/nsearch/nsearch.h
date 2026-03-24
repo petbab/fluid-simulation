@@ -17,9 +17,8 @@ public:
         rebuild_n_search(dev_n_search, host_n_search, particle_positions, n);
     }
 
-    const NSearch* dev_ptr() const {
-        return dev_n_search;
-    }
+    const NSearch* dev_ptr() const { return dev_n_search; }
+    NSearch* dev_ptr() { return dev_n_search; }
 
 private:
     NSearch *dev_n_search;

@@ -1,16 +1,11 @@
 #pragma once
 
-#include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cuda/math.cuh>
+#include <cuda/util.cuh>
 #include <debug.h>
 #include "morton.cuh"
 
-
-__device__ __host__ inline float4 get_pos(const float *positions, unsigned i) {
-    unsigned ii = 3 * i;
-    return {positions[ii], positions[ii + 1], positions[ii + 2]};
-}
 
 struct NSearch {
     using cell_t = uint3;

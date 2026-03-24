@@ -41,6 +41,7 @@ ktt::Tuner* Tuner::instance() {
         // Create compute API initializer which specifies context and streams that will be utilized by the tuner.
         ktt::ComputeApiInitializer initializer{context, std::vector<ktt::ComputeQueue>{stream}};
         tuner = std::make_unique<ktt::Tuner>(ktt::ComputeApi::CUDA, initializer);
+        tuner->SetCompilerOptions("--std=c++20");
     }
     return tuner.get();
 }

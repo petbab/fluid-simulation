@@ -11,6 +11,11 @@ sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-co
 
 ## CMake Setup
 1. Copy `cmake/CMakeUserConfig.cmake.in` to `cmake/CMakeUserConfig.cmake` and configure it for your system.
+1. Initialize submodules (KTT):
+   ```
+   git submodule update --init --recursive
+   ```
+1. Build KTT: [KTT/Readme.md#building-ktt](https://github.com/HiPerCoRe/KTT/blob/master/Readme.md#building-ktt)
 1. Build the project:
     ```
     mkdir build
