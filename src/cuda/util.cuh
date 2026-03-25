@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef NOT_IN_KTT
+#include <cuda/math.cuh>
+#include <render/box.h>
+#endif
+
 
 template<class F>
 __device__ void device_check(F f) {
@@ -11,9 +16,21 @@ concept DeviceCallable = requires(F f) {
     device_check(f);
 };
 
+struct BoundingBoxGPU {
+#ifdef NOT_IN_KTT
+    BoundingBoxGPU(const BoundingBox &bb) :
+        min{bb.min.x, bb.min.y, bb.min.z, 1.},
+        max{bb.max.x, bb.max.y, bb.max.z, 1.},
+        model{bb.model}, model_inv{bb.model_inv} {}
+#endif
+
+    float4 min, max;
+    mat4 model, model_inv;
+};
+
 __device__ __host__ inline float4 get_pos(const float *positions, unsigned i) {
     unsigned ii = 3 * i;
-    return {positions[ii], positions[ii + 1], positions[ii + 2]};
+    return make_float4(positions[ii], positions[ii + 1], positions[ii + 2], 1.);
 }
 
 __device__ inline void set_pos(float *positions, unsigned i, float4 pos) {

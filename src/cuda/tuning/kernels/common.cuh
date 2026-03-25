@@ -10,7 +10,8 @@
 #include CUDA_PATH(/SPH/kernel.cuh)
 #include CUDA_PATH(/nsearch/morton.cuh)
 
-static constexpr float PARTICLE_SPACING = 0.04f;
+static constexpr float PARTICLE_RADIUS = 0.02f;
+static constexpr float PARTICLE_SPACING = 2.f * PARTICLE_RADIUS;
 static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
 static constexpr float REST_DENSITY = 1000.f;
 static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8f;

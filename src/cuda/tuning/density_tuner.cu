@@ -1,11 +1,12 @@
-#include "density_tuner.h"
+#include "density_tuner.cuh"
 
 #include <config.h>
 #include <bit>
 #include <cassert>
 
 
-static const std::string COMPUTE_DENSITIES_KERNEL = "compute_densities";
+static const std::string KERNEL_NAME = "compute_densities";
+static const std::filesystem::path KERNEL_FILE = cfg::tuned_kernels_dir / (KERNEL_NAME + ".cu");
 
 DensityTuner::DensityTuner(unsigned particles) {
     assert(tuner != nullptr);
@@ -14,10 +15,8 @@ DensityTuner::DensityTuner(unsigned particles) {
     const ktt::DimensionVector blockDimensions;
 
     definition = tuner->AddKernelDefinitionFromFile(
-        COMPUTE_DENSITIES_KERNEL, cfg::tuned_kernels_dir / "density_kernel.cu",
-        gridDimensions, blockDimensions
-    );
-    kernel = tuner->CreateSimpleKernel(COMPUTE_DENSITIES_KERNEL, definition);
+        KERNEL_NAME, KERNEL_FILE, gridDimensions, blockDimensions);
+    kernel = tuner->CreateSimpleKernel(KERNEL_NAME, definition);
 
     tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{16, 32, 64, 128, 256, 512});
     tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Local, ktt::ModifierDimension::X, "multiply_block_size",

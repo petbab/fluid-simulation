@@ -6,7 +6,8 @@
 #include <cuda/math.cuh>
 #include <thrust/transform_reduce.h>
 #include <cuda/util.cuh>
-#include <cuda/tuning/density_tuner.h>
+#include <cuda/tuning/density_tuner.cuh>
+#include <cuda/tuning/update_positions_tuner.cuh>
 
 
 template<class F>
@@ -25,8 +26,6 @@ static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
 
 namespace kernels {
 
-static constexpr dim3 COMPUTE_DENSITY_BLOCK_SIZE = {128};
-static constexpr dim3 UPDATE_POSITIONS_BLOCK_SIZE = {128};
 static constexpr dim3 UPDATE_VELOCITIES_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_VISCOSITY_BLOCK_SIZE = {128};
@@ -35,13 +34,6 @@ static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_BOUNDARY_MASS_BLOCK_SIZE = {128};
 static constexpr dim3 APPLY_EXTERNAL_FORCES_BLOCK_SIZE = {128};
 
-__global__ void compute_densities_k(
-    const float* positions, float* densities,
-    const float *boundary_mass,
-    unsigned n, const NSearch *dev_n_search
-);
-
-__global__ void update_positions_k(float* positions, float4* velocities, unsigned n, float delta, BoundingBox bb);
 __global__ void update_velocities_k(float4* velocities, const float4* acceleration, unsigned n, float delta);
 __global__ void compute_viscosity_k(
     const float* positions, const float4* velocities,
@@ -105,18 +97,12 @@ public:
       n_search{2.f * SUPPORT_RADIUS},
       non_pressure_accel(fluid_particles),
       normal(fluid_particles),
-      density_tuner(fluid_particles) {
+      density_tuner(fluid_particles),
+      update_positions_tuner(fluid_particles) {
     }
 
 protected:
     void compute_densities(float* positions_dev_ptr) {
-        // float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        // float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-        //
-        // const dim3 grid_size{fluid_particles / kernels::COMPUTE_DENSITY_BLOCK_SIZE.x + 1};
-        // kernels::compute_densities_k<<<kernels::COMPUTE_DENSITY_BLOCK_SIZE, grid_size>>>(
-        //     positions_dev_ptr, densities_ptr, boundary_mass_ptr, fluid_particles, n_search.dev_ptr());
-        // cudaCheckError();
         float* densities_ptr = thrust::raw_pointer_cast(density.data());
         float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
         density_tuner.run(positions_dev_ptr, densities_ptr, boundary_mass_ptr, n_search.dev_ptr(), total_particles, fluid_particles);
@@ -124,11 +110,7 @@ protected:
 
     void update_positions(float* positions_dev_ptr, float delta) {
         float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-
-        const dim3 grid_size{fluid_particles / kernels::UPDATE_POSITIONS_BLOCK_SIZE.x + 1};
-        kernels::update_positions_k<<<kernels::UPDATE_POSITIONS_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, velocities_ptr, fluid_particles, delta, bounding_box);
-        cudaCheckError();
+        update_positions_tuner.run(positions_dev_ptr, velocities_ptr, fluid_particles, delta, bounding_box);
     }
 
     void apply_non_pressure_forces(const float* positions_dev_ptr, float delta) {
@@ -274,6 +256,7 @@ protected:
 private:
     thrust::device_vector<float4> non_pressure_accel, normal;
     DensityTuner density_tuner;
+    UpdatePositionsTuner update_positions_tuner;
 };
 
 __device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {

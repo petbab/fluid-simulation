@@ -1,0 +1,61 @@
+#define KERNEL_DIR /home/pbabic/Repositories/fluid-simulation/src/cuda/tuning/kernels
+#define KERNEL_PATH(file) <KERNEL_DIR ## file>
+
+#include KERNEL_PATH(/common.cuh)
+
+
+static constexpr float OFFSET = 0.000f;
+static constexpr float COLLISION_BUFFER_MULT = 0.75f;
+static constexpr float ELASTICITY = 0.9f;
+
+__device__ void resolve_collisions(float* positions, float4* velocities, const BoundingBoxGPU &bb) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float4 pos = bb.model_inv * get_pos(positions, i);
+    float4 vel = bb.model_inv * velocities[i];
+    bool changed_pos = false;
+    if (pos.x - PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.x) {
+        pos.x = bb.min.x + PARTICLE_RADIUS + OFFSET;
+        vel.x *= -ELASTICITY;
+        changed_pos = true;
+    } else if (pos.x + PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.x) {
+        pos.x = bb.max.x - PARTICLE_RADIUS - OFFSET;
+        vel.x *= -ELASTICITY;
+        changed_pos = true;
+    }
+    if (pos.y - PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.y) {
+        pos.y = bb.min.y + PARTICLE_RADIUS + OFFSET;
+        vel.y *= -ELASTICITY;
+        changed_pos = true;
+    } else if (pos.y + PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.y) {
+        pos.y = bb.max.y - PARTICLE_RADIUS - OFFSET;
+        vel.y *= -ELASTICITY;
+        changed_pos = true;
+    }
+    if (pos.z - PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.z) {
+        pos.z = bb.min.z + PARTICLE_RADIUS + OFFSET;
+        vel.z *= -ELASTICITY;
+        changed_pos = true;
+    } else if (pos.z + PARTICLE_RADIUS * COLLISION_BUFFER_MULT > bb.max.z) {
+        pos.z = bb.max.z - PARTICLE_RADIUS - OFFSET;
+        vel.z *= -ELASTICITY;
+        changed_pos = true;
+    }
+
+    if (changed_pos) {
+        set_pos(positions, i, bb.model * pos);
+        velocities[i] = bb.model * vel;
+    }
+}
+
+__global__ void update_positions(float* positions, float4* velocities, unsigned n, float delta, BoundingBoxGPU bb) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    float4 pos = get_pos(positions, i);
+    pos += delta * velocities[i];
+    set_pos(positions, i, pos);
+
+    resolve_collisions(positions, velocities, bb);
+}
