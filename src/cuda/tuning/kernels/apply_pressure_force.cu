@@ -1,9 +1,8 @@
-#include "sph.cuh"
+#define KERNEL_DIR /home/pbabic/Repositories/fluid-simulation/src/cuda/tuning/kernels
+#define KERNEL_PATH(file) <KERNEL_DIR ## file>
 
-#include "kernel.cuh"
+#include KERNEL_PATH(/common.cuh)
 
-
-namespace kernels {
 
 // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (Eq. 96)
 // __device__ float compute_gamma_2(
@@ -18,8 +17,8 @@ namespace kernels {
 //
 //         if (is_neighbor(xi, xj, i, j)) {
 //             float4 r = xi - xj;
-//             float q = r_to_q(r, CUDASPHSimulator<>::SUPPORT_RADIUS);
-//             float4 grad_W = spiky_grad(q, CUDASPHSimulator<>::SUPPORT_RADIUS) * r;
+//             float q = r_to_q(r, SUPPORT_RADIUS);
+//             float4 grad_W = spiky_grad(q, SUPPORT_RADIUS) * r;
 //             if (is_boundary(j, n))
 //                 boundary_grad_sum += grad_W;
 //             else
@@ -33,7 +32,7 @@ namespace kernels {
 //     return dot(fluid_grad_sum, boundary_grad_sum) / denom;
 // }
 
-__global__ void apply_pressure_force_k(
+__global__ void apply_pressure_force(
     const float* positions, const float* densities,
     const float* pressures, float4* velocities,
     const float* boundary_mass,
@@ -48,17 +47,17 @@ __global__ void apply_pressure_force_k(
     float4 xi = get_pos(positions, i);
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
-    float b_p_term = dpi + pressures[i] / (CUDASPHSimulator<>::REST_DENSITY * CUDASPHSimulator<>::REST_DENSITY);
+    float b_p_term = dpi + pressures[i] / (REST_DENSITY * REST_DENSITY);
 
-    dev_n_search->for_neighbors(xi, [=, &p_accel, &boundary_p_accel] __device__ (unsigned j) {
+    dev_n_search->for_neighbors(xi, [=, &p_accel, &boundary_p_accel] (unsigned j) {
         float4 xj = get_pos(positions, j);
 
         if (!is_neighbor(xi, xj, i, j))
             return;
 
         float4 r = xi - xj;
-        float q = r_to_q(r, CUDASPHSimulator<>::SUPPORT_RADIUS);
-        float4 grad_W = spiky_grad(q, CUDASPHSimulator<>::SUPPORT_RADIUS) * r;
+        float q = r_to_q(r, SUPPORT_RADIUS);
+        float4 grad_W = spiky_grad(q, SUPPORT_RADIUS) * r;
 
         if (is_boundary(j, n)) {
             boundary_p_accel -= get_mass(boundary_mass, j, n) * b_p_term * grad_W;
@@ -69,7 +68,5 @@ __global__ void apply_pressure_force_k(
         }
     });
 
-    velocities[i] += delta * (CUDASPHSimulator<>::PARTICLE_MASS * p_accel + boundary_p_accel);
-}
-
+    velocities[i] += delta * (PARTICLE_MASS * p_accel + boundary_p_accel);
 }

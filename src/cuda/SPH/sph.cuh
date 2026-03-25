@@ -1,19 +1,8 @@
 #pragma once
 #include "sph_base.cuh"
+#include "cuda/tuning/apply_pressure_force.cuh"
 #include "cuda/tuning/compute_pressure.cuh"
 
-
-namespace kernels {
-
-static constexpr dim3 APPLY_PRESSURE_FORCE_BLOCK_SIZE = {128};
-
-__global__ void apply_pressure_force_k(
-    const float* positions, const float* densities,
-    const float* pressures, float4* velocities,
-    const float* boundary_mass,
-    unsigned n, float delta, const NSearch *dev_n_search);
-
-}
 
 template<ExternalForce ExtForce = no_force>
 class CUDASPHSimulator final : public CUDASPHBase<ExtForce> {
@@ -32,7 +21,8 @@ public:
 
     CUDASPHSimulator(const FluidSimulator::opts_t &opts)
     : CUDASPHBase<ExtForce>(opts), pressure(this->fluid_particles),
-      compute_pressure_tuner(this->fluid_particles) {
+      compute_pressure_tuner(this->fluid_particles),
+      apply_pressure_force_tuner(this->fluid_particles) {
     }
 
     void update(float delta) override {
@@ -76,19 +66,18 @@ private:
         compute_pressure_tuner.run(densities_ptr, pressures_ptr, this->total_particles);
     }
 
-    void apply_pressure_force(const float* positions_dev_ptr, float delta) {
-        const float* densities_ptr = thrust::raw_pointer_cast(this->density.data());
-        const float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
+    void apply_pressure_force(float* positions_dev_ptr, float delta) {
+        float* densities_ptr = thrust::raw_pointer_cast(this->density.data());
+        float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
         float4* velocities_ptr = thrust::raw_pointer_cast(this->velocity.data());
-        const float* boundary_mass_ptr = thrust::raw_pointer_cast(this->boundary_mass.data());
-
-        const dim3 grid_size{this->fluid_particles / kernels::APPLY_PRESSURE_FORCE_BLOCK_SIZE.x + 1};
-        kernels::apply_pressure_force_k<<<kernels::APPLY_PRESSURE_FORCE_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, densities_ptr, pressures_ptr, velocities_ptr, boundary_mass_ptr,
-            this->fluid_particles, delta, this->n_search.dev_ptr());
-        cudaCheckError();
+        float* boundary_mass_ptr = thrust::raw_pointer_cast(this->boundary_mass.data());
+        apply_pressure_force_tuner.run(
+            positions_dev_ptr, densities_ptr, pressures_ptr, velocities_ptr,
+            boundary_mass_ptr, this->fluid_particles, this->boundary_particles,
+            delta, this->n_search.dev_ptr());
     }
 
     thrust::device_vector<float> pressure;
     ComputePressureTuner compute_pressure_tuner;
+    ApplyPressureForceTuner apply_pressure_force_tuner;
 };
