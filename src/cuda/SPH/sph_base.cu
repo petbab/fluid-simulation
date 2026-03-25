@@ -12,40 +12,6 @@ __global__ void update_velocities_k(float4* velocities, const float4* accelerati
     velocities[i] += acceleration[i] * delta;
 }
 
-__global__ void compute_viscosity_k(
-    const float* positions, const float4* velocities,
-    const float* densities, float4* acceleration,
-    unsigned n, const NSearch *dev_n_search
-) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
-
-    float4 velocity_laplacian{0.f};
-    float4 xi = get_pos(positions, i);
-    float4 vi = velocities[i];
-
-    dev_n_search->for_neighbors(xi, [=, &velocity_laplacian] __device__ (unsigned j) {
-        if (is_boundary(j, n))
-            return;
-
-        float4 xj = get_pos(positions, j);
-
-        if (is_neighbor(xi, xj, i, j)) {
-            float4 x_ij = xi - xj;
-            float4 v_ij = vi - velocities[j];
-            float q = r_to_q(x_ij, CUDASPHBase<>::SUPPORT_RADIUS);
-
-            velocity_laplacian += dot(v_ij, x_ij) * cubic_spline_grad(q, CUDASPHBase<>::SUPPORT_RADIUS)
-                * x_ij / (densities[j] * (dot(x_ij, x_ij)
-                    + 0.01f * CUDASPHBase<>::SUPPORT_RADIUS * CUDASPHBase<>::SUPPORT_RADIUS));
-        }
-    });
-
-    velocity_laplacian *= 10 * CUDASPHBase<>::PARTICLE_MASS;
-    acceleration[i] += CUDASPHBase<>::VISCOSITY * velocity_laplacian;
-}
-
 __global__ void compute_surface_tension_k(
     const float* positions, const float* densities,
     const float4* normals, float4* acceleration,

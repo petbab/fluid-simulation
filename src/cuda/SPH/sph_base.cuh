@@ -10,6 +10,7 @@
 #include <cuda/tuning/update_positions.cuh>
 
 #include "cuda/tuning/compute_boundary_mass.cuh"
+#include "cuda/tuning/compute_viscosity.cuh"
 
 
 template<class F>
@@ -30,16 +31,11 @@ namespace kernels {
 
 static constexpr dim3 UPDATE_VELOCITIES_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
-static constexpr dim3 COMPUTE_VISCOSITY_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_TENSION_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 static constexpr dim3 APPLY_EXTERNAL_FORCES_BLOCK_SIZE = {128};
 
 __global__ void update_velocities_k(float4* velocities, const float4* acceleration, unsigned n, float delta);
-__global__ void compute_viscosity_k(
-    const float* positions, const float4* velocities,
-    const float* densities, float4* acceleration,
-    unsigned n, const NSearch *dev_n_search);
 __global__ void compute_surface_tension_k(
     const float* positions, const float* densities,
     const float4* normals, float4* acceleration,
@@ -96,7 +92,8 @@ public:
       normal(fluid_particles),
       density_tuner(fluid_particles),
       update_positions_tuner(fluid_particles),
-      compute_boundary_mass_tuner(boundary_particles) {
+      compute_boundary_mass_tuner(boundary_particles),
+      compute_viscosity_tuner(fluid_particles) {
     }
 
 protected:
@@ -111,7 +108,7 @@ protected:
         update_positions_tuner.run(positions_dev_ptr, velocities_ptr, fluid_particles, delta, bounding_box);
     }
 
-    void apply_non_pressure_forces(const float* positions_dev_ptr, float delta) {
+    void apply_non_pressure_forces(float* positions_dev_ptr, float delta) {
         apply_external_forces(positions_dev_ptr);
 
         compute_viscosity(positions_dev_ptr);
@@ -182,19 +179,15 @@ private:
      * Approximates the Laplacian of the velocity field via finite differences
      * [SPH Tutorial, eq. 102].
      */
-    void compute_viscosity(const float* positions_dev_ptr) {
+    void compute_viscosity(float* positions_dev_ptr) {
         if constexpr (VISCOSITY == 0.f)
             return;
 
-        const float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        const float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
+        float* densities_ptr = thrust::raw_pointer_cast(density.data());
+        float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
         float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-
-        const dim3 grid_size{fluid_particles / kernels::COMPUTE_VISCOSITY_BLOCK_SIZE.x + 1};
-        kernels::compute_viscosity_k<<<kernels::COMPUTE_VISCOSITY_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, velocities_ptr, densities_ptr,
+        compute_viscosity_tuner.run(positions_dev_ptr, velocities_ptr, densities_ptr,
             acceleration_ptr, fluid_particles, n_search.dev_ptr());
-        cudaCheckError();
     }
 
     /**
@@ -252,6 +245,7 @@ private:
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
     ComputeBoundaryMassTuner compute_boundary_mass_tuner;
+    ComputeViscosityTuner compute_viscosity_tuner;
 };
 
 __device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
