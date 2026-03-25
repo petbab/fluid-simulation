@@ -6,8 +6,10 @@
 #include <cuda/math.cuh>
 #include <thrust/transform_reduce.h>
 #include <cuda/util.cuh>
-#include <cuda/tuning/density_tuner.cuh>
-#include <cuda/tuning/update_positions_tuner.cuh>
+#include <cuda/tuning/compute_densities.cuh>
+#include <cuda/tuning/update_positions.cuh>
+
+#include "cuda/tuning/compute_boundary_mass.cuh"
 
 
 template<class F>
@@ -31,7 +33,6 @@ static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_VISCOSITY_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_TENSION_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
-static constexpr dim3 COMPUTE_BOUNDARY_MASS_BLOCK_SIZE = {128};
 static constexpr dim3 APPLY_EXTERNAL_FORCES_BLOCK_SIZE = {128};
 
 __global__ void update_velocities_k(float4* velocities, const float4* acceleration, unsigned n, float delta);
@@ -46,10 +47,6 @@ __global__ void compute_surface_tension_k(
 __global__ void compute_surface_normals_k(
     const float* positions, const float* densities,
     float4* normals, unsigned n,
-    const NSearch *dev_n_search);
-__global__ void compute_boundary_mass_k(
-    const float* positions, float* masses,
-    unsigned fluid_n, unsigned boundary_n,
     const NSearch *dev_n_search);
 
 template<ExternalForce EF>
@@ -98,7 +95,8 @@ public:
       non_pressure_accel(fluid_particles),
       normal(fluid_particles),
       density_tuner(fluid_particles),
-      update_positions_tuner(fluid_particles) {
+      update_positions_tuner(fluid_particles),
+      compute_boundary_mass_tuner(boundary_particles) {
     }
 
 protected:
@@ -124,13 +122,9 @@ protected:
         compute_XSPH(positions_dev_ptr);
     }
 
-    void compute_boundary_mass(const float* positions_dev_ptr) {
+    void compute_boundary_mass(float* positions_dev_ptr) {
         float* masses_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-
-        const dim3 grid_size{boundary_particles / kernels::COMPUTE_BOUNDARY_MASS_BLOCK_SIZE.x + 1};
-        kernels::compute_boundary_mass_k<<<kernels::COMPUTE_BOUNDARY_MASS_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, masses_ptr, fluid_particles, boundary_particles, n_search.dev_ptr());
-        cudaCheckError();
+        compute_boundary_mass_tuner.run(positions_dev_ptr, masses_ptr, fluid_particles, boundary_particles, n_search.dev_ptr());
     }
 
     void reset() override {
@@ -257,6 +251,7 @@ private:
     thrust::device_vector<float4> non_pressure_accel, normal;
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
+    ComputeBoundaryMassTuner compute_boundary_mass_tuner;
 };
 
 __device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {

@@ -1,7 +1,8 @@
 #include "tuner.h"
 #include <memory>
-#include "../../debug.h"
+#include <debug.h>
 #include <cuda.h>
+
 
 Tuner::Tuner() : tuner{instance()} {}
 
