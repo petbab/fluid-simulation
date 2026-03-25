@@ -10,7 +10,10 @@
 #include <cuda/tuning/update_positions.cuh>
 
 #include "cuda/tuning/compute_boundary_mass.cuh"
+#include "cuda/tuning/compute_surface_normals.cuh"
+#include "cuda/tuning/compute_surface_tension.cuh"
 #include "cuda/tuning/compute_viscosity.cuh"
+#include "cuda/tuning/update_velocities.cuh"
 
 
 template<class F>
@@ -29,21 +32,8 @@ static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
 
 namespace kernels {
 
-static constexpr dim3 UPDATE_VELOCITIES_BLOCK_SIZE = {128};
 static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
-static constexpr dim3 COMPUTE_SURFACE_TENSION_BLOCK_SIZE = {128};
-static constexpr dim3 COMPUTE_SURFACE_NORMALS_BLOCK_SIZE = {128};
 static constexpr dim3 APPLY_EXTERNAL_FORCES_BLOCK_SIZE = {128};
-
-__global__ void update_velocities_k(float4* velocities, const float4* acceleration, unsigned n, float delta);
-__global__ void compute_surface_tension_k(
-    const float* positions, const float* densities,
-    const float4* normals, float4* acceleration,
-    unsigned n, const NSearch *dev_n_search);
-__global__ void compute_surface_normals_k(
-    const float* positions, const float* densities,
-    float4* normals, unsigned n,
-    const NSearch *dev_n_search);
 
 template<ExternalForce EF>
 __global__ void apply_external_forces_k(const float* positions, float4* acceleration, unsigned n) {
@@ -65,12 +55,7 @@ public:
     static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8;
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
-    static constexpr float ELASTICITY = 0.9f;
-
-
     static constexpr float XSPH_ALPHA = 0.f;
-    static constexpr float VISCOSITY = 0.001f;
-    static constexpr float SURFACE_TENSION_ALPHA = 0.15f;
 
     static constexpr float CFL_FACTOR = 0.4f;
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
@@ -92,20 +77,25 @@ public:
       normal(fluid_particles),
       density_tuner(fluid_particles),
       update_positions_tuner(fluid_particles),
+      update_velocities_tuner(fluid_particles),
       compute_boundary_mass_tuner(boundary_particles),
-      compute_viscosity_tuner(fluid_particles) {
+      compute_viscosity_tuner(fluid_particles),
+      compute_surface_normals_tuner(fluid_particles),
+      compute_surface_tension_tuner(fluid_particles) {
     }
 
 protected:
     void compute_densities(float* positions_dev_ptr) {
         float* densities_ptr = thrust::raw_pointer_cast(density.data());
         float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-        density_tuner.run(positions_dev_ptr, densities_ptr, boundary_mass_ptr, n_search.dev_ptr(), total_particles, fluid_particles);
+        density_tuner.run(positions_dev_ptr, densities_ptr, boundary_mass_ptr,
+            n_search.dev_ptr(), total_particles, fluid_particles);
     }
 
     void update_positions(float* positions_dev_ptr, float delta) {
         float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-        update_positions_tuner.run(positions_dev_ptr, velocities_ptr, fluid_particles, delta, bounding_box);
+        update_positions_tuner.run(positions_dev_ptr, velocities_ptr, fluid_particles,
+            delta, bounding_box);
     }
 
     void apply_non_pressure_forces(float* positions_dev_ptr, float delta) {
@@ -121,7 +111,8 @@ protected:
 
     void compute_boundary_mass(float* positions_dev_ptr) {
         float* masses_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-        compute_boundary_mass_tuner.run(positions_dev_ptr, masses_ptr, fluid_particles, boundary_particles, n_search.dev_ptr());
+        compute_boundary_mass_tuner.run(positions_dev_ptr, masses_ptr, fluid_particles,
+            boundary_particles, n_search.dev_ptr());
     }
 
     void reset() override {
@@ -155,14 +146,9 @@ protected:
 private:
     void update_velocities(float delta) {
         delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
-
         float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-        const float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-
-        const dim3 grid_size{fluid_particles / kernels::UPDATE_VELOCITIES_BLOCK_SIZE.x + 1};
-        kernels::update_velocities_k<<<kernels::UPDATE_VELOCITIES_BLOCK_SIZE, grid_size>>>(
-            velocities_ptr, acceleration_ptr, fluid_particles, delta);
-        cudaCheckError();
+        float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
+        update_velocities_tuner.run(velocities_ptr, acceleration_ptr, fluid_particles, delta);
     }
 
     /**
@@ -180,9 +166,6 @@ private:
      * [SPH Tutorial, eq. 102].
      */
     void compute_viscosity(float* positions_dev_ptr) {
-        if constexpr (VISCOSITY == 0.f)
-            return;
-
         float* densities_ptr = thrust::raw_pointer_cast(density.data());
         float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
         float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
@@ -193,33 +176,25 @@ private:
     /**
      * Simulates surface tension using the macroscopic approach by Akinci et al. (2013).
      */
-    void compute_surface_tension(const float* positions_dev_ptr) {
+    void compute_surface_tension(float* positions_dev_ptr) {
         compute_surface_normals(positions_dev_ptr);
 
-        const float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        const float4* normals_ptr = thrust::raw_pointer_cast(normal.data());
+        float* densities_ptr = thrust::raw_pointer_cast(density.data());
+        float4* normals_ptr = thrust::raw_pointer_cast(normal.data());
         float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-
-        const dim3 grid_size{fluid_particles / kernels::COMPUTE_SURFACE_TENSION_BLOCK_SIZE.x + 1};
-        kernels::compute_surface_tension_k<<<kernels::COMPUTE_SURFACE_TENSION_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, densities_ptr, normals_ptr,
+        compute_surface_tension_tuner.run(positions_dev_ptr, densities_ptr, normals_ptr,
             acceleration_ptr, fluid_particles, n_search.dev_ptr());
-        cudaCheckError();
     }
 
     /**
      * Computes surface normals used to calculate the curvature force
      * in compute_surface_tension [SPH Tutorial, eq. 125].
      */
-    void compute_surface_normals(const float* positions_dev_ptr) {
-        const float* densities_ptr = thrust::raw_pointer_cast(density.data());
+    void compute_surface_normals(float* positions_dev_ptr) {
+        float* densities_ptr = thrust::raw_pointer_cast(density.data());
         float4* normals_ptr = thrust::raw_pointer_cast(normal.data());
-
-        const dim3 grid_size{fluid_particles / kernels::COMPUTE_SURFACE_NORMALS_BLOCK_SIZE.x + 1};
-        kernels::compute_surface_normals_k<<<kernels::COMPUTE_SURFACE_NORMALS_BLOCK_SIZE, grid_size>>>(
-            positions_dev_ptr, densities_ptr, normals_ptr,
+        compute_surface_normals_tuner.run(positions_dev_ptr, densities_ptr, normals_ptr,
             fluid_particles, n_search.dev_ptr());
-        cudaCheckError();
     }
 
     void apply_external_forces(const float* positions_dev_ptr) {
@@ -244,8 +219,11 @@ private:
     thrust::device_vector<float4> non_pressure_accel, normal;
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
+    UpdateVelocitiesTuner update_velocities_tuner;
     ComputeBoundaryMassTuner compute_boundary_mass_tuner;
     ComputeViscosityTuner compute_viscosity_tuner;
+    ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
+    ComputeSurfaceTensionTuner compute_surface_tension_tuner;
 };
 
 __device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
