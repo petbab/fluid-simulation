@@ -5,16 +5,6 @@
 
 namespace kernels {
 
-__global__ void compute_pressure_k(const float* densities, float* pressures, unsigned n) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
-        return;
-
-    float d = fmaxf(densities[i], CUDASPHSimulator<>::REST_DENSITY);
-    pressures[i] = CUDASPHSimulator<>::STIFFNESS *
-        (powf(d / CUDASPHSimulator<>::REST_DENSITY, CUDASPHSimulator<>::EXPONENT) - 1.f);
-}
-
 // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (Eq. 96)
 // __device__ float compute_gamma_2(
 //     unsigned i, float4 xi, const float* positions,

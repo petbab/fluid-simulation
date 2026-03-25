@@ -1,13 +1,12 @@
 #pragma once
 #include "sph_base.cuh"
+#include "cuda/tuning/compute_pressure.cuh"
 
 
 namespace kernels {
 
-static constexpr dim3 COMPUTE_PRESSURE_BLOCK_SIZE = {128};
 static constexpr dim3 APPLY_PRESSURE_FORCE_BLOCK_SIZE = {128};
 
-__global__ void compute_pressure_k(const float* densities, float* pressures, unsigned n);
 __global__ void apply_pressure_force_k(
     const float* positions, const float* densities,
     const float* pressures, float4* velocities,
@@ -32,7 +31,8 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     CUDASPHSimulator(const FluidSimulator::opts_t &opts)
-    : CUDASPHBase<ExtForce>(opts), pressure(this->fluid_particles) {
+    : CUDASPHBase<ExtForce>(opts), pressure(this->fluid_particles),
+      compute_pressure_tuner(this->fluid_particles) {
     }
 
     void update(float delta) override {
@@ -71,13 +71,9 @@ public:
 
 private:
     void compute_pressure() {
-        const float* densities_ptr = thrust::raw_pointer_cast(this->density.data());
+        float* densities_ptr = thrust::raw_pointer_cast(this->density.data());
         float* pressures_ptr = thrust::raw_pointer_cast(pressure.data());
-
-        const dim3 grid_size{this->fluid_particles / kernels::COMPUTE_PRESSURE_BLOCK_SIZE.x + 1};
-        kernels::compute_pressure_k<<<kernels::COMPUTE_PRESSURE_BLOCK_SIZE, grid_size>>>(
-            densities_ptr, pressures_ptr, this->fluid_particles);
-        cudaCheckError();
+        compute_pressure_tuner.run(densities_ptr, pressures_ptr, this->total_particles);
     }
 
     void apply_pressure_force(const float* positions_dev_ptr, float delta) {
@@ -94,4 +90,5 @@ private:
     }
 
     thrust::device_vector<float> pressure;
+    ComputePressureTuner compute_pressure_tuner;
 };
