@@ -7,14 +7,6 @@
 #include <render/box.h>
 
 
-struct fountain_force {
-    __device__ float4 operator()(float4 pos) const {
-        return (pos.x*pos.x + pos.z*pos.z < .2f && pos.y < 0.f)
-            ? make_float4(0., 25., 0., 0.) : make_float4(0.f);
-    };
-};
-static_assert(ExternalForce<fountain_force>);
-
 void FountainApp::setup_scene() {
     auto *lit_shader = AssetManager::make<Shader>("lit_shader",
         cfg::shaders_dir/"lit.vert",
@@ -42,8 +34,13 @@ void FountainApp::setup_scene() {
     /*
      * Fluid
      */
-    FluidSimulator::opts_t fluid_opts{{-1.5, 0., 0.}, 30, fluid_box->bounding_box(), {fluid_box, dragon_obj}};
-    AssetManager::make<Fluid<CUDASPHSimulator<fountain_force>>>("fluid", fluid_opts);
+    FluidSimulator::opts_t fluid_opts{
+        {-1.5, 0., 0.}, 30, fluid_box->bounding_box(),
+        {fluid_box, dragon_obj},
+        "([](float4 pos) { return (pos.x*pos.x + pos.z*pos.z < .2f && pos.y < 0.f)"
+        " ? make_float4(0., 25., 0., 0.) : make_float4(0.f); })"
+    };
+    AssetManager::make<Fluid<CUDASPHSimulator>>("fluid", fluid_opts);
 
     /*
      * Lights

@@ -25,6 +25,7 @@ public:
         grid_dims_t grid_dims;
         const BoundingBox &bounding_box;
         const std::vector<const Object*> &collision_objects;
+        std::string external_force;
     };
 
     FluidSimulator(const opts_t &opts);

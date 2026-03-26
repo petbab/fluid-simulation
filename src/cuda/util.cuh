@@ -6,16 +6,6 @@
 #endif
 
 
-template<class F>
-__device__ void device_check(F f) {
-    f(float4{0.});
-}
-
-template<class F>
-concept DeviceCallable = requires(F f) {
-    device_check(f);
-};
-
 struct BoundingBoxGPU {
 #ifdef NOT_IN_KTT
     BoundingBoxGPU(const BoundingBox &bb) :

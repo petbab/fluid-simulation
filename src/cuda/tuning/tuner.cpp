@@ -17,8 +17,8 @@ void Tuner::print_best_config() const {
     std::cout << "Best configuration:" << std::endl;
 
     for (const auto& param : bestConfig.GetPairs()) {
-        std::cout << "  " << param.GetName() << " = "
-            << std::get<uint64_t>(param.GetValue()) << std::endl;
+        if (auto *uint_param = std::get_if<uint64_t>(&param.GetValue()))
+            std::cout << "  " << param.GetName() << " = " << *uint_param << std::endl;
     }
 }
 

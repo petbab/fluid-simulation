@@ -5,10 +5,9 @@
 #include <cuda/nsearch/nsearch.h>
 #include <cuda/math.cuh>
 #include <thrust/transform_reduce.h>
-#include <cuda/util.cuh>
 #include <cuda/tuning/compute_densities.cuh>
 #include <cuda/tuning/update_positions.cuh>
-
+#include "cuda/tuning/apply_external_forces.cuh"
 #include "cuda/tuning/compute_boundary_mass.cuh"
 #include "cuda/tuning/compute_surface_normals.cuh"
 #include "cuda/tuning/compute_surface_tension.cuh"
@@ -16,35 +15,6 @@
 #include "cuda/tuning/update_velocities.cuh"
 
 
-template<class F>
-concept ExternalForce = requires (F f, float4 pos, float4 acc) {
-    acc = f(pos);
-    acc += f(pos);
-    acc -= f(pos);
-} && DeviceCallable<F>;
-
-struct no_force {
-    __device__ float4 operator()(float4) const { return make_float4(0.f); }
-};
-static_assert(ExternalForce<no_force>);
-
-static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
-
-namespace kernels {
-
-static constexpr dim3 COMPUTE_XSPH_BLOCK_SIZE = {128};
-static constexpr dim3 APPLY_EXTERNAL_FORCES_BLOCK_SIZE = {128};
-
-template<ExternalForce EF>
-__global__ void apply_external_forces_k(const float* positions, float4* acceleration, unsigned n) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n)
-        acceleration[i] = GRAVITY + EF{}(get_pos(positions, i));
-}
-
-}
-
-template<ExternalForce ExtForce = no_force>
 class CUDASPHBase : public CUDASimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
@@ -56,6 +26,8 @@ public:
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
     static constexpr float XSPH_ALPHA = 0.f;
+
+    static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
 
     static constexpr float CFL_FACTOR = 0.4f;
     static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
@@ -81,7 +53,9 @@ public:
       compute_boundary_mass_tuner(boundary_particles),
       compute_viscosity_tuner(fluid_particles),
       compute_surface_normals_tuner(fluid_particles),
-      compute_surface_tension_tuner(fluid_particles) {
+      compute_surface_tension_tuner(fluid_particles),
+      apply_external_forces_tuner(fluid_particles, opts.external_force),
+      apply_external_force(!opts.external_force.empty()) {
     }
 
 protected:
@@ -197,14 +171,10 @@ private:
             fluid_particles, n_search.dev_ptr());
     }
 
-    void apply_external_forces(const float* positions_dev_ptr) {
-        if constexpr (!std::is_same_v<no_force, ExtForce>) {
+    void apply_external_forces(float* positions_dev_ptr) {
+        if (apply_external_force) {
             float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-
-            const dim3 grid_size{fluid_particles / kernels::APPLY_EXTERNAL_FORCES_BLOCK_SIZE.x + 1};
-            kernels::apply_external_forces_k<ExtForce><<<kernels::APPLY_EXTERNAL_FORCES_BLOCK_SIZE, grid_size>>>(
-                positions_dev_ptr, acceleration_ptr, fluid_particles);
-            cudaCheckError();
+            apply_external_forces_tuner.run(positions_dev_ptr, acceleration_ptr, fluid_particles);
         } else {
             thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), GRAVITY);
         }
@@ -224,9 +194,6 @@ private:
     ComputeViscosityTuner compute_viscosity_tuner;
     ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
     ComputeSurfaceTensionTuner compute_surface_tension_tuner;
+    ApplyExternalForcesTuner apply_external_forces_tuner;
+    bool apply_external_force;
 };
-
-__device__ __host__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
-    float4 r = xi - xj;
-    return i != j && dot(r, r) <= CUDASPHBase<>::SUPPORT_RADIUS * CUDASPHBase<>::SUPPORT_RADIUS;
-}
