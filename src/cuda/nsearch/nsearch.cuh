@@ -1,6 +1,5 @@
 #pragma once
 
-#include <device_launch_parameters.h>
 #include <cuda/math.cuh>
 #include <cuda/util.cuh>
 #include <debug.h>
@@ -168,27 +167,6 @@ __host__ inline void delete_n_search(NSearch* dev_n_search, const NSearch& host_
     cudaFree(host_n_search.table); cudaCheckError();
     cudaFree(host_n_search.particle_indices); cudaCheckError();
     cudaFree(dev_n_search); cudaCheckError();
-}
-
-__global__ inline void rebuild_n_search_k(NSearch *dev_n_search, const float *particle_positions, unsigned n) {
-    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-
-    float4 pos = get_pos(particle_positions, i);
-    dev_n_search->insert(pos, i);
-}
-
-#define BLOCK_SIZE 128
-
-__host__ inline void rebuild_n_search(
-    NSearch *dev_n_search,
-    const NSearch &host_n_search,
-    const float *particle_positions,
-    unsigned n
-) {
-    clear_n_search(host_n_search);
-
-    rebuild_n_search_k<<<BLOCK_SIZE, n / BLOCK_SIZE + 1>>>(dev_n_search, particle_positions, n);
 }
 
 struct NSearchHost {

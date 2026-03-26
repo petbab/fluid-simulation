@@ -44,7 +44,7 @@ public:
       density(fluid_particles),
       boundary_mass(boundary_particles),
       velocity(fluid_particles),
-      n_search{2.f * SUPPORT_RADIUS},
+      n_search{2.f * SUPPORT_RADIUS, total_particles},
       non_pressure_accel(fluid_particles),
       normal(fluid_particles),
       density_tuner(fluid_particles),

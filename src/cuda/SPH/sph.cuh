@@ -28,7 +28,7 @@ public:
         auto lock = cuda_gl_positions->lock();
         float* positions_ptr = static_cast<float*>(lock.get_ptr());
 
-        n_search.rebuild(positions_ptr, total_particles);
+        n_search.rebuild(positions_ptr);
 
         compute_boundary_mass(positions_ptr);
 
