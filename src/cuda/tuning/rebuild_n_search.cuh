@@ -7,7 +7,8 @@
 
 class RebuildNSearchTuner final : public Tuner {
 public:
-    explicit RebuildNSearchTuner(unsigned total_particles) {
+    explicit RebuildNSearchTuner(unsigned total_particles, NSearch *dev_n_search)
+        : total_particles(total_particles) {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(total_particles));
@@ -18,22 +19,30 @@ public:
             kernel_name, cfg::tuned_kernels_dir / (kernel_name + ".cu"), gridDimensions, blockDimensions);
         kernel = tuner->CreateSimpleKernel(kernel_name, definition);
 
-        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{16, 32, 64, 128, 256, 512});
+        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{32, 64, 128, 256, 512});
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Local, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
+
+        n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
+        total_particles_id = tuner->AddArgumentScalar(total_particles);
     }
 
-    void run(NSearch *dev_n_search, float *particle_positions, unsigned total_particles) {
+    void run(float *particle_positions) {
         tuner->SetArguments(definition, {
-            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
-                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
+            n_search_id,
             tuner->AddArgumentVector<float>(particle_positions, total_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentScalar(total_particles),
+            total_particles_id,
         });
 
         ktt::KernelResult result = tuner->TuneIteration(kernel, {});
     }
+
+private:
+    unsigned total_particles;
+    ktt::ArgumentId n_search_id;
+    ktt::ArgumentId total_particles_id;
 };

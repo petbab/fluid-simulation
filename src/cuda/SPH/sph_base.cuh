@@ -47,29 +47,33 @@ public:
       n_search{2.f * SUPPORT_RADIUS, total_particles},
       non_pressure_accel(fluid_particles),
       normal(fluid_particles),
-      density_tuner(fluid_particles),
-      update_positions_tuner(fluid_particles),
-      update_velocities_tuner(fluid_particles),
-      compute_boundary_mass_tuner(boundary_particles),
-      compute_viscosity_tuner(fluid_particles),
-      compute_surface_normals_tuner(fluid_particles),
-      compute_surface_tension_tuner(fluid_particles),
-      apply_external_forces_tuner(fluid_particles, opts.external_force),
+      density_tuner(fluid_particles, total_particles, thrust::raw_pointer_cast(density.data()),
+          thrust::raw_pointer_cast(boundary_mass.data()), n_search.dev_ptr()),
+      update_positions_tuner(fluid_particles, thrust::raw_pointer_cast(velocity.data()), bounding_box),
+      update_velocities_tuner(fluid_particles, thrust::raw_pointer_cast(velocity.data()),
+          thrust::raw_pointer_cast(non_pressure_accel.data())),
+      compute_boundary_mass_tuner(fluid_particles, boundary_particles,
+          thrust::raw_pointer_cast(boundary_mass.data()), n_search.dev_ptr()),
+      compute_viscosity_tuner(fluid_particles, thrust::raw_pointer_cast(velocity.data()),
+          thrust::raw_pointer_cast(density.data()), thrust::raw_pointer_cast(non_pressure_accel.data()),
+          n_search.dev_ptr()),
+      compute_surface_normals_tuner(fluid_particles, thrust::raw_pointer_cast(density.data()),
+          thrust::raw_pointer_cast(normal.data()), n_search.dev_ptr()),
+      compute_surface_tension_tuner(fluid_particles, thrust::raw_pointer_cast(density.data()),
+          thrust::raw_pointer_cast(normal.data()), thrust::raw_pointer_cast(non_pressure_accel.data()),
+          n_search.dev_ptr()),
+      apply_external_forces_tuner(fluid_particles, thrust::raw_pointer_cast(non_pressure_accel.data()),
+          opts.external_force),
       apply_external_force(!opts.external_force.empty()) {
     }
 
 protected:
     void compute_densities(float* positions_dev_ptr) {
-        float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        float* boundary_mass_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-        density_tuner.run(positions_dev_ptr, densities_ptr, boundary_mass_ptr,
-            n_search.dev_ptr(), total_particles, fluid_particles);
+        density_tuner.run(positions_dev_ptr);
     }
 
     void update_positions(float* positions_dev_ptr, float delta) {
-        float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-        update_positions_tuner.run(positions_dev_ptr, velocities_ptr, fluid_particles,
-            delta, bounding_box);
+        update_positions_tuner.run(positions_dev_ptr, delta);
     }
 
     void apply_non_pressure_forces(float* positions_dev_ptr, float delta) {
@@ -84,9 +88,7 @@ protected:
     }
 
     void compute_boundary_mass(float* positions_dev_ptr) {
-        float* masses_ptr = thrust::raw_pointer_cast(boundary_mass.data());
-        compute_boundary_mass_tuner.run(positions_dev_ptr, masses_ptr, fluid_particles,
-            boundary_particles, n_search.dev_ptr());
+        compute_boundary_mass_tuner.run(positions_dev_ptr);
     }
 
     void reset() override {
@@ -120,9 +122,7 @@ protected:
 private:
     void update_velocities(float delta) {
         delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
-        float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-        float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-        update_velocities_tuner.run(velocities_ptr, acceleration_ptr, fluid_particles, delta);
+        update_velocities_tuner.run(delta);
     }
 
     /**
@@ -140,11 +140,7 @@ private:
      * [SPH Tutorial, eq. 102].
      */
     void compute_viscosity(float* positions_dev_ptr) {
-        float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        float4* velocities_ptr = thrust::raw_pointer_cast(velocity.data());
-        float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-        compute_viscosity_tuner.run(positions_dev_ptr, velocities_ptr, densities_ptr,
-            acceleration_ptr, fluid_particles, n_search.dev_ptr());
+        compute_viscosity_tuner.run(positions_dev_ptr);
     }
 
     /**
@@ -153,11 +149,7 @@ private:
     void compute_surface_tension(float* positions_dev_ptr) {
         compute_surface_normals(positions_dev_ptr);
 
-        float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        float4* normals_ptr = thrust::raw_pointer_cast(normal.data());
-        float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-        compute_surface_tension_tuner.run(positions_dev_ptr, densities_ptr, normals_ptr,
-            acceleration_ptr, fluid_particles, n_search.dev_ptr());
+        compute_surface_tension_tuner.run(positions_dev_ptr);
     }
 
     /**
@@ -165,16 +157,12 @@ private:
      * in compute_surface_tension [SPH Tutorial, eq. 125].
      */
     void compute_surface_normals(float* positions_dev_ptr) {
-        float* densities_ptr = thrust::raw_pointer_cast(density.data());
-        float4* normals_ptr = thrust::raw_pointer_cast(normal.data());
-        compute_surface_normals_tuner.run(positions_dev_ptr, densities_ptr, normals_ptr,
-            fluid_particles, n_search.dev_ptr());
+        compute_surface_normals_tuner.run(positions_dev_ptr);
     }
 
     void apply_external_forces(float* positions_dev_ptr) {
         if (apply_external_force) {
-            float4* acceleration_ptr = thrust::raw_pointer_cast(non_pressure_accel.data());
-            apply_external_forces_tuner.run(positions_dev_ptr, acceleration_ptr, fluid_particles);
+            apply_external_forces_tuner.run(positions_dev_ptr);
         } else {
             thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), GRAVITY);
         }

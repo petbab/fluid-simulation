@@ -7,10 +7,11 @@
 
 class UpdateVelocitiesTuner final : public Tuner {
 public:
-    explicit UpdateVelocitiesTuner(unsigned particles) {
+    explicit UpdateVelocitiesTuner(unsigned fluid_particles, float4* velocities, float4* acceleration)
+        : fluid_particles(fluid_particles) {
         assert(tuner != nullptr);
 
-        const ktt::DimensionVector gridDimensions(std::bit_ceil(particles));
+        const ktt::DimensionVector gridDimensions(std::bit_ceil(fluid_particles));
         const ktt::DimensionVector blockDimensions;
 
         static const std::string kernel_name = "update_velocities";
@@ -18,23 +19,33 @@ public:
             kernel_name, cfg::tuned_kernels_dir / (kernel_name + ".cu"), gridDimensions, blockDimensions);
         kernel = tuner->CreateSimpleKernel(kernel_name, definition);
 
-        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{16, 32, 64, 128, 256, 512});
+        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{32, 64, 128, 256, 512});
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Local, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
+
+        velocities_id = tuner->AddArgumentVector<float4>(velocities, fluid_particles * sizeof(float4),
+                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
+        acceleration_id = tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+        fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
     }
 
-    void run(float4* velocities, float4* acceleration, unsigned fluid_particles, float delta) {
+    void run(float delta) {
         tuner->SetArguments(definition, {
-            tuner->AddArgumentVector<float4>(velocities, fluid_particles * sizeof(float4),
-                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
-                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentScalar(fluid_particles),
+            velocities_id,
+            acceleration_id,
+            fluid_particles_id,
             tuner->AddArgumentScalar(delta),
         });
 
         ktt::KernelResult result = tuner->TuneIteration(kernel, {});
     }
+
+private:
+    unsigned fluid_particles;
+    ktt::ArgumentId velocities_id;
+    ktt::ArgumentId acceleration_id;
+    ktt::ArgumentId fluid_particles_id;
 };

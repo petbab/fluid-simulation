@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.22)
 
 # Check if local CMake config exists
 if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/CMakeUserConfig.cmake")
-    include(cmake/CMakeUserConfig.cmake)
+    include("${CMAKE_SOURCE_DIR}/cmake/CMakeUserConfig.cmake")
 else()
     message(FATAL_ERROR
             "CMake configuration not found!\n"
@@ -30,6 +30,10 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -std=c++20 --
 if(NOT DEFINED CMAKE_CUDA20_STANDARD_COMPILE_OPTION)
     set(CMAKE_CUDA20_STANDARD_COMPILE_OPTION "")
     set(CMAKE_CUDA20_EXTENSION_COMPILE_OPTION "")
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 ################################################################################
