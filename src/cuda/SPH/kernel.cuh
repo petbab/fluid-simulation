@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef NOT_IN_KTT
 #include <cuda/math.cuh>
+#endif
 
 
 __device__ inline float r_to_q(float4 r, float support_radius) {

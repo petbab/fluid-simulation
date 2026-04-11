@@ -7,9 +7,14 @@ function(configure_target TARGET)
             OpenMP::OpenMP_CXX
             CompactNSearch
             CUDA::cudart
+            CUDA::cuda_driver
+            ${KTT_LIBRARY}
             Open3D::Open3D
     )
-    target_include_directories(${TARGET} PUBLIC "${CMAKE_SOURCE_DIR}/src")
+    target_include_directories(${TARGET} PUBLIC
+            ${KTT_INCLUDE_DIR}
+            "${CMAKE_SOURCE_DIR}/src"
+    )
 
     target_compile_options(${TARGET} PUBLIC  $<$<CONFIG:Release>:-O3>)
     target_compile_definitions(${TARGET} PUBLIC
@@ -20,6 +25,7 @@ function(configure_target TARGET)
             GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
             $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
             $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>
+            NOT_IN_KTT
     )
 
     set_target_properties(${TARGET} PROPERTIES

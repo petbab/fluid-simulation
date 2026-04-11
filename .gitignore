@@ -1,6 +1,6 @@
 vcpkg/
 *build*/
-.idea/
+**/.idea/
 vcpkg_installed/
 cmake/CMakeUserConfig.cmake
 

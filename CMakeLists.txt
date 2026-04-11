@@ -15,7 +15,7 @@ else()
     )
 endif()
 set(CMAKE_INSTALL_PREFIX "~/.local/bin")
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 
 project(fluid_simulation LANGUAGES CXX CUDA)
 
@@ -60,6 +60,19 @@ if(TARGET CompactNSearch)
     target_compile_features(CompactNSearch PRIVATE cxx_std_20)
 endif()
 
+find_library(KTT_LIBRARY
+        NAMES ktt libktt
+        PATHS "${KTT_DIR}/Build/${CMAKE_SYSTEM_PROCESSOR}_${CMAKE_BUILD_TYPE}"
+        REQUIRED
+)
+find_path(KTT_INCLUDE_DIR
+        NAMES Ktt.h
+        PATHS "${KTT_DIR}/Source" "${KTT_DIR}/include"
+        REQUIRED
+)
+message(STATUS "KTT Library: ${KTT_LIBRARY}")
+message(STATUS "KTT Include Directory: ${KTT_INCLUDE_DIR}")
+
 ################################################################################
 ##                            Target Configuration                            ##
 ################################################################################
@@ -71,6 +84,9 @@ file(GLOB_RECURSE SOURCE src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB_RECURSE CUDA_SOURCE src/*.cu)
 file(GLOB_RECURSE CUDA_HEADERS src/*.cuh)
+
+list(FILTER CUDA_SOURCE EXCLUDE REGEX "src/cuda/tuning/kernels/.*\\.cu$")
+list(FILTER CUDA_HEADERS EXCLUDE REGEX "src/cuda/tuning/kernels/.*\\.cuh$")
 
 add_library(fluid_simulation_lib STATIC ${SOURCE} ${HEADERS} ${CUDA_SOURCE} ${CUDA_HEADERS})
 configure_target(fluid_simulation_lib)
@@ -84,7 +100,6 @@ endforeach()
 ##                                  Testing                                   ##
 ################################################################################
 
-# GTest
 find_package(GTest CONFIG REQUIRED)
 
 # For Windows: Prevent overriding the parent project's compiler/linker settings
