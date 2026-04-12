@@ -1,77 +1,101 @@
 #pragma once
-#include "sph_base.cuh"
+
+#include <thrust/device_vector.h>
+#include <cuda/simulator.h>
+#include <cuda/nsearch/nsearch.h>
+#include <cuda/tuning/compute_densities.cuh>
+#include <cuda/tuning/update_positions.cuh>
+#include "cuda/tuning/apply_external_forces.cuh"
 #include "cuda/tuning/apply_pressure_force.cuh"
+#include "cuda/tuning/compute_boundary_mass.cuh"
 #include "cuda/tuning/compute_pressure.cuh"
+#include "cuda/tuning/compute_surface_normals.cuh"
+#include "cuda/tuning/compute_surface_tension.cuh"
+#include "cuda/tuning/compute_viscosity.cuh"
+#include "cuda/tuning/update_velocities.cuh"
 
 
-class CUDASPHSimulator final : public CUDASPHBase {
+class CUDASPHSimulator final : public CUDASimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
     ///////////////////////////////////////////////////////////////////////////////
-    // static constexpr float STIFFNESS = 1.f;
-    // static constexpr float EXPONENT = 3.f;
-    static constexpr float STIFFNESS = 0.1f;
-    static constexpr float EXPONENT = 7.f;
+    static constexpr float REST_DENSITY = 1000.f;
+    static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
+    static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8;
+    static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
+
+    static constexpr float XSPH_ALPHA = 0.f;
+
+    static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
+
+    static constexpr float CFL_FACTOR = 0.4f;
+    static constexpr float NON_PRESSURE_MAX_TIME_STEP = 0.015;
 
     static constexpr float MAX_TIME_STEP = 0.0005f;
     static constexpr float MIN_TIME_STEP = 0.00001f;
     ///////////////////////////////////////////////////////////////////////////////
 
-    CUDASPHSimulator(const opts_t &opts)
-    : CUDASPHBase(opts), pressure(fluid_particles),
-      compute_pressure_tuner(fluid_particles, thrust::raw_pointer_cast(density.data()),
-          thrust::raw_pointer_cast(pressure.data())),
-      apply_pressure_force_tuner(fluid_particles, boundary_particles,
-          thrust::raw_pointer_cast(density.data()), thrust::raw_pointer_cast(pressure.data()),
-          thrust::raw_pointer_cast(velocity.data()), thrust::raw_pointer_cast(boundary_mass.data()),
-          n_search.dev_ptr()) {
-    }
+    CUDASPHSimulator(const opts_t &opts);
 
-    void update(float delta) override {
-        auto lock = cuda_gl_positions->lock();
-        float* positions_ptr = static_cast<float*>(lock.get_ptr());
+    void update(float delta) override;
 
-        n_search.rebuild(positions_ptr);
+    void visualize(Shader* shader) override;
 
-        compute_boundary_mass(positions_ptr);
-
-        compute_densities(positions_ptr);
-
-        apply_non_pressure_forces(positions_ptr, delta);
-
-        delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP);
-
-        compute_pressure();
-        apply_pressure_force(positions_ptr, delta);
-
-        update_positions(positions_ptr, delta);
-    }
-
-    void visualize(Shader* shader) override {
-        visualizer->visualize(shader, thrust::raw_pointer_cast(density.data()),
-            REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
-        // visualizer->visualize(shader, thrust::raw_pointer_cast(velocity.data()));
-        // visualizer->visualize(shader, thrust::raw_pointer_cast(boundary_mass.data()),
-        //     0.f, PARTICLE_MASS * 2.f, true);
-    }
-
-    void reset() override {
-        CUDASPHBase::reset();
-
-        thrust::fill(pressure.begin(), pressure.end(), 0);
-    }
+    void reset() override;
 
 private:
-    void compute_pressure() {
-        compute_pressure_tuner.run();
-    }
+    void compute_densities(float* positions_dev_ptr);
+    void compute_boundary_mass(float* positions_dev_ptr);
 
-    void apply_pressure_force(float* positions_dev_ptr, float delta) {
-        apply_pressure_force_tuner.run(positions_dev_ptr, delta);
-    }
+    void update_positions(float* positions_dev_ptr, float delta);
+    void update_velocities(float delta);
 
-    thrust::device_vector<float> pressure;
-    ComputePressureTuner compute_pressure_tuner;
-    ApplyPressureForceTuner apply_pressure_force_tuner;
+    // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
+    float adapt_time_step(float delta, float min_step, float max_step) const;
+
+    /**
+     * Simulates viscosity by smoothing the velocity field [SPH Tutorial, eq. 103].
+     */
+    void compute_XSPH(const float* positions_dev_ptr);
+
+    /**
+     * Computes and applies the viscous force using an explicit viscosity model.
+     * Approximates the Laplacian of the velocity field via finite differences
+     * [SPH Tutorial, eq. 102].
+     */
+    void compute_viscosity(float* positions_dev_ptr);
+
+    /**
+     * Simulates surface tension using the macroscopic approach by Akinci et al. (2013).
+     */
+    void compute_surface_tension(float* positions_dev_ptr);
+
+    /**
+     * Computes surface normals used to calculate the curvature force
+     * in compute_surface_tension [SPH Tutorial, eq. 125].
+     */
+    void compute_surface_normals(float* positions_dev_ptr);
+
+    void apply_non_pressure_forces(float* positions_dev_ptr, float delta);
+    void apply_external_forces(float* positions_dev_ptr);
+
+    void compute_pressure();
+    void apply_pressure_force(float* positions_dev_ptr, float delta);
+
+    thrust::device_vector<float> density, boundary_mass, pressure;
+    thrust::device_vector<float4> velocity, non_pressure_accel, normal;
+    NSearchWrapper n_search;
+
+    DensityTuner               density_tuner;
+    UpdatePositionsTuner       update_positions_tuner;
+    UpdateVelocitiesTuner      update_velocities_tuner;
+    ComputeBoundaryMassTuner   compute_boundary_mass_tuner;
+    ComputeViscosityTuner      compute_viscosity_tuner;
+    ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
+    ComputeSurfaceTensionTuner compute_surface_tension_tuner;
+    ComputePressureTuner       compute_pressure_tuner;
+    ApplyPressureForceTuner    apply_pressure_force_tuner;
+    ApplyExternalForcesTuner   apply_external_forces_tuner;
+    bool apply_external_force;
 };
