@@ -12,6 +12,7 @@
 #include "cuda/tuning/compute_surface_normals.cuh"
 #include "cuda/tuning/compute_surface_tension.cuh"
 #include "cuda/tuning/compute_viscosity.cuh"
+#include "cuda/tuning/tuning_scheduler.h"
 #include "cuda/tuning/update_velocities.cuh"
 
 
@@ -85,6 +86,22 @@ private:
 
     thrust::device_vector<float> density, boundary_mass, pressure;
     thrust::device_vector<float4> velocity, non_pressure_accel, normal;
+
+    enum tuners {
+        DENSITY_TUNER,
+        UPDATE_POSITIONS_TUNER,
+        UPDATE_VELOCITIES_TUNER,
+        COMPUTE_BOUNDARY_MASS_TUNER,
+        COMPUTE_VISCOSITY_TUNER,
+        COMPUTE_SURFACE_NORMALS_TUNER,
+        COMPUTE_SURFACE_TENSION_TUNER,
+        COMPUTE_PRESSURE_TUNER,
+        APPLY_PRESSURE_TUNER,
+        APPLY_EXTERNAL_FORCES_TUNER,
+        REBUILD_N_SEARCH_TUNER,
+        TUNERS_COUNT
+    };
+
     NSearchWrapper n_search;
 
     DensityTuner               density_tuner;
@@ -98,4 +115,6 @@ private:
     ApplyPressureForceTuner    apply_pressure_force_tuner;
     ApplyExternalForcesTuner   apply_external_forces_tuner;
     bool apply_external_force;
+
+    TuningScheduler scheduler;
 };

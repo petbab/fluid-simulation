@@ -35,7 +35,7 @@ public:
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
-    void run(float *positions_dev_ptr) {
+    ktt::KernelResult run(float *positions_dev_ptr, bool tune) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions_dev_ptr, total_n * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
@@ -45,7 +45,7 @@ public:
             n_search_id
         });
 
-        ktt::KernelResult result = tuner->TuneIteration(kernel, {});
+        return Tuner::run(tune);
     }
 
 private:

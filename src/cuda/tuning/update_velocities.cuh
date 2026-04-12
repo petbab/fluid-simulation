@@ -32,7 +32,7 @@ public:
         fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
     }
 
-    void run(float delta) {
+    ktt::KernelResult run(float delta, bool tune) {
         tuner->SetArguments(definition, {
             velocities_id,
             acceleration_id,
@@ -40,7 +40,7 @@ public:
             tuner->AddArgumentScalar(delta),
         });
 
-        ktt::KernelResult result = tuner->TuneIteration(kernel, {});
+        return Tuner::run(tune);
     }
 
 private:

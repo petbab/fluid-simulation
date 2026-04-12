@@ -17,9 +17,9 @@ public:
         delete_n_search(dev_n_search, host_n_search);
     }
 
-    void rebuild(float *particle_positions) {
+    void rebuild(float *particle_positions, bool tune) {
         clear_n_search(host_n_search);
-        rebuild_n_search_tuner->run(particle_positions);
+        rebuild_n_search_tuner->run(particle_positions, tune);
     }
 
     const NSearch* dev_ptr() const { return dev_n_search; }

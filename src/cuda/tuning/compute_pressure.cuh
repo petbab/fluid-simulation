@@ -32,14 +32,14 @@ public:
         fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
     }
 
-    void run() {
+    ktt::KernelResult run(bool tune) {
         tuner->SetArguments(definition, {
             densities_id,
             pressures_id,
             fluid_particles_id,
         });
 
-        ktt::KernelResult result = tuner->TuneIteration(kernel, {});
+        return Tuner::run(tune);
     }
 
 private:

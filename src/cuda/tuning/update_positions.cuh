@@ -32,7 +32,7 @@ public:
         bb_id = tuner->AddArgumentScalar<BoundingBoxGPU>(bb);
     }
 
-    void run(float *positions_dev_ptr, float delta) {
+    ktt::KernelResult run(float *positions_dev_ptr, float delta, bool tune) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions_dev_ptr, particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
@@ -42,7 +42,7 @@ public:
             bb_id
         });
 
-        ktt::KernelResult result = tuner->TuneIteration(kernel, {});
+        return Tuner::run(tune);
     }
 
 private:

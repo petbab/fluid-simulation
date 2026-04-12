@@ -10,6 +10,16 @@ Tuner::~Tuner() {
     print_best_config();
 }
 
+ktt::KernelResult Tuner::run(bool tune) {
+    if (tune || !has_tuned) {
+        has_tuned = true;
+        return tuner->TuneIteration(kernel, {});
+    }
+
+    auto best_configuration = tuner->GetBestConfiguration(kernel);
+    return tuner->Run(kernel, best_configuration, {});
+}
+
 void Tuner::print_best_config() const {
     assert(tuner != nullptr);
 
