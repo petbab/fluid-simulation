@@ -126,14 +126,17 @@ target_link_libraries(
         GTest::gtest
         CUDA::cudart
         OpenMP::OpenMP_CXX
+        fluid_simulation_lib
+        ${KTT_LIBRARY}
 )
-target_include_directories("${PROJECT_NAME}_tests_cuda" PUBLIC "${CMAKE_SOURCE_DIR}/src")
+target_include_directories("${PROJECT_NAME}_tests_cuda" PUBLIC "${CMAKE_SOURCE_DIR}/src" ${KTT_INCLUDE_DIR})
 target_compile_definitions("${PROJECT_NAME}_tests_cuda" PRIVATE
         ROOT_DIR="${CMAKE_SOURCE_DIR}"
         $<$<CONFIG:Debug>:DEBUG>
         GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
         $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
         $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>
+        NOT_IN_KTT
 )
 set_target_properties("${PROJECT_NAME}_tests_cuda" PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON

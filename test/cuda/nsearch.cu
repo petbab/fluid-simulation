@@ -6,23 +6,23 @@
 
 
 TEST(NSearch, Constructor) {
-    NSearchWrapper n_search_wrapper{1.f};
+    NSearchWrapper n_search_wrapper{1.f, 100};
 }
 
 TEST(NSearch, CopyFromDevice) {
     constexpr float cell_size = 1.f;
-    NSearchWrapper n_search_wrapper{cell_size};
+    NSearchWrapper n_search_wrapper{cell_size, 100};
     NSearchHost h_n_search = NSearchHost::copy_from_device(n_search_wrapper.dev_ptr());
 
     EXPECT_FLOAT_EQ(cell_size, h_n_search.cell_size);
 }
 
 TEST(NSearch, SingleCell) {
-    NSearchWrapper n_search_wrapper{1.f};
-
     constexpr unsigned particles = 100;
+    NSearchWrapper n_search_wrapper{1.f, particles};
+
     thrust::device_vector<float> positions(particles * 3, 0.f);
-    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), particles);
+    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), false);
 
     NSearchHost h_n_search = NSearchHost::copy_from_device(n_search_wrapper.dev_ptr());
 
@@ -54,11 +54,11 @@ static NSearch fake_dev_n_search(NSearchHost &h_n_search) {
 }
 
 TEST(NSearch, SingleCellListNeighbors) {
-    NSearchWrapper n_search_wrapper{1.f};
-
     constexpr unsigned particles = 100;
+    NSearchWrapper n_search_wrapper{1.f, particles};
+
     thrust::device_vector<float> positions(particles * 3, 0.f);
-    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), particles);
+    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), false);
 
     NSearchHost h_n_search = NSearchHost::copy_from_device(n_search_wrapper.dev_ptr());
     NSearch fd_n_search = fake_dev_n_search(h_n_search);
@@ -75,14 +75,14 @@ TEST(NSearch, SingleCellListNeighbors) {
 }
 
 TEST(NSearch, TwoCellListNeighbors) {
-    NSearchWrapper n_search_wrapper{1.f};
-
     constexpr unsigned particles = 100;
+    NSearchWrapper n_search_wrapper{1.f, particles};
+
     thrust::device_vector<float> positions(particles * 3);
     thrust::fill_n(positions.begin(), 150, 0.1f);
     thrust::fill_n(positions.begin() + 150, 150, 1.1f);
 
-    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), particles);
+    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), false);
 
     NSearchHost h_n_search = NSearchHost::copy_from_device(n_search_wrapper.dev_ptr());
 
@@ -114,15 +114,15 @@ TEST(NSearch, TwoCellListNeighbors) {
 }
 
 TEST(NSearch, ThreeCellListNeighbors) {
-    NSearchWrapper n_search_wrapper{1.f};
-
     constexpr unsigned particles = 90;
+    NSearchWrapper n_search_wrapper{1.f, particles};
+
     thrust::device_vector<float> positions(particles * 3);
     thrust::fill_n(positions.begin(), 90, 0.1f);
     thrust::fill_n(positions.begin() + 90, 90, 1.1f);
     thrust::fill_n(positions.begin() + 180, 90, 2.1f);
 
-    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), particles);
+    n_search_wrapper.rebuild(thrust::raw_pointer_cast(positions.data()), false);
 
     NSearchHost h_n_search = NSearchHost::copy_from_device(n_search_wrapper.dev_ptr());
 

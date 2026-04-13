@@ -7,7 +7,8 @@
 Tuner::Tuner() : tuner{instance()} {}
 
 Tuner::~Tuner() {
-    print_best_config();
+    if (has_tuned)
+        print_best_config();
 }
 
 ktt::KernelResult Tuner::run(bool tune) {

@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef NOT_IN_KTT
+#include <glm/glm.hpp>
+#endif
+
 
 static constexpr float PI = 3.1415926535897932384626433f;
 
