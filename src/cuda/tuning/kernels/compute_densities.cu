@@ -5,8 +5,30 @@
 
 
 __global__ void compute_densities(const float* positions, float* densities,
-    const float *boundary_mass,
     unsigned n, void *dev_n_search_ptr) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    float4 xi = get_pos(positions, i);
+
+    const NSearch *dev_n_search = static_cast<const NSearch*>(dev_n_search_ptr);
+
+    float density = cubic_spline(0.f, SUPPORT_RADIUS);
+    dev_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
+        float4 xj = get_pos(positions, j);
+
+        if (is_neighbor(xi, xj, i, j)) {
+            float q = r_to_q(xi - xj, SUPPORT_RADIUS);
+            density += cubic_spline(q, SUPPORT_RADIUS);
+        }
+    });
+    densities[i] = density * PARTICLE_MASS;
+}
+
+__global__ void compute_densities_with_boundary(const float* positions, float* densities,
+    unsigned n, void *dev_n_search_ptr,
+    const float *boundary_mass) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;

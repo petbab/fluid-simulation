@@ -14,6 +14,7 @@
 #include "cuda/tuning/compute_viscosity.cuh"
 #include "cuda/tuning/tuning_scheduler.h"
 #include "cuda/tuning/update_velocities.cuh"
+#include <memory>
 
 
 class CUDASPHSimulator final : public CUDASimulator {
@@ -37,7 +38,7 @@ public:
     static constexpr float MIN_TIME_STEP = 0.00001f;
     ///////////////////////////////////////////////////////////////////////////////
 
-    CUDASPHSimulator(const opts_t &opts);
+    CUDASPHSimulator(const opts_t& opts);
 
     void update(float delta) override;
 
@@ -104,16 +105,16 @@ private:
 
     NSearchWrapper n_search;
 
-    DensityTuner               density_tuner;
-    UpdatePositionsTuner       update_positions_tuner;
-    UpdateVelocitiesTuner      update_velocities_tuner;
-    ComputeBoundaryMassTuner   compute_boundary_mass_tuner;
-    ComputeViscosityTuner      compute_viscosity_tuner;
+    DensityTuner density_tuner;
+    UpdatePositionsTuner update_positions_tuner;
+    UpdateVelocitiesTuner update_velocities_tuner;
+    std::unique_ptr<ComputeBoundaryMassTuner> compute_boundary_mass_tuner;
+    ComputeViscosityTuner compute_viscosity_tuner;
     ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
     ComputeSurfaceTensionTuner compute_surface_tension_tuner;
-    ComputePressureTuner       compute_pressure_tuner;
-    ApplyPressureForceTuner    apply_pressure_force_tuner;
-    ApplyExternalForcesTuner   apply_external_forces_tuner;
+    ComputePressureTuner compute_pressure_tuner;
+    ApplyPressureForceTuner apply_pressure_force_tuner;
+    ApplyExternalForcesTuner apply_external_forces_tuner;
     bool apply_external_force;
 
     TuningScheduler scheduler;

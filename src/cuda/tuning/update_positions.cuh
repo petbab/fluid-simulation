@@ -8,7 +8,7 @@
 
 class UpdatePositionsTuner final : public Tuner {
 public:
-    explicit UpdatePositionsTuner(unsigned particles, float4* velocities_dev_ptr, const BoundingBox &bb)
+    explicit UpdatePositionsTuner(unsigned particles, float4* velocities_dev_ptr)
         : particles(particles) {
         assert(tuner != nullptr);
 
@@ -29,17 +29,16 @@ public:
         velocities_id = tuner->AddArgumentVector<float4>(velocities_dev_ptr, particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
         particles_id = tuner->AddArgumentScalar(particles);
-        bb_id = tuner->AddArgumentScalar<BoundingBoxGPU>(bb);
     }
 
-    ktt::KernelResult run(float *positions_dev_ptr, float delta, bool tune) {
+    ktt::KernelResult run(float *positions_dev_ptr, float delta, const BoundingBox &bb, bool tune) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions_dev_ptr, particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             velocities_id,
             particles_id,
             tuner->AddArgumentScalar(delta),
-            bb_id
+            tuner->AddArgumentScalar<BoundingBoxGPU>(bb)
         });
 
         return Tuner::run(tune);
@@ -49,5 +48,4 @@ private:
     unsigned particles;
     ktt::ArgumentId velocities_id;
     ktt::ArgumentId particles_id;
-    ktt::ArgumentId bb_id;
 };

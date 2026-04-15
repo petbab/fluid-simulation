@@ -35,8 +35,39 @@
 __global__ void apply_pressure_force(
     const float* positions, const float* densities,
     const float* pressures, float4* velocities,
-    const float* boundary_mass,
     unsigned n, float delta, const NSearch *dev_n_search
+) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n)
+        return;
+
+    float4 p_accel{0.f};
+    float4 xi = get_pos(positions, i);
+    float di = densities[i];
+    float dpi = pressures[i] / (di * di);
+
+    dev_n_search->for_neighbors(xi, [=, &p_accel] (unsigned j) {
+        float4 xj = get_pos(positions, j);
+
+        if (!is_neighbor(xi, xj, i, j))
+            return;
+
+        float4 r = xi - xj;
+        float q = r_to_q(r, SUPPORT_RADIUS);
+        float4 grad_W = spiky_grad(q, SUPPORT_RADIUS) * r;
+        float dj = densities[j];
+        float dpj = pressures[j] / (dj * dj);
+        p_accel -= (dpi + dpj) * grad_W;
+    });
+
+    velocities[i] += delta * (PARTICLE_MASS * p_accel);
+}
+
+__global__ void apply_pressure_force_with_boundary(
+    const float* positions, const float* densities,
+    const float* pressures, float4* velocities,
+    unsigned n, float delta, const NSearch *dev_n_search,
+    const float* boundary_mass
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)

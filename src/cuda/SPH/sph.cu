@@ -17,9 +17,8 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       normal(fluid_particles),
       n_search(2.f * SUPPORT_RADIUS, total_particles),
       density_tuner(fluid_particles, total_particles, dev_ptr(density), dev_ptr(boundary_mass), n_search.dev_ptr()),
-      update_positions_tuner(fluid_particles, dev_ptr(velocity), bounding_box),
+      update_positions_tuner(fluid_particles, dev_ptr(velocity)),
       update_velocities_tuner(fluid_particles, dev_ptr(velocity), dev_ptr(non_pressure_accel)),
-      compute_boundary_mass_tuner(fluid_particles, boundary_particles, dev_ptr(boundary_mass), n_search.dev_ptr()),
       compute_viscosity_tuner(fluid_particles, dev_ptr(velocity), dev_ptr(density), dev_ptr(non_pressure_accel),
                               n_search.dev_ptr()),
       compute_surface_normals_tuner(fluid_particles, dev_ptr(density), dev_ptr(normal), n_search.dev_ptr()),
@@ -31,6 +30,9 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       apply_external_forces_tuner(fluid_particles, dev_ptr(non_pressure_accel), opts.external_force),
       apply_external_force(!opts.external_force.empty()),
       scheduler(TUNERS_COUNT, 0.1f) {
+    if (boundary_particles > 0)
+        compute_boundary_mass_tuner = std::make_unique<ComputeBoundaryMassTuner>(
+            fluid_particles, boundary_particles, dev_ptr(boundary_mass), n_search.dev_ptr());
 }
 
 void CUDASPHSimulator::update(float delta) {
@@ -68,7 +70,7 @@ void CUDASPHSimulator::compute_densities(float* positions_dev_ptr) {
 }
 
 void CUDASPHSimulator::update_positions(float* positions_dev_ptr, float delta) {
-    update_positions_tuner.run(positions_dev_ptr, delta, scheduler.is_scheduled(UPDATE_POSITIONS_TUNER));
+    update_positions_tuner.run(positions_dev_ptr, delta, bounding_box, scheduler.is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
 void CUDASPHSimulator::apply_non_pressure_forces(float* positions_dev_ptr, float delta) {
@@ -83,7 +85,8 @@ void CUDASPHSimulator::apply_non_pressure_forces(float* positions_dev_ptr, float
 }
 
 void CUDASPHSimulator::compute_boundary_mass(float* positions_dev_ptr) {
-    compute_boundary_mass_tuner.run(positions_dev_ptr, scheduler.is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
+    if (compute_boundary_mass_tuner != nullptr)
+        compute_boundary_mass_tuner->run(positions_dev_ptr, scheduler.is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
 }
 
 void CUDASPHSimulator::reset() {

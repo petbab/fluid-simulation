@@ -17,8 +17,8 @@ public:
         const ktt::DimensionVector blockDimensions;
 
         static const std::string kernel_name = "apply_pressure_force";
-        definition = tuner->AddKernelDefinitionFromFile(
-            kernel_name, cfg::tuned_kernels_dir / (kernel_name + ".cu"), gridDimensions, blockDimensions);
+        definition = tuner->AddKernelDefinitionFromFile(kernel_name + (boundary_particles > 0 ? "_with_boundary" : ""),
+            cfg::tuned_kernels_dir / (kernel_name + ".cu"), gridDimensions, blockDimensions);
         kernel = tuner->CreateSimpleKernel(kernel_name, definition);
 
         tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{32, 64, 128, 256, 512});
@@ -33,25 +33,30 @@ public:
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
         velocities_id = tuner->AddArgumentVector<float4>(velocities, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
-        boundary_mass_id = tuner->AddArgumentVector<float>(boundary_mass, boundary_particles * sizeof(float),
-                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
         fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
         n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+
+        if (boundary_particles > 0)
+            boundary_mass_id = tuner->AddArgumentVector<float>(boundary_mass, boundary_particles * sizeof(float),
+                    ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
     ktt::KernelResult run(float* positions, float delta, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float>(positions, fluid_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             densities_id,
             pressures_id,
             velocities_id,
-            boundary_mass_id,
             fluid_particles_id,
             tuner->AddArgumentScalar(delta),
             n_search_id
-        });
+        };
+        if (boundary_particles > 0)
+            args.push_back(boundary_mass_id);
+
+        tuner->SetArguments(definition, args);
 
         return Tuner::run(tune);
     }
