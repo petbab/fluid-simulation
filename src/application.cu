@@ -2,6 +2,7 @@
 #include "application.h"
 #include <config.h>
 #include <debug.h>
+#include <imgui.h>
 #include <render/asset_manager.h>
 #include <render/fluid.h>
 
@@ -10,6 +11,7 @@ Application::Application(GLFWwindow *window, int width, int height)
     : window{window},
       camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height} {
     configure_window();
+    gui = std::make_unique<GUI>(window);
 }
 
 void Application::init() {
@@ -38,6 +40,9 @@ void Application::run() {
 
         // Poll for and process events.
         glfwPollEvents();
+
+        gui->loop_start();
+
         update(delta);
 
         // Clear screen
@@ -46,6 +51,9 @@ void Application::run() {
         glCheckError();
 
         render_scene();
+
+        gui->loop_end();
+
         glfwSwapBuffers(window);
     }
 }
@@ -77,6 +85,9 @@ void Application::on_resize(GLFWwindow *window, int width, int height) {
 }
 
 void Application::on_mouse_move(GLFWwindow *window, double x, double y) {
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
     Application* app = app_from_window(window);
 
     glm::vec2 pos{x, y};
@@ -98,12 +109,17 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
     if (action != GLFW_PRESS)
         return;
 
+    if (key == GLFW_KEY_ESCAPE) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+        return;
+    }
+
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
+
     Application *app = app_from_window(window);
     auto *fluid = AssetManager::get<Fluid<FluidSim>>("fluid");
     switch (key) {
-    case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(window, GL_TRUE);
-        break;
     case GLFW_KEY_R:
         if (fluid != nullptr)
             fluid->reset();
@@ -123,6 +139,9 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
 }
 
 void Application::process_keyboard_input(float delta) {
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
+
     // Camera movement
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.on_key_move(Camera::move::FORWARD, delta);

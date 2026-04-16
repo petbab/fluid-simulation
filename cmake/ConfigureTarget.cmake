@@ -10,6 +10,7 @@ function(configure_target TARGET)
             CUDA::cuda_driver
             ${KTT_LIBRARY}
             Open3D::Open3D
+            imgui::imgui
     )
     target_include_directories(${TARGET} PUBLIC
             ${KTT_INCLUDE_DIR}

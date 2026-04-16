@@ -5,6 +5,7 @@
 #include <render/camera.h>
 #include <render/light.h>
 #include <cuda/SPH/sph.cuh>
+#include "gui.h"
 
 
 class Application {
@@ -33,6 +34,8 @@ protected:
     void process_keyboard_input(float delta);
 
     GLFWwindow *window;
+    std::unique_ptr<GUI> gui;
+
     Camera camera;
     std::unique_ptr<LightArray> lights;
 
