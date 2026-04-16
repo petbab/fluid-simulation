@@ -34,7 +34,7 @@ public:
         densities_id = tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
         acceleration_id = tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
-                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
+                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
         fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
         n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
