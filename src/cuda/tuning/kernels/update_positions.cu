@@ -1,4 +1,3 @@
-#define KERNEL_DIR /home/pbabic/Repositories/fluid-simulation/src/cuda/tuning/kernels
 #define KERNEL_PATH(file) <KERNEL_DIR ## file>
 
 #include KERNEL_PATH(/common.cuh)
