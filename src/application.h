@@ -27,9 +27,12 @@ protected:
     virtual void setup_scene() {}
     virtual void update_objects(float delta) {}
 
+    void set_capture_mouse(bool capture_mouse);
+
     static void on_resize(GLFWwindow* window, int width, int height);
     static void on_mouse_move(GLFWwindow* window, double x, double y);
     static void on_key_pressed(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void on_mouse_button(GLFWwindow* window, int button, int action, int mods);
 
     void process_keyboard_input(float delta);
 
@@ -43,4 +46,5 @@ protected:
     bool first_mouse_move = true;
     glm::vec2 last_mouse_pos{0.f};
     bool paused = true;
+    bool captured_mouse = false;
 };

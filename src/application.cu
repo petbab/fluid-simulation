@@ -23,9 +23,7 @@ void Application::configure_window() {
     glfwSetFramebufferSizeCallback(window, on_resize);
     glfwSetCursorPosCallback(window, on_mouse_move);
     glfwSetKeyCallback(window, on_key_pressed);
-#ifndef DEBUG
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-#endif
+    glfwSetMouseButtonCallback(window, on_mouse_button);
 }
 
 void Application::run() {
@@ -76,6 +74,13 @@ static Application* app_from_window(GLFWwindow *window) {
     return static_cast<Application*>(glfwGetWindowUserPointer(window));
 }
 
+void Application::set_capture_mouse(bool capture_mouse) {
+    if (capture_mouse != captured_mouse) {
+        captured_mouse = capture_mouse;
+        glfwSetInputMode(window, GLFW_CURSOR, capture_mouse ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+}
+
 void Application::on_resize(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
     glCheckError();
@@ -89,6 +94,11 @@ void Application::on_mouse_move(GLFWwindow *window, double x, double y) {
         return;
 
     Application* app = app_from_window(window);
+
+    if (!app->captured_mouse) {
+        app->first_mouse_move = true;
+        return;
+    }
 
     glm::vec2 pos{x, y};
     if (app->first_mouse_move)
@@ -109,15 +119,20 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
     if (action != GLFW_PRESS)
         return;
 
+    Application *app = app_from_window(window);
+
     if (key == GLFW_KEY_ESCAPE) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-        return;
+        if (!app->captured_mouse) {
+            glfwSetWindowShouldClose(window, GL_TRUE);
+            return;
+        }
+
+        app->set_capture_mouse(false);
     }
 
     if (ImGui::GetIO().WantCaptureKeyboard)
         return;
 
-    Application *app = app_from_window(window);
     auto *fluid = AssetManager::get<Fluid<FluidSim>>("fluid");
     switch (key) {
     case GLFW_KEY_R:
@@ -135,6 +150,16 @@ void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, i
         if (fluid != nullptr)
             fluid->toggle_show_boundary();
         break;
+    }
+}
+
+void Application::on_mouse_button(GLFWwindow* window, int button, int action, int mods) {
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
+    if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) {
+        Application *app = app_from_window(window);
+        app->set_capture_mouse(true);
     }
 }
 
