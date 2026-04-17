@@ -7,13 +7,21 @@
 Tuner::Tuner() : tuner{instance()} {}
 
 Tuner::~Tuner() {
-    if (has_tuned)
+    if (searched_count > 0)
         print_best_config();
 }
 
+std::pair<int, int> Tuner::tuning_stats() const {
+    if (searched_count == 0)
+        return {0, 0};
+
+    int total = tuner->GetConfigurationsCount(kernel);
+    return {std::min(searched_count, total), total};
+}
+
 ktt::KernelResult Tuner::run(bool tune) {
-    if (tune || !has_tuned) {
-        has_tuned = true;
+    if (tune || searched_count == 0) {
+        ++searched_count;
         return tuner->TuneIteration(kernel, {});
     }
 

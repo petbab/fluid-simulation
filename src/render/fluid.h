@@ -54,6 +54,10 @@ public:
 private:
     const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
+    const S& get_simulator() const { return dynamic_cast<const S&>(*simulator); }
+
     std::unique_ptr<FluidSimulator> simulator;
     bool show_boundary = false;
+
+    friend class GUI;
 };

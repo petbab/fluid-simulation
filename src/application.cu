@@ -39,7 +39,7 @@ void Application::run() {
         // Poll for and process events.
         glfwPollEvents();
 
-        gui->loop_start();
+        gui->update(delta);
 
         update(delta);
 
@@ -50,7 +50,7 @@ void Application::run() {
 
         render_scene();
 
-        gui->loop_end();
+        gui->render();
 
         glfwSwapBuffers(window);
     }

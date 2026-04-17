@@ -5,7 +5,7 @@
 #include <render/camera.h>
 #include <render/light.h>
 #include <cuda/SPH/sph.cuh>
-#include "gui.h"
+#include "gui.cuh"
 
 
 class Application {

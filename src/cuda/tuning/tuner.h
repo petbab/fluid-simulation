@@ -8,6 +8,8 @@ public:
     Tuner();
     virtual ~Tuner();
 
+    std::pair<int, int> tuning_stats() const;
+
 protected:
     ktt::KernelResult run(bool tune);
 
@@ -19,5 +21,5 @@ protected:
     ktt::Tuner* tuner;
     ktt::KernelDefinitionId definition = 0;
     ktt::KernelId kernel = 0;
-    bool has_tuned = false;
+    int searched_count = 0;
 };

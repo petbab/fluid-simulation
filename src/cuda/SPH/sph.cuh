@@ -85,9 +85,6 @@ private:
     void compute_pressure();
     void apply_pressure_force(float* positions_dev_ptr, float delta);
 
-    thrust::device_vector<float> density, boundary_mass, pressure;
-    thrust::device_vector<float4> velocity, non_pressure_accel, normal;
-
     enum tuners {
         DENSITY_TUNER,
         UPDATE_POSITIONS_TUNER,
@@ -97,25 +94,34 @@ private:
         COMPUTE_SURFACE_NORMALS_TUNER,
         COMPUTE_SURFACE_TENSION_TUNER,
         COMPUTE_PRESSURE_TUNER,
-        APPLY_PRESSURE_TUNER,
+        APPLY_PRESSURE_FORCE_TUNER,
         APPLY_EXTERNAL_FORCES_TUNER,
         REBUILD_N_SEARCH_TUNER,
-        TUNERS_COUNT
     };
+
+    bool is_scheduled(tuners tuner_i) const;
+
+    std::pair<int, int> tuning_stats() const;
+
+    thrust::device_vector<float> density, boundary_mass, pressure;
+    thrust::device_vector<float4> velocity, non_pressure_accel, normal;
 
     NSearchWrapper n_search;
 
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
     UpdateVelocitiesTuner update_velocities_tuner;
-    std::unique_ptr<ComputeBoundaryMassTuner> compute_boundary_mass_tuner;
     ComputeViscosityTuner compute_viscosity_tuner;
     ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
     ComputeSurfaceTensionTuner compute_surface_tension_tuner;
     ComputePressureTuner compute_pressure_tuner;
     ApplyPressureForceTuner apply_pressure_force_tuner;
-    ApplyExternalForcesTuner apply_external_forces_tuner;
-    bool apply_external_force;
 
-    TuningScheduler scheduler;
+    std::unique_ptr<ComputeBoundaryMassTuner> compute_boundary_mass_tuner;
+    std::unique_ptr<ApplyExternalForcesTuner> apply_external_forces_tuner;
+
+    std::map<tuners, Tuner*> active_tuners;
+    std::unique_ptr<TuningScheduler> scheduler;
+
+    friend class GUI;
 };
