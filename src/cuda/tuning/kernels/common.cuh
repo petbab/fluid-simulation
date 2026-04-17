@@ -1,6 +1,5 @@
 #pragma once
 
-#define KERNEL_DIR /home/pbabic/Repositories/fluid-simulation/src/cuda/tuning/kernels
 
 #define CUDA_DIR KERNEL_DIR/../..
 #define CUDA_PATH(file) <CUDA_DIR ## file>

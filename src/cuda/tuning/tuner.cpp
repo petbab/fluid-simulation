@@ -55,6 +55,7 @@ ktt::Tuner* Tuner::instance() {
         ktt::ComputeApiInitializer initializer{context, std::vector<ktt::ComputeQueue>{stream}};
         tuner = std::make_unique<ktt::Tuner>(ktt::ComputeApi::CUDA, initializer);
         tuner->SetCompilerOptions("--std=c++20");
+	tuner->SetKernelCacheCapacity(20);
     }
     return tuner.get();
 }
