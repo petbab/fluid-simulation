@@ -103,6 +103,8 @@ private:
 
     std::pair<int, int> tuning_stats() const;
 
+    void set_tuning_budget(float tuning_budget);
+
     thrust::device_vector<float> density, boundary_mass, pressure;
     thrust::device_vector<float4> velocity, non_pressure_accel, normal;
 
@@ -122,6 +124,7 @@ private:
 
     std::map<tuners, Tuner*> active_tuners;
     std::unique_ptr<TuningScheduler> scheduler;
+    float tuning_budget;
 
     friend class GUI;
 };

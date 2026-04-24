@@ -35,11 +35,16 @@ void GUI::update(float delta) {
 
     ImGui::Text("FPS: %f", 1.f / delta);
 
-    const auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
+    auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
     assert(fluid != nullptr);
-    const CUDASPHSimulator &fluid_sim = fluid->get_simulator();
+    CUDASPHSimulator &fluid_sim = fluid->get_simulator();
+
     auto [searched, total] = fluid_sim.tuning_stats();
     ImGui::Text("Searched Configurations: %i/%i", searched, total);
+
+    if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
+        0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+        fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
 
     ImGui::End();
     ImGui::EndFrame();

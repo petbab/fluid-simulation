@@ -38,7 +38,8 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
           {COMPUTE_SURFACE_TENSION_TUNER, &compute_surface_tension_tuner},
           {COMPUTE_PRESSURE_TUNER, &compute_pressure_tuner},
           {APPLY_PRESSURE_FORCE_TUNER, &apply_pressure_force_tuner},
-      } {
+      },
+      tuning_budget{0.1f} {
     if (boundary_particles > 0) {
         compute_boundary_mass_tuner = std::make_unique<ComputeBoundaryMassTuner>(
             fluid_particles, boundary_particles, dev_ptr(boundary_mass), n_search.dev_ptr());
@@ -50,7 +51,7 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
         active_tuners[APPLY_EXTERNAL_FORCES_TUNER] = apply_external_forces_tuner.get();
     }
 
-    scheduler = std::make_unique<TuningScheduler>(active_tuners.size(), 0.1f);
+    scheduler = std::make_unique<TuningScheduler>(active_tuners.size(), tuning_budget);
 }
 
 void CUDASPHSimulator::update(float delta) {
@@ -197,4 +198,9 @@ std::pair<int, int> CUDASPHSimulator::tuning_stats() const {
     }
 
     return stats;
+}
+
+void CUDASPHSimulator::set_tuning_budget(float tb) {
+    tuning_budget = tb;
+    scheduler->set_tune_iterations_per_frame(tb);
 }
