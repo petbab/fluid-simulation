@@ -35,7 +35,7 @@ public:
         particles_id = tuner->AddArgumentScalar(particles);
     }
 
-    ktt::KernelResult run(float *positions_dev_ptr, float delta, const BoundingBox &bb, bool tune) {
+    ktt::KernelResult run(float4 *positions_dev_ptr, float delta, const BoundingBox &bb, bool tune) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions_dev_ptr, particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),

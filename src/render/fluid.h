@@ -22,7 +22,7 @@ public:
         geometry = AssetManager::make<InstancedGeometry>(
             "ball_geometry",
             procedural::quad(1, false, false), 1,
-            std::vector{VertexAttribute{3, simulator->get_position_data()}});
+            std::vector{VertexAttribute{4, simulator->get_position_data()}});
 
         if constexpr (std::is_base_of_v<CUDASimulator, S>)
             dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());

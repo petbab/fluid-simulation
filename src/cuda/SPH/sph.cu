@@ -58,7 +58,7 @@ void CUDASPHSimulator::update(float delta) {
     scheduler->schedule();
 
     auto lock = cuda_gl_positions->lock();
-    float* positions_ptr = static_cast<float*>(lock.get_ptr());
+    float4* positions_ptr = static_cast<float4*>(lock.get_ptr());
 
     n_search.rebuild(positions_ptr, is_scheduled(REBUILD_N_SEARCH_TUNER));
 
@@ -84,15 +84,15 @@ void CUDASPHSimulator::visualize(Shader* shader) {
     //     0.f, PARTICLE_MASS * 2.f, true);
 }
 
-void CUDASPHSimulator::compute_densities(float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_densities(float4* positions_dev_ptr) {
     density_tuner.run(positions_dev_ptr, is_scheduled(DENSITY_TUNER));
 }
 
-void CUDASPHSimulator::update_positions(float* positions_dev_ptr, float delta) {
+void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta) {
     update_positions_tuner.run(positions_dev_ptr, delta, bounding_box, is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
-void CUDASPHSimulator::apply_non_pressure_forces(float* positions_dev_ptr, float delta) {
+void CUDASPHSimulator::apply_non_pressure_forces(float4* positions_dev_ptr, float delta) {
     apply_external_forces(positions_dev_ptr);
 
     compute_viscosity(positions_dev_ptr);
@@ -103,7 +103,7 @@ void CUDASPHSimulator::apply_non_pressure_forces(float* positions_dev_ptr, float
     compute_XSPH(positions_dev_ptr);
 }
 
-void CUDASPHSimulator::compute_boundary_mass(float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_boundary_mass(float4* positions_dev_ptr) {
     if (compute_boundary_mass_tuner != nullptr)
         compute_boundary_mass_tuner->run(positions_dev_ptr, is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
 }
@@ -147,27 +147,27 @@ void CUDASPHSimulator::update_velocities(float delta) {
     update_velocities_tuner.run(delta, is_scheduled(UPDATE_VELOCITIES_TUNER));
 }
 
-void CUDASPHSimulator::compute_XSPH(const float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_XSPH(const float4* positions_dev_ptr) {
     if constexpr (XSPH_ALPHA == 0.f)
         return;
     // TODO
 }
 
-void CUDASPHSimulator::compute_viscosity(float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_viscosity(float4* positions_dev_ptr) {
     compute_viscosity_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_VISCOSITY_TUNER));
 }
 
-void CUDASPHSimulator::compute_surface_tension(float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_surface_tension(float4* positions_dev_ptr) {
     compute_surface_normals(positions_dev_ptr);
 
     compute_surface_tension_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_SURFACE_TENSION_TUNER));
 }
 
-void CUDASPHSimulator::compute_surface_normals(float* positions_dev_ptr) {
+void CUDASPHSimulator::compute_surface_normals(float4* positions_dev_ptr) {
     compute_surface_normals_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_SURFACE_NORMALS_TUNER));
 }
 
-void CUDASPHSimulator::apply_external_forces(float* positions_dev_ptr) {
+void CUDASPHSimulator::apply_external_forces(float4* positions_dev_ptr) {
     if (apply_external_forces_tuner != nullptr) {
         apply_external_forces_tuner->run(positions_dev_ptr, is_scheduled(APPLY_EXTERNAL_FORCES_TUNER));
     } else {
@@ -179,7 +179,7 @@ void CUDASPHSimulator::compute_pressure() {
     compute_pressure_tuner.run(is_scheduled(COMPUTE_PRESSURE_TUNER));
 }
 
-void CUDASPHSimulator::apply_pressure_force(float* positions_dev_ptr, float delta) {
+void CUDASPHSimulator::apply_pressure_force(float4* positions_dev_ptr, float delta) {
     apply_pressure_force_tuner.run(positions_dev_ptr, delta, is_scheduled(APPLY_PRESSURE_FORCE_TUNER));
 }
 

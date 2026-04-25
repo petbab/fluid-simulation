@@ -102,13 +102,13 @@ struct NSearch {
 
     // For neighbors with real neighbor check
     template<typename F>
-    __device__ unsigned for_neighbors(const float *positions, unsigned p_i, float support_radius, F f) const {
-        float4 xi = get_pos(positions, p_i);
+    __device__ unsigned for_neighbors(const float4 *positions, unsigned p_i, float support_radius, F f) const {
+        float4 xi = positions[p_i];
         return for_neighbors(xi, [=] (unsigned p_j) -> void {
             if (p_i == p_j)
                 return;
 
-            float4 r = xi - get_pos(positions, p_j);
+            float4 r = xi - positions[p_j];
             if (dot(r, r) <= support_radius * support_radius)
                 f(p_j);
         });

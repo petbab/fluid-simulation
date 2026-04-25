@@ -39,7 +39,7 @@ public:
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
-    ktt::KernelResult run(float *positions_dev_ptr, bool tune) {
+    ktt::KernelResult run(float4 *positions_dev_ptr, bool tune) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions_dev_ptr, total_n * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),

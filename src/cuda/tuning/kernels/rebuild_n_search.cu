@@ -3,10 +3,10 @@
 #include KERNEL_PATH(/common.cuh)
 
 
-__global__ void rebuild_n_search(NSearch *dev_n_search, const float *particle_positions, unsigned n) {
+__global__ void rebuild_n_search(NSearch *dev_n_search, const float4 *particle_positions, unsigned n) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    float4 pos = get_pos(particle_positions, i);
+    float4 pos = particle_positions[i];
     dev_n_search->insert(pos, i);
 }

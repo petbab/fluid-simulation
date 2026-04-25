@@ -46,7 +46,7 @@ private:
     void init_boundary_particles(const std::vector<const Object*> &collision_objects);
 
 protected:
-    std::vector<glm::vec3> positions;
+    std::vector<glm::vec4> positions;
     unsigned total_particles, fluid_particles, boundary_particles;
 
     const BoundingBox &bounding_box;

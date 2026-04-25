@@ -46,7 +46,7 @@ public:
                     ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
-    ktt::KernelResult run(float* positions, float delta, bool tune) {
+    ktt::KernelResult run(float4* positions, float delta, bool tune) {
         std::vector args{
             tuner->AddArgumentVector<float>(positions, fluid_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),

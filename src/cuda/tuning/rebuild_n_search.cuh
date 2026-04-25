@@ -34,7 +34,7 @@ public:
         total_particles_id = tuner->AddArgumentScalar(total_particles);
     }
 
-    ktt::KernelResult run(float *particle_positions, bool tune) {
+    ktt::KernelResult run(float4 *particle_positions, bool tune) {
         tuner->SetArguments(definition, {
             n_search_id,
             tuner->AddArgumentVector<float>(particle_positions, total_particles * sizeof(float) * 3,

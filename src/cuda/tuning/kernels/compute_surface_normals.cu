@@ -4,7 +4,7 @@
 
 
 __global__ void compute_surface_normals(
-    const float* positions, const float* densities,
+    const float4* positions, const float* densities,
     float4* normals, unsigned n,
     const NSearch *dev_n_search
 ) {
@@ -12,14 +12,14 @@ __global__ void compute_surface_normals(
     if (i >= n)
         return;
 
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
     float4 normal{0.f};
 
     dev_n_search->for_neighbors(xi, [=, &normal] (unsigned j) {
         if (is_boundary(j, n))
             return;
 
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
             float4 r = xi - xj;

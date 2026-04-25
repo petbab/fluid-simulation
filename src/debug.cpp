@@ -4,7 +4,7 @@
 #include <numeric>
 
 
-std::ostream &operator<<(std::ostream &out, glm::vec3 v) {
+std::ostream &operator<<(std::ostream &out, glm::vec4 v) {
     return out << '(' << v.x << ", " << v.y << ", " << v.z << ')';
 }
 
@@ -19,10 +19,10 @@ void print_stats(const std::vector<float> &v, const std::string &name) {
               << "Mean: " << std::accumulate(v.begin(), v.end(), 0.f) / static_cast<float>(v.size()) << '\n';
 }
 
-void print_stats(const std::vector<glm::vec3> &v, const std::string &name) {
+void print_stats(const std::vector<glm::vec4> &v, const std::string &name) {
     std::cout << "=== " + name + " ===\n"
-              << "Min: " << std::ranges::min(v, std::less{}, [](const glm::vec3 u){ return glm::length(u); }) << '\n'
-              << "Max: " << std::ranges::max(v, std::less{}, [](const glm::vec3 u){ return glm::length(u); }) << '\n';
+              << "Min: " << std::ranges::min(v, std::less{}, [](const glm::vec4 u){ return glm::length(glm::vec3{u}); }) << '\n'
+              << "Max: " << std::ranges::max(v, std::less{}, [](const glm::vec4 u){ return glm::length(glm::vec3{u}); }) << '\n';
 }
 
 GLenum gl_check_error(const char *file, int line) {

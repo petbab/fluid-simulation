@@ -18,18 +18,6 @@ struct BoundingBoxGPU {
     mat4 model, model_inv;
 };
 
-__device__ __host__ inline float4 get_pos(const float *positions, unsigned i) {
-    unsigned ii = 3 * i;
-    return make_float4(positions[ii], positions[ii + 1], positions[ii + 2], 1.);
-}
-
-__device__ inline void set_pos(float *positions, unsigned i, float4 pos) {
-    unsigned ii = 3 * i;
-    positions[ii] = pos.x;
-    positions[ii + 1] = pos.y;
-    positions[ii + 2] = pos.z;
-}
-
 __device__ __host__ inline bool is_boundary(unsigned i, unsigned fluid_n) {
     return i >= fluid_n;
 }

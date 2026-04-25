@@ -6,7 +6,7 @@
 static constexpr float SURFACE_TENSION_ALPHA = 0.15f;
 
 __global__ void compute_surface_tension(
-    const float* positions, const float* densities,
+    const float4* positions, const float* densities,
     const float4* normals, float4* acceleration,
     unsigned n, const NSearch *dev_n_search
 ) {
@@ -14,7 +14,7 @@ __global__ void compute_surface_tension(
     if (i >= n)
         return;
 
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
     float4 ni = normals[i];
     float di = densities[i];
     float4 f{0.f};
@@ -23,10 +23,10 @@ __global__ void compute_surface_tension(
         if (is_boundary(j, n))
             return;
 
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
-            float4 x_ij = xi - get_pos(positions, j);
+            float4 x_ij = xi - positions[j];
             float q = r_to_q(x_ij, SUPPORT_RADIUS);
             if (dot(x_ij, x_ij) > 1e-6)
                 f += (PARTICLE_MASS * normalize(x_ij)

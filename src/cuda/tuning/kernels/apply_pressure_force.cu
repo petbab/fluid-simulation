@@ -12,7 +12,7 @@
 //     float4 boundary_grad_sum = make_float4(0.f);
 //
 //     dev_n_search->for_neighbors(xi, [=, &fluid_grad_sum, &boundary_grad_sum] __device__ (unsigned j) {
-//         float4 xj = get_pos(positions, j);
+//         float4 xj = positions[j];
 //
 //         if (is_neighbor(xi, xj, i, j)) {
 //             float4 r = xi - xj;
@@ -32,7 +32,7 @@
 // }
 
 __global__ void apply_pressure_force(
-    const float* positions, const float* densities,
+    const float4* positions, const float* densities,
     const float* pressures, float4* velocities,
     unsigned n, float delta, const NSearch *dev_n_search
 ) {
@@ -41,12 +41,12 @@ __global__ void apply_pressure_force(
         return;
 
     float4 p_accel{0.f};
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
 
     dev_n_search->for_neighbors(xi, [=, &p_accel] (unsigned j) {
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (!is_neighbor(xi, xj, i, j))
             return;
@@ -63,7 +63,7 @@ __global__ void apply_pressure_force(
 }
 
 __global__ void apply_pressure_force_with_boundary(
-    const float* positions, const float* densities,
+    const float4* positions, const float* densities,
     const float* pressures, float4* velocities,
     unsigned n, float delta, const NSearch *dev_n_search,
     const float* boundary_mass
@@ -74,13 +74,13 @@ __global__ void apply_pressure_force_with_boundary(
 
     float4 p_accel{0.f};
     float4 boundary_p_accel{0.f};
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
     float b_p_term = dpi + pressures[i] / (REST_DENSITY * REST_DENSITY);
 
     dev_n_search->for_neighbors(xi, [=, &p_accel, &boundary_p_accel] (unsigned j) {
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (!is_neighbor(xi, xj, i, j))
             return;

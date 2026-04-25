@@ -3,19 +3,19 @@
 #include KERNEL_PATH(/common.cuh)
 
 
-__global__ void compute_densities(const float* positions, float* densities,
+__global__ void compute_densities(const float4* positions, float* densities,
     unsigned n, void *dev_n_search_ptr) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
 
     const NSearch *dev_n_search = static_cast<const NSearch*>(dev_n_search_ptr);
 
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
     dev_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
             float q = r_to_q(xi - xj, SUPPORT_RADIUS);
@@ -25,14 +25,14 @@ __global__ void compute_densities(const float* positions, float* densities,
     densities[i] = density * PARTICLE_MASS;
 }
 
-__global__ void compute_densities_with_boundary(const float* positions, float* densities,
+__global__ void compute_densities_with_boundary(const float4* positions, float* densities,
     unsigned n, void *dev_n_search_ptr,
     const float *boundary_mass) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
 
     const NSearch *dev_n_search = static_cast<const NSearch*>(dev_n_search_ptr);
 
@@ -40,7 +40,7 @@ __global__ void compute_densities_with_boundary(const float* positions, float* d
     float boundary_density = 0.f;
 
     dev_n_search->for_neighbors(xi, [=, &density, &boundary_density] (unsigned j) {
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
             float q = r_to_q(xi - xj, SUPPORT_RADIUS);
@@ -64,7 +64,7 @@ __global__ void compute_densities_with_boundary(const float* positions, float* d
 // #else
 //     if (i < n) {
 // #endif
-//         float4 xi = get_pos(positions, i);
+//         float4 xi = positions[i];
 //         float density = 0.f;
 //
 // #if USE_SHARED_MEMORY
@@ -83,13 +83,13 @@ __global__ void compute_densities_with_boundary(const float* positions, float* d
 //         }
 //         // Handle remainder
 //         for (; j < n; ++j) {
-//             float4 xj = get_pos(positions, j);
+//             float4 xj = positions[j];
 //             float q = r_to_q(xi - xj, support_radius);
 //             density += cubic_spline(q, support_radius);
 //         }
 // #else
 //         for (unsigned j = 0; j < n; ++j) {
-//             float4 xj = get_pos(positions, j);
+//             float4 xj = positions[j];
 //             float q = r_to_q(xi - xj, support_radius);
 //             density += cubic_spline(q, support_radius);
 //         }

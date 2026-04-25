@@ -6,7 +6,7 @@
 static constexpr float VISCOSITY = 0.001f;
 
 __global__ void compute_viscosity(
-    const float* positions, const float4* velocities,
+    const float4* positions, const float4* velocities,
     const float* densities, float4* acceleration,
     unsigned n, const NSearch *dev_n_search
 ) {
@@ -15,14 +15,14 @@ __global__ void compute_viscosity(
         return;
 
     float4 velocity_laplacian{0.f};
-    float4 xi = get_pos(positions, i);
+    float4 xi = positions[i];
     float4 vi = velocities[i];
 
     dev_n_search->for_neighbors(xi, [=, &velocity_laplacian] (unsigned j) {
         if (is_boundary(j, n))
             return;
 
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
             float4 x_ij = xi - xj;

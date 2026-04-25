@@ -4,7 +4,7 @@
 
 
 __global__ void compute_boundary_mass(
-    const float* positions, float* masses,
+    const float4* positions, float* masses,
     unsigned fluid_n, unsigned boundary_n,
     const NSearch *dev_n_search
 ) {
@@ -12,13 +12,13 @@ __global__ void compute_boundary_mass(
     if (i >= boundary_n)
         return;
 
-    float4 xi = get_pos(positions, fluid_n + i);
+    float4 xi = positions[fluid_n + i];
     float sum = cubic_spline(0.f, SUPPORT_RADIUS);
     dev_n_search->for_neighbors(xi, [=, &sum] (unsigned j) {
         if (!is_boundary(j, fluid_n))
             return;
 
-        float4 xj = get_pos(positions, j);
+        float4 xj = positions[j];
         if (is_neighbor(xi, xj, i, j)) {
             float4 r = xi - xj;
             float q = r_to_q(r, SUPPORT_RADIUS);

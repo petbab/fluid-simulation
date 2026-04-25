@@ -7,10 +7,10 @@ static constexpr float OFFSET = 0.000f;
 static constexpr float COLLISION_BUFFER_MULT = 0.75f;
 static constexpr float ELASTICITY = 0.9f;
 
-__device__ void resolve_collisions(float* positions, float4* velocities, const BoundingBoxGPU &bb) {
+__device__ void resolve_collisions(float4* positions, float4* velocities, const BoundingBoxGPU &bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    float4 pos = bb.model_inv * get_pos(positions, i);
+    float4 pos = bb.model_inv * positions[i];
     float4 vel = bb.model_inv * velocities[i];
     bool changed_pos = false;
     if (pos.x - PARTICLE_RADIUS * COLLISION_BUFFER_MULT < bb.min.x) {
@@ -42,19 +42,19 @@ __device__ void resolve_collisions(float* positions, float4* velocities, const B
     }
 
     if (changed_pos) {
-        set_pos(positions, i, bb.model * pos);
+        positions[i] = bb.model * pos;
         velocities[i] = bb.model * vel;
     }
 }
 
-__global__ void update_positions(float* positions, float4* velocities, unsigned n, float delta, BoundingBoxGPU bb) {
+__global__ void update_positions(float4* positions, float4* velocities, unsigned n, float delta, BoundingBoxGPU bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    float4 pos = get_pos(positions, i);
+    float4 pos = positions[i];
     pos += delta * velocities[i];
-    set_pos(positions, i, pos);
+    positions[i] = pos;
 
     resolve_collisions(positions, velocities, bb);
 }

@@ -45,10 +45,12 @@ void FluidSimulator::init_positions() {
     for (unsigned x = 0; x < grid_dims.x; ++x)
     for (unsigned y = 0; y < grid_dims.y; ++y)
     for (unsigned z = 0; z < grid_dims.z; ++z) {
-        positions[i] = grid_start + glm::vec3{
-            static_cast<float>(x) * PARTICLE_SPACING,
-            static_cast<float>(y) * PARTICLE_SPACING,
-            static_cast<float>(z) * PARTICLE_SPACING
+        positions[i] = glm::vec4{
+            grid_start + glm::vec3{
+                static_cast<float>(x) * PARTICLE_SPACING,
+                static_cast<float>(y) * PARTICLE_SPACING,
+                static_cast<float>(z) * PARTICLE_SPACING,
+            }, 1.f
         };
         ++i;
     }

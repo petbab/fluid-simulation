@@ -6,7 +6,7 @@
 static constexpr float SPACING_MULT = 0.75f;
 
 unsigned generate_boundary_particles(
-    std::vector<glm::vec3>& positions,
+    std::vector<glm::vec4>& positions,
     const std::vector<glm::vec3>& triangle_vertices,
     float particle_radius
 ) {
@@ -28,7 +28,7 @@ unsigned generate_boundary_particles(
         mesh, 2.f * particle_radius * SPACING_MULT);
     for (const open3d::geometry::Voxel &v : voxel_grid->GetVoxels()) {
         auto center = voxel_grid->GetVoxelCenterCoordinate(v.grid_index_);
-        positions.emplace_back(center[0], center[1], center[2]);
+        positions.emplace_back(center[0], center[1], center[2], 1.f);
     }
 
     return positions.size() - count_start;

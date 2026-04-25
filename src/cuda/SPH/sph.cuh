@@ -47,10 +47,10 @@ public:
     void reset() override;
 
 private:
-    void compute_densities(float* positions_dev_ptr);
-    void compute_boundary_mass(float* positions_dev_ptr);
+    void compute_densities(float4* positions_dev_ptr);
+    void compute_boundary_mass(float4* positions_dev_ptr);
 
-    void update_positions(float* positions_dev_ptr, float delta);
+    void update_positions(float4* positions_dev_ptr, float delta);
     void update_velocities(float delta);
 
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
@@ -59,31 +59,31 @@ private:
     /**
      * Simulates viscosity by smoothing the velocity field [SPH Tutorial, eq. 103].
      */
-    void compute_XSPH(const float* positions_dev_ptr);
+    void compute_XSPH(const float4* positions_dev_ptr);
 
     /**
      * Computes and applies the viscous force using an explicit viscosity model.
      * Approximates the Laplacian of the velocity field via finite differences
      * [SPH Tutorial, eq. 102].
      */
-    void compute_viscosity(float* positions_dev_ptr);
+    void compute_viscosity(float4* positions_dev_ptr);
 
     /**
      * Simulates surface tension using the macroscopic approach by Akinci et al. (2013).
      */
-    void compute_surface_tension(float* positions_dev_ptr);
+    void compute_surface_tension(float4* positions_dev_ptr);
 
     /**
      * Computes surface normals used to calculate the curvature force
      * in compute_surface_tension [SPH Tutorial, eq. 125].
      */
-    void compute_surface_normals(float* positions_dev_ptr);
+    void compute_surface_normals(float4* positions_dev_ptr);
 
-    void apply_non_pressure_forces(float* positions_dev_ptr, float delta);
-    void apply_external_forces(float* positions_dev_ptr);
+    void apply_non_pressure_forces(float4* positions_dev_ptr, float delta);
+    void apply_external_forces(float4* positions_dev_ptr);
 
     void compute_pressure();
-    void apply_pressure_force(float* positions_dev_ptr, float delta);
+    void apply_pressure_force(float4* positions_dev_ptr, float delta);
 
     enum tuners {
         DENSITY_TUNER,
