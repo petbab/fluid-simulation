@@ -21,6 +21,8 @@ public:
             kernel_name, cfg::tuned_kernels_dir / (kernel_name + ".cu"), gridDimensions, blockDimensions);
         kernel = tuner->CreateSimpleKernel(kernel_name, definition);
 
+        tuner->SetSearcher(kernel, std::make_unique<ktt::McmcSearcher>());
+
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
 
         tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{32, 64, 128, 256, 512});
