@@ -7,8 +7,7 @@
 
 class ComputePressureTuner final : public Tuner {
 public:
-    explicit ComputePressureTuner(unsigned fluid_particles, float* densities, float* pressures)
-        : fluid_particles(fluid_particles) {
+    explicit ComputePressureTuner(unsigned fluid_particles) {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(fluid_particles));
@@ -28,27 +27,17 @@ public:
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
-
-        densities_id = tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
-                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
-        pressures_id = tuner->AddArgumentVector<float>(pressures, fluid_particles * sizeof(float),
-                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
-        fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
     }
 
-    ktt::KernelResult run(bool tune) {
+    ktt::KernelResult run(float* densities, float* pressures, unsigned fluid_particles, bool tune) {
         tuner->SetArguments(definition, {
-            densities_id,
-            pressures_id,
-            fluid_particles_id,
+            tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentVector<float>(pressures, fluid_particles * sizeof(float),
+                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentScalar(fluid_particles),
         });
 
         return Tuner::run(tune);
     }
-
-private:
-    unsigned fluid_particles;
-    ktt::ArgumentId densities_id;
-    ktt::ArgumentId pressures_id;
-    ktt::ArgumentId fluid_particles_id;
 };

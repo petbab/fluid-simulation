@@ -8,9 +8,7 @@
 
 class ComputeSurfaceNormalsTuner final : public Tuner {
 public:
-    explicit ComputeSurfaceNormalsTuner(unsigned fluid_particles, float* densities,
-        float4* normals, NSearch *dev_n_search)
-        : fluid_particles(fluid_particles) {
+    explicit ComputeSurfaceNormalsTuner(unsigned fluid_particles) {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(fluid_particles));
@@ -30,33 +28,25 @@ public:
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
-
-        densities_id = tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
-                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
-        normals_id = tuner->AddArgumentVector<float4>(normals, fluid_particles * sizeof(float4),
-                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
-        fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
-        n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
-                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
-    ktt::KernelResult run(float4* positions, bool tune) {
+    ktt::KernelResult run(
+        float4* positions, float* densities,
+        float4* normals, unsigned fluid_particles,
+        NSearch *dev_n_search, bool tune
+    ) {
         tuner->SetArguments(definition, {
             tuner->AddArgumentVector<float>(positions, fluid_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            densities_id,
-            normals_id,
-            fluid_particles_id,
-            n_search_id
+            tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentVector<float4>(normals, fluid_particles * sizeof(float4),
+                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentScalar(fluid_particles),
+            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
         });
 
         return Tuner::run(tune);
     }
-
-private:
-    unsigned fluid_particles;
-    ktt::ArgumentId densities_id;
-    ktt::ArgumentId normals_id;
-    ktt::ArgumentId fluid_particles_id;
-    ktt::ArgumentId n_search_id;
 };

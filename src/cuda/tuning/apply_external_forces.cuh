@@ -7,11 +7,10 @@
 
 class ApplyExternalForcesTuner final : public Tuner {
 public:
-    explicit ApplyExternalForcesTuner(unsigned fluid_particles, float4* acceleration, std::string external_force)
-        : fluid_particles(fluid_particles) {
+    explicit ApplyExternalForcesTuner(unsigned particles, std::string external_force) {
         assert(tuner != nullptr);
 
-        const ktt::DimensionVector gridDimensions(std::bit_ceil(fluid_particles));
+        const ktt::DimensionVector gridDimensions(std::bit_ceil(particles));
         const ktt::DimensionVector blockDimensions;
 
         static const std::string kernel_name = "apply_external_forces";
@@ -31,25 +30,17 @@ public:
 
         if (!external_force.empty())
             tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector{std::move(external_force)});
-
-        acceleration_id = tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
-                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
-        fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
     }
 
-    ktt::KernelResult run(float4* positions, bool tune) {
+    ktt::KernelResult run(float4* positions, float4* acceleration, unsigned fluid_particles, bool tune) {
         tuner->SetArguments(definition, {
-            tuner->AddArgumentVector<float>(positions, fluid_particles * sizeof(float) * 3,
+            tuner->AddArgumentVector<float4>(positions, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            acceleration_id,
-            fluid_particles_id,
+            tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
+                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentScalar(fluid_particles),
         });
 
         return Tuner::run(tune);
     }
-
-private:
-    unsigned fluid_particles;
-    ktt::ArgumentId acceleration_id;
-    ktt::ArgumentId fluid_particles_id;
 };

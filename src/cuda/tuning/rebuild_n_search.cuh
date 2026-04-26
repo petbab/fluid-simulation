@@ -7,8 +7,7 @@
 
 class RebuildNSearchTuner final : public Tuner {
 public:
-    explicit RebuildNSearchTuner(unsigned total_particles, NSearch *dev_n_search)
-        : total_particles(total_particles) {
+    explicit RebuildNSearchTuner(unsigned total_particles) {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(total_particles));
@@ -28,25 +27,17 @@ public:
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
-
-        n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
-                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device);
-        total_particles_id = tuner->AddArgumentScalar(total_particles);
     }
 
-    ktt::KernelResult run(float4 *particle_positions, bool tune) {
+    ktt::KernelResult run(NSearch *dev_n_search, float4 *particle_positions, unsigned total_particles, bool tune) {
         tuner->SetArguments(definition, {
-            n_search_id,
+            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float>(particle_positions, total_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            total_particles_id,
+            tuner->AddArgumentScalar(total_particles),
         });
 
         return Tuner::run(tune);
     }
-
-private:
-    unsigned total_particles;
-    ktt::ArgumentId n_search_id;
-    ktt::ArgumentId total_particles_id;
 };

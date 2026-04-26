@@ -18,17 +18,14 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       non_pressure_accel(fluid_particles),
       normal(fluid_particles),
       n_search(2.f * SUPPORT_RADIUS, total_particles),
-      density_tuner(fluid_particles, total_particles, dev_ptr(density), dev_ptr(boundary_mass), n_search.dev_ptr()),
-      update_positions_tuner(fluid_particles, dev_ptr(velocity)),
-      update_velocities_tuner(fluid_particles, dev_ptr(velocity), dev_ptr(non_pressure_accel)),
-      compute_viscosity_tuner(fluid_particles, dev_ptr(velocity), dev_ptr(density), dev_ptr(non_pressure_accel),
-                              n_search.dev_ptr()),
-      compute_surface_normals_tuner(fluid_particles, dev_ptr(density), dev_ptr(normal), n_search.dev_ptr()),
-      compute_surface_tension_tuner(fluid_particles, dev_ptr(density), dev_ptr(normal), dev_ptr(non_pressure_accel),
-                                    n_search.dev_ptr()),
-      compute_pressure_tuner(fluid_particles, dev_ptr(density), dev_ptr(pressure)),
-      apply_pressure_force_tuner(fluid_particles, boundary_particles, dev_ptr(density), dev_ptr(pressure),
-                                 dev_ptr(velocity), dev_ptr(boundary_mass), n_search.dev_ptr()),
+      density_tuner(fluid_particles, total_particles),
+      update_positions_tuner(fluid_particles),
+      update_velocities_tuner(fluid_particles),
+      compute_viscosity_tuner(fluid_particles),
+      compute_surface_normals_tuner(fluid_particles),
+      compute_surface_tension_tuner(fluid_particles),
+      compute_pressure_tuner(fluid_particles),
+      apply_pressure_force_tuner(fluid_particles, boundary_particles),
       active_tuners{
           {DENSITY_TUNER, &density_tuner},
           {UPDATE_POSITIONS_TUNER, &update_positions_tuner},
@@ -41,13 +38,12 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       },
       tuning_budget{0.1f} {
     if (boundary_particles > 0) {
-        compute_boundary_mass_tuner = std::make_unique<ComputeBoundaryMassTuner>(
-            fluid_particles, boundary_particles, dev_ptr(boundary_mass), n_search.dev_ptr());
+        compute_boundary_mass_tuner = std::make_unique<ComputeBoundaryMassTuner>(boundary_particles);
         active_tuners[COMPUTE_BOUNDARY_MASS_TUNER] = compute_boundary_mass_tuner.get();
     }
     if (!opts.external_force.empty()) {
         apply_external_forces_tuner = std::make_unique<ApplyExternalForcesTuner>(
-            fluid_particles, dev_ptr(non_pressure_accel), opts.external_force);
+            fluid_particles, opts.external_force);
         active_tuners[APPLY_EXTERNAL_FORCES_TUNER] = apply_external_forces_tuner.get();
     }
 
@@ -85,11 +81,14 @@ void CUDASPHSimulator::visualize(Shader* shader) {
 }
 
 void CUDASPHSimulator::compute_densities(float4* positions_dev_ptr) {
-    density_tuner.run(positions_dev_ptr, is_scheduled(DENSITY_TUNER));
+    density_tuner.run(
+        positions_dev_ptr, dev_ptr(density), dev_ptr(boundary_mass), n_search.dev_ptr(),
+        total_particles, fluid_particles, is_scheduled(DENSITY_TUNER));
 }
 
 void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta) {
-    update_positions_tuner.run(positions_dev_ptr, delta, bounding_box, is_scheduled(UPDATE_POSITIONS_TUNER));
+    update_positions_tuner.run(positions_dev_ptr, dev_ptr(velocity), fluid_particles, delta, bounding_box,
+                               is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
 void CUDASPHSimulator::apply_non_pressure_forces(float4* positions_dev_ptr, float delta) {
@@ -105,7 +104,8 @@ void CUDASPHSimulator::apply_non_pressure_forces(float4* positions_dev_ptr, floa
 
 void CUDASPHSimulator::compute_boundary_mass(float4* positions_dev_ptr) {
     if (compute_boundary_mass_tuner != nullptr)
-        compute_boundary_mass_tuner->run(positions_dev_ptr, is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
+        compute_boundary_mass_tuner->run(positions_dev_ptr, dev_ptr(boundary_mass), fluid_particles, boundary_particles,
+                                         n_search.dev_ptr(), is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
 }
 
 void CUDASPHSimulator::reset() {
@@ -129,8 +129,8 @@ float CUDASPHSimulator::adapt_time_step(float delta, float min_step, float max_s
     float max_velocity = sqrtf(thrust::transform_reduce(
         velocity.begin(),
         velocity.end(),
-        float4_length_sq(),      // unary transform
-        0.0f,                    // initial value
+        float4_length_sq(), // unary transform
+        0.0f, // initial value
         thrust::maximum<float>() // reduction op
     ));
 
@@ -144,7 +144,8 @@ float CUDASPHSimulator::adapt_time_step(float delta, float min_step, float max_s
 
 void CUDASPHSimulator::update_velocities(float delta) {
     delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
-    update_velocities_tuner.run(delta, is_scheduled(UPDATE_VELOCITIES_TUNER));
+    update_velocities_tuner.run(dev_ptr(velocity), dev_ptr(non_pressure_accel), fluid_particles, delta,
+                                is_scheduled(UPDATE_VELOCITIES_TUNER));
 }
 
 void CUDASPHSimulator::compute_XSPH(const float4* positions_dev_ptr) {
@@ -154,33 +155,40 @@ void CUDASPHSimulator::compute_XSPH(const float4* positions_dev_ptr) {
 }
 
 void CUDASPHSimulator::compute_viscosity(float4* positions_dev_ptr) {
-    compute_viscosity_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_VISCOSITY_TUNER));
+    compute_viscosity_tuner.run(positions_dev_ptr, dev_ptr(velocity), dev_ptr(density), dev_ptr(non_pressure_accel),
+                                fluid_particles, n_search.dev_ptr(), is_scheduled(COMPUTE_VISCOSITY_TUNER));
 }
 
 void CUDASPHSimulator::compute_surface_tension(float4* positions_dev_ptr) {
     compute_surface_normals(positions_dev_ptr);
 
-    compute_surface_tension_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_SURFACE_TENSION_TUNER));
+    compute_surface_tension_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(normal), dev_ptr(non_pressure_accel),
+                                      fluid_particles, n_search.dev_ptr(), is_scheduled(COMPUTE_SURFACE_TENSION_TUNER));
 }
 
 void CUDASPHSimulator::compute_surface_normals(float4* positions_dev_ptr) {
-    compute_surface_normals_tuner.run(positions_dev_ptr, is_scheduled(COMPUTE_SURFACE_NORMALS_TUNER));
+    compute_surface_normals_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(normal), fluid_particles,
+                                      n_search.dev_ptr(), is_scheduled(COMPUTE_SURFACE_NORMALS_TUNER));
 }
 
 void CUDASPHSimulator::apply_external_forces(float4* positions_dev_ptr) {
     if (apply_external_forces_tuner != nullptr) {
-        apply_external_forces_tuner->run(positions_dev_ptr, is_scheduled(APPLY_EXTERNAL_FORCES_TUNER));
+        apply_external_forces_tuner->run(positions_dev_ptr, dev_ptr(non_pressure_accel), fluid_particles,
+                                         is_scheduled(APPLY_EXTERNAL_FORCES_TUNER));
     } else {
         thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), GRAVITY);
     }
 }
 
 void CUDASPHSimulator::compute_pressure() {
-    compute_pressure_tuner.run(is_scheduled(COMPUTE_PRESSURE_TUNER));
+    compute_pressure_tuner.run(dev_ptr(density), dev_ptr(pressure), fluid_particles,
+                               is_scheduled(COMPUTE_PRESSURE_TUNER));
 }
 
 void CUDASPHSimulator::apply_pressure_force(float4* positions_dev_ptr, float delta) {
-    apply_pressure_force_tuner.run(positions_dev_ptr, delta, is_scheduled(APPLY_PRESSURE_FORCE_TUNER));
+    apply_pressure_force_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(pressure), dev_ptr(velocity),
+                                   dev_ptr(boundary_mass), fluid_particles, boundary_particles, delta,
+                                   n_search.dev_ptr(), is_scheduled(APPLY_PRESSURE_FORCE_TUNER));
 }
 
 bool CUDASPHSimulator::is_scheduled(tuners tuner_i) const {
@@ -191,7 +199,7 @@ bool CUDASPHSimulator::is_scheduled(tuners tuner_i) const {
 
 std::pair<int, int> CUDASPHSimulator::tuning_stats() const {
     std::pair stats{0, 0};
-    for (const Tuner *tnr : active_tuners | std::views::values) {
+    for (const Tuner* tnr : active_tuners | std::views::values) {
         auto [s, t] = tnr->tuning_stats();
         stats.first += s;
         stats.second += t;

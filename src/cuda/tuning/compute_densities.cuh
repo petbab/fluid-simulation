@@ -8,9 +8,7 @@
 
 class DensityTuner final : public Tuner {
 public:
-    explicit DensityTuner(unsigned fluid_particles, unsigned total_particles, float* densities_dev_ptr,
-            float* boundary_mass_dev_ptr, NSearch *dev_n_search)
-        : fluid_particles(fluid_particles), total_particles(total_particles) {
+    explicit DensityTuner(unsigned fluid_particles, unsigned total_particles) {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(fluid_particles));
@@ -30,40 +28,28 @@ public:
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Divide);
-
-        densities_id = tuner->AddArgumentVector<float>(densities_dev_ptr, fluid_particles * sizeof(float),
-                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
-        fluid_particles_id = tuner->AddArgumentScalar(fluid_particles);
-        n_search_id = tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
-                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
-
-        if (total_particles > fluid_particles)
-            boundary_mass_id =
-                tuner->AddArgumentVector<float>(boundary_mass_dev_ptr, total_particles - fluid_particles * sizeof(float),
-                    ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     }
 
-    ktt::KernelResult run(float4 *positions_dev_ptr, bool tune) {
+    ktt::KernelResult run(
+        float4 *positions_dev_ptr, float* densities_dev_ptr,
+        float* boundary_mass_dev_ptr, NSearch *dev_n_search,
+        unsigned total_particles, unsigned fluid_particles, bool tune
+    ) {
         std::vector args{
-            tuner->AddArgumentVector<float>(positions_dev_ptr, total_particles * sizeof(float) * 3,
+            tuner->AddArgumentVector<float4>(positions_dev_ptr, total_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
-            densities_id,
-            fluid_particles_id,
-            n_search_id
+            tuner->AddArgumentVector<float>(densities_dev_ptr, fluid_particles * sizeof(float),
+                ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentScalar(fluid_particles),
+            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
         };
         if (total_particles > fluid_particles)
-            args.push_back(boundary_mass_id);
+            args.push_back(tuner->AddArgumentVector<float>(boundary_mass_dev_ptr, (total_particles - fluid_particles) * sizeof(float),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device));
 
         tuner->SetArguments(definition, args);
 
         return Tuner::run(tune);
     }
-
-private:
-    unsigned fluid_particles;
-    unsigned total_particles;
-    ktt::ArgumentId densities_id;
-    ktt::ArgumentId boundary_mass_id;
-    ktt::ArgumentId fluid_particles_id;
-    ktt::ArgumentId n_search_id;
 };
