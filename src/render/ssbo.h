@@ -9,6 +9,7 @@ class SSBO {
 public:
     static constexpr unsigned VISUALIZE_VEC3_SSBO_BINDING = 0;
     static constexpr unsigned VISUALIZE_FLOAT_SSBO_BINDING = 1;
+    static constexpr unsigned VISUALIZE_UINT_SSBO_BINDING = 2;
 
     SSBO(unsigned count) : count{count} {
         glCreateBuffers(1, &ssbo);

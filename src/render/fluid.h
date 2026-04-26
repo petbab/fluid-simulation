@@ -5,7 +5,7 @@
 #include <simulation/fluid_simulator.h>
 #include "asset_manager.h"
 #include <config.h>
-#include <cuda/simulator.h>
+#include <cuda/SPH/sph.cuh>
 
 
 template<class S>
@@ -19,21 +19,30 @@ public:
             "instanced_ball_shader",
             cfg::shaders_dir/"instanced_ball.vert",
             cfg::shaders_dir/"instanced_ball.frag");
-        geometry = AssetManager::make<InstancedGeometry>(
-            "ball_geometry",
+        geometry_a = AssetManager::make<InstancedGeometry>(
+            "ball_geometry_a",
             procedural::quad(1, false, false), 1,
             std::vector{VertexAttribute{4, simulator->get_position_data()}});
+        geometry_b = AssetManager::make<InstancedGeometry>(
+            "ball_geometry_b",
+            procedural::quad(1, false, false), 1,
+            std::vector{VertexAttribute{4, simulator->get_position_data()}});
+        geometry = geometry_a;
 
-        if constexpr (std::is_base_of_v<CUDASimulator, S>)
-            dynamic_cast<CUDASimulator*>(simulator.get())->init_buffer(inst_geom()->get_instance_vbo());
+        if constexpr (std::is_base_of_v<CUDASPHSimulator, S>)
+            dynamic_cast<CUDASPHSimulator*>(simulator.get())->init_positions(
+                geometry_a->get_instance_vbo(), geometry_b->get_instance_vbo());
     }
 
     void update(float delta) override {
         simulator->update(delta);
 
         // Don't update if using CUDA (works directly with the data on the GPU, no transfer needed)
-        if constexpr (!std::is_base_of_v<CUDASimulator, S>)
-            inst_geom()->update_instance_data(simulator->get_position_data());
+        // if constexpr (!std::is_base_of_v<CUDASPHSimulator, S>)
+        //     inst_geom()->update_instance_data(simulator->get_position_data());
+
+        std::swap(geometry_a, geometry_b);
+        geometry = geometry_a;
     }
 
     void render() const override {
@@ -45,6 +54,7 @@ public:
     }
 
     void reset() {
+        // TODO: check swap logic
         simulator->reset();
         inst_geom()->update_instance_data(simulator->get_position_data());
     }
@@ -57,6 +67,7 @@ private:
     const S& get_simulator() const { return dynamic_cast<const S&>(*simulator); }
     S& get_simulator() { return dynamic_cast<S&>(*simulator); }
 
+    InstancedGeometry *geometry_a, *geometry_b;
     std::unique_ptr<FluidSimulator> simulator;
     bool show_boundary = false;
 

@@ -23,8 +23,13 @@ layout(std430, binding = 1) buffer FloatVisualizerBuffer {
     float float_visualizer[];
 };
 
+layout(std430, binding = 2) buffer UintVisualizerBuffer {
+    uint uint_visualizer[];
+};
+
 uniform bool visualize_vec;
 uniform bool visualize_float;
+uniform bool visualize_uint;
 
 uniform bool norm;
 uniform float min_value;
@@ -55,7 +60,7 @@ void main() {
     gl_FragDepth = ndc_depth * 0.5 + 0.5;
 
     vec3 base_color = is_boundary ? BOUNDARY_COLOR : FLUID_COLOR;
-    if ((visualize_vec || visualize_float) && (is_boundary == visualize_boundary)) {
+    if ((visualize_vec || visualize_float || visualize_uint) && (is_boundary == visualize_boundary)) {
         uint i = in_data.p_id;
         if (visualize_boundary)
             i -= fluid_particles;
@@ -64,6 +69,8 @@ void main() {
             base_color *= dot(vec_visualizer[i].xyz, n);
         else if (visualize_float)
             base_color = vec3(float_visualizer[i]);
+        else if (visualize_uint)
+            base_color = vec3(float(uint_visualizer[i]));
 
         if (norm)
             base_color = (base_color - vec3(min_value)) / (max_value - min_value);

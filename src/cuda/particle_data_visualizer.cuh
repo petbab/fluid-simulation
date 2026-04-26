@@ -20,9 +20,12 @@ public:
         if constexpr (std::is_same_v<T, float>) {
             shader->set_uniform("visualize_float", true);
             ssbo.bind(SSBO<void>::VISUALIZE_FLOAT_SSBO_BINDING);
-        } else {
+        } else if constexpr (std::is_same_v<T, float4>) {
             shader->set_uniform("visualize_vec", true);
             ssbo.bind(SSBO<void>::VISUALIZE_VEC3_SSBO_BINDING);
+        } else {
+            shader->set_uniform("visualize_uint", true);
+            ssbo.bind(SSBO<void>::VISUALIZE_UINT_SSBO_BINDING);
         }
 
         shader->set_uniform("visualize_boundary", visualize_boundary);
@@ -56,7 +59,9 @@ private:
 class ParticleDataVisualizer {
 public:
     explicit ParticleDataVisualizer(unsigned total_particles, unsigned fluid_particles)
-        : float_visualizer{total_particles, fluid_particles}, vec_visualizer{total_particles, fluid_particles} {}
+        : float_visualizer{total_particles, fluid_particles},
+        uint_visualizer{total_particles, fluid_particles},
+        vec_visualizer{total_particles, fluid_particles} {}
 
     void visualize(Shader* shader, const float* data, bool visualize_boundary = false) {
         float_visualizer.visualize(shader, data, visualize_boundary);
@@ -70,8 +75,15 @@ public:
     void visualize(Shader* shader, const float4* data, float min_value, float max_value, bool visualize_boundary = false) {
         vec_visualizer.visualize(shader, data, min_value, max_value, visualize_boundary);
     }
+    void visualize(Shader* shader, const unsigned* data, bool visualize_boundary = false) {
+        uint_visualizer.visualize(shader, data, visualize_boundary);
+    }
+    void visualize(Shader* shader, const unsigned* data, float min_value, float max_value, bool visualize_boundary = false) {
+        uint_visualizer.visualize(shader, data, min_value, max_value, visualize_boundary);
+    }
 
 private:
     detail_::TypeVisualizer<float> float_visualizer;
+    detail_::TypeVisualizer<unsigned> uint_visualizer;
     detail_::TypeVisualizer<float4> vec_visualizer;
 };

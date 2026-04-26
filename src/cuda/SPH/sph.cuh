@@ -1,7 +1,6 @@
 #pragma once
 
 #include <thrust/device_vector.h>
-#include <cuda/simulator.h>
 #include <cuda/nsearch/nsearch.h>
 #include <cuda/tuning/compute_densities.cuh>
 #include <cuda/tuning/update_positions.cuh>
@@ -15,9 +14,11 @@
 #include "cuda/tuning/tuning_scheduler.h"
 #include "cuda/tuning/update_velocities.cuh"
 #include <memory>
+#include "particle_data.cuh"
+#include "simulation/fluid_simulator.h"
 
 
-class CUDASPHSimulator final : public CUDASimulator {
+class CUDASPHSimulator final : public FluidSimulator {
 public:
     ///////////////////////////////////////////////////////////////////////////////
     ////                         SIMULATION PARAMETERS                         ////
@@ -39,6 +40,8 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     CUDASPHSimulator(const opts_t& opts);
+
+    void init_positions(GLuint pos_vao_a, GLuint pos_vao_b);
 
     void update(float delta) override;
 
@@ -105,8 +108,7 @@ private:
 
     void set_tuning_budget(float tuning_budget);
 
-    thrust::device_vector<float> density, boundary_mass, pressure;
-    thrust::device_vector<float4> velocity, non_pressure_accel, normal;
+    ParticleData particle_data;
 
     NSearchWrapper n_search;
 

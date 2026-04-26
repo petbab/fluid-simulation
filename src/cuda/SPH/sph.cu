@@ -4,19 +4,9 @@
 #include <thrust/transform_reduce.h>
 
 
-template <class T>
-static T* dev_ptr(thrust::device_vector<T>& vec) {
-    return thrust::raw_pointer_cast(vec.data());
-}
-
 CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
-    : CUDASimulator(opts),
-      density(fluid_particles),
-      boundary_mass(boundary_particles),
-      pressure(fluid_particles),
-      velocity(fluid_particles),
-      non_pressure_accel(fluid_particles),
-      normal(fluid_particles),
+    : FluidSimulator(opts),
+      particle_data{fluid_particles, boundary_particles, 2.f * SUPPORT_RADIUS},
       n_search(2.f * SUPPORT_RADIUS, total_particles),
       density_tuner(fluid_particles, total_particles),
       update_positions_tuner(fluid_particles),
@@ -50,29 +40,39 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
     scheduler = std::make_unique<TuningScheduler>(active_tuners.size(), tuning_budget);
 }
 
+void CUDASPHSimulator::init_positions(GLuint pos_vao_a, GLuint pos_vao_b) {
+    particle_data.init_positions(pos_vao_a, pos_vao_b);
+}
+
 void CUDASPHSimulator::update(float delta) {
     scheduler->schedule();
 
-    auto lock = cuda_gl_positions->lock();
-    float4* positions_ptr = static_cast<float4*>(lock.get_ptr());
+    auto lock_src = particle_data.position().lock_src();
+    auto lock_dst = particle_data.position().lock_dst();
+    float4* positions_src = static_cast<float4*>(lock_src.get_ptr());
+    float4* positions_dst = static_cast<float4*>(lock_dst.get_ptr());
 
-    n_search.rebuild(positions_ptr, is_scheduled(REBUILD_N_SEARCH_TUNER));
+    // Sort saves updated positions into 'positions_dst'
+    particle_data.sort(positions_src, positions_dst);
 
-    compute_boundary_mass(positions_ptr);
+    n_search.rebuild(positions_dst, is_scheduled(REBUILD_N_SEARCH_TUNER));
 
-    compute_densities(positions_ptr);
+    compute_boundary_mass(positions_dst);
 
-    apply_non_pressure_forces(positions_ptr, delta);
+    compute_densities(positions_dst);
+
+    apply_non_pressure_forces(positions_dst, delta);
 
     delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP);
 
     compute_pressure();
-    apply_pressure_force(positions_ptr, delta);
+    apply_pressure_force(positions_dst, delta);
 
-    update_positions(positions_ptr, delta);
+    update_positions(positions_dst, delta);
 }
 
 void CUDASPHSimulator::visualize(Shader* shader) {
+    // visualizer->visualize(shader, particle_data.get_indices(), 0.f, static_cast<float>(fluid_particles));
     // visualizer->visualize(shader, dev_ptr(density),
     //     REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
     // visualizer->visualize(shader, dev_ptr(velocity));
@@ -82,12 +82,12 @@ void CUDASPHSimulator::visualize(Shader* shader) {
 
 void CUDASPHSimulator::compute_densities(float4* positions_dev_ptr) {
     density_tuner.run(
-        positions_dev_ptr, dev_ptr(density), dev_ptr(boundary_mass), n_search.dev_ptr(),
+        positions_dev_ptr, particle_data.density(), particle_data.boundary_mass(), n_search.dev_ptr(),
         total_particles, fluid_particles, is_scheduled(DENSITY_TUNER));
 }
 
 void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta) {
-    update_positions_tuner.run(positions_dev_ptr, dev_ptr(velocity), fluid_particles, delta, bounding_box,
+    update_positions_tuner.run(positions_dev_ptr, particle_data.velocity(), fluid_particles, delta, bounding_box,
                                is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
@@ -104,19 +104,21 @@ void CUDASPHSimulator::apply_non_pressure_forces(float4* positions_dev_ptr, floa
 
 void CUDASPHSimulator::compute_boundary_mass(float4* positions_dev_ptr) {
     if (compute_boundary_mass_tuner != nullptr)
-        compute_boundary_mass_tuner->run(positions_dev_ptr, dev_ptr(boundary_mass), fluid_particles, boundary_particles,
+        compute_boundary_mass_tuner->run(positions_dev_ptr, particle_data.boundary_mass(), fluid_particles,
+                                         boundary_particles,
                                          n_search.dev_ptr(), is_scheduled(COMPUTE_BOUNDARY_MASS_TUNER));
 }
 
 void CUDASPHSimulator::reset() {
     FluidSimulator::reset();
 
-    thrust::fill(density.begin(), density.end(), 0);
-    thrust::fill(boundary_mass.begin(), boundary_mass.end(), 0);
-    thrust::fill(velocity.begin(), velocity.end(), make_float4(0));
-    thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), make_float4(0));
-    thrust::fill(normal.begin(), normal.end(), make_float4(0));
-    thrust::fill(pressure.begin(), pressure.end(), 0);
+    thrust::fill(particle_data.density_vec().begin(), particle_data.density_vec().end(), 0);
+    thrust::fill(particle_data.boundary_mass_vec().begin(), particle_data.boundary_mass_vec().end(), 0);
+    thrust::fill(particle_data.velocity_vec().begin(), particle_data.velocity_vec().end(), make_float4(0));
+    thrust::fill(particle_data.non_pressure_accel_vec().begin(), particle_data.non_pressure_accel_vec().end(),
+                 make_float4(0));
+    thrust::fill(particle_data.normal_vec().begin(), particle_data.normal_vec().end(), make_float4(0));
+    thrust::fill(particle_data.pressure_vec().begin(), particle_data.pressure_vec().end(), 0);
 }
 
 struct float4_length_sq {
@@ -127,8 +129,8 @@ struct float4_length_sq {
 
 float CUDASPHSimulator::adapt_time_step(float delta, float min_step, float max_step) const {
     float max_velocity = sqrtf(thrust::transform_reduce(
-        velocity.begin(),
-        velocity.end(),
+        particle_data.velocity_vec().begin(),
+        particle_data.velocity_vec().end(),
         float4_length_sq(), // unary transform
         0.0f, // initial value
         thrust::maximum<float>() // reduction op
@@ -144,7 +146,7 @@ float CUDASPHSimulator::adapt_time_step(float delta, float min_step, float max_s
 
 void CUDASPHSimulator::update_velocities(float delta) {
     delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
-    update_velocities_tuner.run(dev_ptr(velocity), dev_ptr(non_pressure_accel), fluid_particles, delta,
+    update_velocities_tuner.run(particle_data.velocity(), particle_data.non_pressure_accel(), fluid_particles, delta,
                                 is_scheduled(UPDATE_VELOCITIES_TUNER));
 }
 
@@ -155,39 +157,44 @@ void CUDASPHSimulator::compute_XSPH(const float4* positions_dev_ptr) {
 }
 
 void CUDASPHSimulator::compute_viscosity(float4* positions_dev_ptr) {
-    compute_viscosity_tuner.run(positions_dev_ptr, dev_ptr(velocity), dev_ptr(density), dev_ptr(non_pressure_accel),
+    compute_viscosity_tuner.run(positions_dev_ptr, particle_data.velocity(), particle_data.density(),
+                                particle_data.non_pressure_accel(),
                                 fluid_particles, n_search.dev_ptr(), is_scheduled(COMPUTE_VISCOSITY_TUNER));
 }
 
 void CUDASPHSimulator::compute_surface_tension(float4* positions_dev_ptr) {
     compute_surface_normals(positions_dev_ptr);
 
-    compute_surface_tension_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(normal), dev_ptr(non_pressure_accel),
+    compute_surface_tension_tuner.run(positions_dev_ptr, particle_data.density(), particle_data.normal(),
+                                      particle_data.non_pressure_accel(),
                                       fluid_particles, n_search.dev_ptr(), is_scheduled(COMPUTE_SURFACE_TENSION_TUNER));
 }
 
 void CUDASPHSimulator::compute_surface_normals(float4* positions_dev_ptr) {
-    compute_surface_normals_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(normal), fluid_particles,
+    compute_surface_normals_tuner.run(positions_dev_ptr, particle_data.density(), particle_data.normal(),
+                                      fluid_particles,
                                       n_search.dev_ptr(), is_scheduled(COMPUTE_SURFACE_NORMALS_TUNER));
 }
 
 void CUDASPHSimulator::apply_external_forces(float4* positions_dev_ptr) {
     if (apply_external_forces_tuner != nullptr) {
-        apply_external_forces_tuner->run(positions_dev_ptr, dev_ptr(non_pressure_accel), fluid_particles,
+        apply_external_forces_tuner->run(positions_dev_ptr, particle_data.non_pressure_accel(), fluid_particles,
                                          is_scheduled(APPLY_EXTERNAL_FORCES_TUNER));
     } else {
-        thrust::fill(non_pressure_accel.begin(), non_pressure_accel.end(), GRAVITY);
+        thrust::fill(particle_data.non_pressure_accel_vec().begin(), particle_data.non_pressure_accel_vec().end(),
+                     GRAVITY);
     }
 }
 
 void CUDASPHSimulator::compute_pressure() {
-    compute_pressure_tuner.run(dev_ptr(density), dev_ptr(pressure), fluid_particles,
+    compute_pressure_tuner.run(particle_data.density(), particle_data.pressure(), fluid_particles,
                                is_scheduled(COMPUTE_PRESSURE_TUNER));
 }
 
 void CUDASPHSimulator::apply_pressure_force(float4* positions_dev_ptr, float delta) {
-    apply_pressure_force_tuner.run(positions_dev_ptr, dev_ptr(density), dev_ptr(pressure), dev_ptr(velocity),
-                                   dev_ptr(boundary_mass), fluid_particles, boundary_particles, delta,
+    apply_pressure_force_tuner.run(positions_dev_ptr, particle_data.density(), particle_data.pressure(),
+                                   particle_data.velocity(),
+                                   particle_data.boundary_mass(), fluid_particles, boundary_particles, delta,
                                    n_search.dev_ptr(), is_scheduled(APPLY_PRESSURE_FORCE_TUNER));
 }
 

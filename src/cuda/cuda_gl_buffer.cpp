@@ -9,6 +9,16 @@ CUDAGLBuffer::CUDALock::CUDALock(cudaGraphicsResource* cuda_res) : cuda_resource
     cudaCheckError();
 }
 
+CUDAGLBuffer::CUDALock::CUDALock(CUDALock&& other) noexcept {
+    *this = std::move(other);
+}
+
+CUDAGLBuffer::CUDALock& CUDAGLBuffer::CUDALock::operator=(CUDALock&& other) noexcept {
+    cuda_resource = other.cuda_resource;
+    other.cuda_resource = nullptr;
+    return *this;
+}
+
 CUDAGLBuffer::CUDALock::~CUDALock() {
     cudaGraphicsUnmapResources(1, &cuda_resource);
     cudaCheckError();

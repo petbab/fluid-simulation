@@ -16,13 +16,13 @@ __device__ __host__ inline morton_t part_by_3(morton_t n) {
 
 // Convert signed integer to unsigned by offsetting
 __device__ __host__ inline unsigned signed_to_unsigned(int n) {
-    unsigned offset = 1 << 20;
+    unsigned offset = 1u << 20u;
     return static_cast<unsigned>(n) + offset;
 }
 
 // Convert unsigned integer back to signed
 __device__ __host__ inline int unsigned_to_signed(unsigned n) {
-    int offset = 1 << 20;
+    int offset = 1u << 20u;
     return static_cast<int>(n) - offset;
 }
 

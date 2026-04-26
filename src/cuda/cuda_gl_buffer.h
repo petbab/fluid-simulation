@@ -9,8 +9,8 @@ public:
         explicit CUDALock(cudaGraphicsResource* cuda_resource);
         CUDALock(const CUDALock &) = delete;
         CUDALock &operator=(const CUDALock &) = delete;
-        CUDALock(CUDALock &&) = delete;
-        CUDALock &operator=(CUDALock &&) = delete;
+        CUDALock(CUDALock &&) noexcept;
+        CUDALock &operator=(CUDALock &&) noexcept;
         ~CUDALock();
 
         void* get_ptr() const;
