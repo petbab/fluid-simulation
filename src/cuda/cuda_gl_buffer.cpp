@@ -22,8 +22,6 @@ CUDAGLBuffer::CUDALock& CUDAGLBuffer::CUDALock::operator=(CUDALock&& other) noex
 CUDAGLBuffer::CUDALock::~CUDALock() {
     cudaGraphicsUnmapResources(1, &cuda_resource);
     cudaCheckError();
-    cudaDeviceSynchronize();
-    cudaCheckError();
 }
 
 void* CUDAGLBuffer::CUDALock::get_ptr() const {
