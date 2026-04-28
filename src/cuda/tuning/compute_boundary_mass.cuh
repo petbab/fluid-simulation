@@ -31,11 +31,11 @@ public:
     }
 
     ktt::KernelResult run(
-        float4 *positions_dev_ptr, float* masses_dev_ptr,
+        float4* positions_dev_ptr, float* masses_dev_ptr,
         unsigned fluid_n, unsigned boundary_n,
-        NSearch *dev_n_search, bool tune
+        NSearch* dev_n_search, bool tune
     ) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float4>(positions_dev_ptr, (fluid_n + boundary_n) * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float>(masses_dev_ptr, boundary_n * sizeof(float),
@@ -44,8 +44,8 @@ public:
             tuner->AddArgumentScalar(boundary_n),
             tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };

@@ -47,9 +47,7 @@ public:
         if (total_particles > fluid_particles)
             args.push_back(tuner->AddArgumentVector<float>(boundary_mass_dev_ptr, (total_particles - fluid_particles) * sizeof(float),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device));
-
-        tuner->SetArguments(definition, args);
-
+        update_args(args);
         return Tuner::run(tune);
     }
 };

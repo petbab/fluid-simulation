@@ -30,14 +30,14 @@ public:
     }
 
     ktt::KernelResult run(float* densities, float* pressures, unsigned fluid_particles, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float>(densities, fluid_particles * sizeof(float),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float>(pressures, fluid_particles * sizeof(float),
                 ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(fluid_particles),
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };

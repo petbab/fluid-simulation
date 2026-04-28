@@ -30,15 +30,15 @@ public:
     }
 
     ktt::KernelResult run(float4* velocities, float4* acceleration, unsigned fluid_particles, float delta, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float4>(velocities, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(fluid_particles),
             tuner->AddArgumentScalar(delta),
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };

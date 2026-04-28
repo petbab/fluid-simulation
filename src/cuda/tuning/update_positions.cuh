@@ -32,7 +32,7 @@ public:
 
     ktt::KernelResult run(float4 *positions_dev_ptr, float4* velocities_dev_ptr,
             unsigned n, float delta, const BoundingBox &bb, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float>(positions_dev_ptr, n * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float4>(velocities_dev_ptr, n * sizeof(float),
@@ -40,8 +40,8 @@ public:
             tuner->AddArgumentScalar(n),
             tuner->AddArgumentScalar(delta),
             tuner->AddArgumentScalar<BoundingBoxGPU>(bb)
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };

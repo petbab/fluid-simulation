@@ -29,6 +29,13 @@ ktt::KernelResult Tuner::run(bool tune) {
     return tuner->Run(kernel, best_configuration, {});
 }
 
+void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {
+    tuner->SetArguments(kernel, new_args);
+    for (const auto& arg : args)
+        tuner->RemoveArgument(arg);
+    args = new_args;
+}
+
 void Tuner::print_best_config() const {
     assert(tuner != nullptr);
 

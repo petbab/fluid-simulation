@@ -35,7 +35,7 @@ public:
         float* densities, float4* acceleration,
         unsigned fluid_particles, NSearch *dev_n_search, bool tune
     ) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<float4>(positions, fluid_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float4>(velocities, fluid_particles * sizeof(float4),
@@ -47,8 +47,8 @@ public:
             tuner->AddArgumentScalar(fluid_particles),
             tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };

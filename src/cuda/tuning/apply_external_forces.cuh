@@ -33,14 +33,14 @@ public:
     }
 
     ktt::KernelResult run(float4* positions, float4* acceleration, unsigned fluid_particles, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector new_args{
             tuner->AddArgumentVector<float4>(positions, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float4>(acceleration, fluid_particles * sizeof(float4),
                 ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(fluid_particles),
-        });
-
+        };
+        update_args(new_args);
         return Tuner::run(tune);
     }
 };

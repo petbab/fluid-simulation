@@ -12,6 +12,7 @@ public:
 
 protected:
     ktt::KernelResult run(bool tune);
+    void update_args(const std::vector<ktt::ArgumentId>& new_args);
 
 private:
     void print_best_config() const;
@@ -21,5 +22,6 @@ protected:
     ktt::Tuner* tuner;
     ktt::KernelDefinitionId definition = 0;
     ktt::KernelId kernel = 0;
+    std::vector<ktt::ArgumentId> args;
     int searched_count = 0;
 };

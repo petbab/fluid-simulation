@@ -55,8 +55,7 @@ public:
             args.push_back(tuner->AddArgumentVector<float>(boundary_mass, boundary_particles * sizeof(float),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device));
 
-        tuner->SetArguments(definition, args);
-
+        update_args(args);
         return Tuner::run(tune);
     }
 };

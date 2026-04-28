@@ -30,14 +30,14 @@ public:
     }
 
     ktt::KernelResult run(NSearch *dev_n_search, float4 *particle_positions, unsigned total_particles, bool tune) {
-        tuner->SetArguments(definition, {
+        std::vector args{
             tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float>(particle_positions, total_particles * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(total_particles),
-        });
-
+        };
+        update_args(args);
         return Tuner::run(tune);
     }
 };
