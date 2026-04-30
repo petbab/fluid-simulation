@@ -32,14 +32,9 @@ struct NSearch {
     }
 
     __device__ void insert_p_idx(const unsigned p_idx, const unsigned table_i) {
-        unsigned i = 0;
-        unsigned old_idx;
-        do {
-            old_idx = atomicCAS(&particle_indices[table_i * MAX_PARTICLES_IN_CELL + i], EMPTY_IDX, p_idx);
-            ++i;
-        } while (old_idx != EMPTY_IDX && i < MAX_PARTICLES_IN_CELL);
-
-        // TODO: binary search
+        unsigned i = atomicAdd(&particle_counts[table_i], 1);
+        if (i < MAX_PARTICLES_IN_CELL)
+            particle_indices[table_i * MAX_PARTICLES_IN_CELL + i] = p_idx;
     }
 
     __device__ void insert(float4 pos, unsigned p_idx) {
@@ -136,8 +131,18 @@ struct NSearch {
     // 2D arrays of particle indices into particle_positions
     unsigned *particle_indices;
 
+    // Number of particles stored in each cell
+    unsigned *particle_counts;
+
     float cell_size;
 };
+
+__host__ inline void clear_n_search(const NSearch& host_n_search) {
+    cudaMemset(host_n_search.table, 0xff, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
+    cudaMemset(host_n_search.particle_indices, 0xff,
+               sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
+    cudaMemset(host_n_search.particle_counts, 0, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
+}
 
 __host__ inline NSearch* new_n_search(NSearch &host_n_search, float cell_size) {
     NSearch* dev_n_search;
@@ -146,26 +151,20 @@ __host__ inline NSearch* new_n_search(NSearch &host_n_search, float cell_size) {
     cudaMalloc(&host_n_search.table, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
     cudaMalloc(&host_n_search.particle_indices,
         sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
+    cudaMalloc(&host_n_search.particle_counts, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
     host_n_search.cell_size = cell_size;
 
     cudaMemcpy(dev_n_search, &host_n_search, sizeof(NSearch), cudaMemcpyHostToDevice); cudaCheckError();
 
-    cudaMemset(host_n_search.table, 0xff, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
-    cudaMemset(host_n_search.particle_indices, 0xff,
-        sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
+    clear_n_search(host_n_search);
 
     return dev_n_search;
-}
-
-__host__ inline void clear_n_search(const NSearch& host_n_search) {
-    cudaMemset(host_n_search.table, 0xff, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
-    cudaMemset(host_n_search.particle_indices, 0xff,
-        sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
 }
 
 __host__ inline void delete_n_search(NSearch* dev_n_search, const NSearch& host_n_search) {
     cudaFree(host_n_search.table); cudaCheckError();
     cudaFree(host_n_search.particle_indices); cudaCheckError();
+    cudaFree(host_n_search.particle_counts); cudaCheckError();
     cudaFree(dev_n_search); cudaCheckError();
 }
 
@@ -178,6 +177,7 @@ struct NSearchHost {
         NSearchHost n_search;
         n_search.table.resize(NSearch::TABLE_SIZE);
         n_search.particle_indices.resize(NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL);
+        n_search.particle_counts.resize(NSearch::TABLE_SIZE);
         n_search.cell_size = h_n_search.cell_size;
 
         cudaMemcpy(n_search.table.data(), h_n_search.table,
@@ -186,11 +186,15 @@ struct NSearchHost {
         cudaMemcpy(n_search.particle_indices.data(), h_n_search.particle_indices,
             sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL, cudaMemcpyDeviceToHost);
         cudaCheckError();
+        cudaMemcpy(n_search.particle_counts.data(), h_n_search.particle_counts,
+            sizeof(unsigned) * NSearch::TABLE_SIZE, cudaMemcpyDeviceToHost);
+        cudaCheckError();
 
         return n_search;
     }
 
     std::vector<NSearch::hash_t> table;
     std::vector<unsigned> particle_indices;
+    std::vector<unsigned> particle_counts;
     float cell_size = 0.f;
 };

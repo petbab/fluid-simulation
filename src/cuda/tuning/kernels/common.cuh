@@ -48,14 +48,9 @@ struct NSearch {
     }
 
     __device__ void insert_p_idx(const unsigned p_idx, const unsigned table_i) {
-        unsigned i = 0;
-        unsigned old_idx;
-        do {
-            old_idx = atomicCAS(&particle_indices[table_i * MAX_PARTICLES_IN_CELL + i], EMPTY_IDX, p_idx);
-            ++i;
-        } while (old_idx != EMPTY_IDX && i < MAX_PARTICLES_IN_CELL);
-
-        // TODO: binary search
+        unsigned i = atomicAdd(&particle_counts[table_i], 1);
+        if (i < MAX_PARTICLES_IN_CELL)
+            particle_indices[table_i * MAX_PARTICLES_IN_CELL + i] = p_idx;
     }
 
     __device__ void insert(float4 pos, unsigned p_idx) {
@@ -151,6 +146,9 @@ struct NSearch {
 
     // 2D arrays of particle indices into particle_positions
     unsigned *particle_indices;
+
+    // Number of particles stored in each cell
+    unsigned *particle_counts;
 
     float cell_size;
 };
