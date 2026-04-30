@@ -55,10 +55,10 @@ class ParticleData {
     }
 
 public:
-    // TODO: boundary
     ParticleData(unsigned fluid_n, unsigned boundary_n, float cell_size)
         : fluid_n{fluid_n}, boundary_n{boundary_n}, cell_size{cell_size},
-        morton_codes(fluid_n), indices(fluid_n),
+        morton_codes(fluid_n + boundary_n),
+        indices(fluid_n + boundary_n),
         density_buf(fluid_n),
         boundary_mass_buf(boundary_n),
         pressure_buf(fluid_n),
@@ -71,11 +71,12 @@ public:
     }
 
     void sort(const float4 *positions_src, float4 *positions_dst) {
-        thrust::sequence(indices.begin(), indices.end());
+        thrust::sequence(indices.begin(), indices.begin() + fluid_n);
+        thrust::sequence(indices.begin() + fluid_n, indices.end());
 
         auto pos_src = thrust::device_pointer_cast<const float4>(positions_src);
         const float cs = cell_size;
-        thrust::transform(pos_src, pos_src + fluid_n, morton_codes.begin(),
+        thrust::transform(pos_src, pos_src + fluid_n + boundary_n, morton_codes.begin(),
             [cs] __device__ (float4 p) -> morton_t {
                 int3 cell_coord{
                     static_cast<int>(floorf(p.x / cs)),
@@ -85,10 +86,12 @@ public:
                 return encode_morton(cell_coord);
             });
 
-        thrust::sort_by_key(morton_codes.begin(), morton_codes.end(), indices.begin());
+        thrust::sort_by_key(morton_codes.begin(), morton_codes.begin() + fluid_n, indices.begin());
+        thrust::sort_by_key(morton_codes.begin() + fluid_n, morton_codes.end(), indices.begin() + fluid_n);
 
         thrust::device_ptr<float4> pos_dst{positions_dst};
-        thrust::gather(indices.begin(), indices.end(), pos_src, pos_dst);
+        thrust::gather(indices.begin(), indices.begin() + fluid_n, pos_src, pos_dst);
+        thrust::gather(indices.begin() + fluid_n, indices.end(), pos_src + fluid_n, pos_dst + fluid_n);
         gather_buffers();
         swap_buffers();
     }
@@ -133,13 +136,13 @@ private:
     }
 
     void gather_buffers() {
-        // TODO: boundary
-        thrust::gather(indices.begin(), indices.end(), density_buf.src().begin(), density_buf.dst().begin());
-        // thrust::gather(indices.begin(), indices.end(), boundary_mass_buf.src().begin(), boundary_mass_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), pressure_buf.src().begin(), pressure_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), velocity_buf.src().begin(), velocity_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), non_pressure_accel_buf.src().begin(), non_pressure_accel_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), normal_buf.src().begin(), normal_buf.dst().begin());
+        auto fluid_end = indices.begin() + fluid_n;
+        thrust::gather(indices.begin(), fluid_end, density_buf.src().begin(), density_buf.dst().begin());
+        thrust::gather(indices.begin(), fluid_end, pressure_buf.src().begin(), pressure_buf.dst().begin());
+        thrust::gather(indices.begin(), fluid_end, velocity_buf.src().begin(), velocity_buf.dst().begin());
+        thrust::gather(indices.begin(), fluid_end, non_pressure_accel_buf.src().begin(), non_pressure_accel_buf.dst().begin());
+        thrust::gather(indices.begin(), fluid_end, normal_buf.src().begin(), normal_buf.dst().begin());
+        thrust::gather(fluid_end, indices.end(), boundary_mass_buf.src().begin(), boundary_mass_buf.dst().begin());
     }
 
     unsigned fluid_n, boundary_n;
