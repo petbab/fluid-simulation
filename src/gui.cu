@@ -33,11 +33,13 @@ void GUI::update(float delta) {
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
 
-    ImGui::Text("FPS: %f", 1.f / delta);
-
     auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
     assert(fluid != nullptr);
     CUDASPHSimulator &fluid_sim = fluid->get_simulator();
+
+    ImGui::Text("Fluid Particles: %d", fluid_sim.fluid_particles);
+    ImGui::Text("Boundary Particles: %d", fluid_sim.boundary_particles);
+    ImGui::Text("FPS: %.2f", 1.f / delta);
 
     auto [searched, total] = fluid_sim.tuning_stats();
     ImGui::Text("Searched Configurations: %i/%i", searched, total);
