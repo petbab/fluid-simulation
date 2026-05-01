@@ -33,6 +33,11 @@ void Camera::update_vectors() {
     set_view();
 }
 
+void Camera::set_position(glm::vec3 pos) {
+    data.position = pos;
+    set_view();
+}
+
 void Camera::on_mouse_move(glm::vec2 offset) {
     offset *= SENSITIVITY;
 

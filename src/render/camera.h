@@ -22,6 +22,8 @@ public:
     const glm::mat4& get_view() const { return data.view; }
     glm::vec3 get_position() const { return data.position; }
 
+    void set_position(glm::vec3 position);
+
     void on_mouse_move(glm::vec2 offset);
 
     enum class move {
