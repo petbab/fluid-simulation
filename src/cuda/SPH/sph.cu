@@ -149,7 +149,7 @@ bool CUDASPHSimulator::has_boundary() const {
 
 struct float4_length_sq {
     __host__ __device__ float operator()(const float4& v) const {
-        return length(v);
+        return dot(v, v);
     }
 };
 
