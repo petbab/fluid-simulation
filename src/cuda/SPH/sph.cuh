@@ -50,6 +50,10 @@ public:
     void reset() override;
 
 private:
+    void init_boundary();
+    void build_boundary_n_search(float4* positions_dev_ptr);
+    bool has_boundary() const;
+
     void compute_densities(float4* positions_dev_ptr);
     void compute_boundary_mass(float4* positions_dev_ptr);
 
@@ -92,7 +96,6 @@ private:
         DENSITY_TUNER,
         UPDATE_POSITIONS_TUNER,
         UPDATE_VELOCITIES_TUNER,
-        COMPUTE_BOUNDARY_MASS_TUNER,
         COMPUTE_VISCOSITY_TUNER,
         COMPUTE_SURFACE_NORMALS_TUNER,
         COMPUTE_SURFACE_TENSION_TUNER,
@@ -110,7 +113,8 @@ private:
 
     ParticleData particle_data;
 
-    NSearchWrapper n_search;
+    NSearchWrapper fluid_n_search;
+    std::unique_ptr<NSearchWrapper> boundary_n_search;
 
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;

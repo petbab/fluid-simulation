@@ -4,15 +4,12 @@
 
 
 __global__ void compute_densities(const float4* positions, float* densities,
-    unsigned n, void *dev_n_search_ptr) {
+    unsigned n, const NSearch *dev_n_search) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
     float4 xi = positions[i];
-
-    const NSearch *dev_n_search = static_cast<const NSearch*>(dev_n_search_ptr);
-
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
     dev_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
         float4 xj = positions[j];
@@ -25,33 +22,40 @@ __global__ void compute_densities(const float4* positions, float* densities,
     densities[i] = density * PARTICLE_MASS;
 }
 
-__global__ void compute_densities_with_boundary(const float4* positions, float* densities,
-    unsigned n, void *dev_n_search_ptr,
-    const float *boundary_mass) {
+__global__ void compute_densities_with_boundary(
+    const float4* positions, float* densities,
+    unsigned fluid_n, const NSearch *fluid_n_search,
+    const float *boundary_mass, const NSearch *boundary_n_search
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n)
+    if (i >= fluid_n)
         return;
 
     float4 xi = positions[i];
-
-    const NSearch *dev_n_search = static_cast<const NSearch*>(dev_n_search_ptr);
-
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
     float boundary_density = 0.f;
 
-    dev_n_search->for_neighbors(xi, [=, &density, &boundary_density] (unsigned j) {
+    fluid_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
             float q = r_to_q(xi - xj, SUPPORT_RADIUS);
             float W = cubic_spline(q, SUPPORT_RADIUS);
-
-            if (is_boundary(j, n))
-                boundary_density += W * get_mass(boundary_mass, j, n);
-            else
-                density += W;
+            density += W;
         }
     });
+
+    boundary_n_search->for_neighbors(xi, [=, &boundary_density] (unsigned j) {
+        j += fluid_n;
+        float4 xj = positions[j];
+
+        if (is_neighbor(xi, xj, i, j)) {
+            float q = r_to_q(xi - xj, SUPPORT_RADIUS);
+            float W = cubic_spline(q, SUPPORT_RADIUS);
+            boundary_density += W * get_mass(boundary_mass, j, fluid_n);
+        }
+    });
+
     densities[i] = density * PARTICLE_MASS + boundary_density;
 }
 

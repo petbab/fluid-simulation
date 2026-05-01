@@ -54,9 +54,14 @@ public:
     }
 
     void reset() {
-        // TODO: check swap logic
         simulator->reset();
-        inst_geom()->update_instance_data(simulator->get_position_data());
+
+        auto pos = simulator->get_position_data();
+        // Only reset non-boundary particles
+        pos = pos.first(4 * simulator->get_fluid_particles());
+
+        geometry_a->update_instance_data(pos);
+        geometry_b->update_instance_data(pos);
     }
 
     void toggle_show_boundary() { show_boundary = !show_boundary; }

@@ -30,7 +30,7 @@ ktt::KernelResult Tuner::run(bool tune) {
 }
 
 void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {
-    tuner->SetArguments(kernel, new_args);
+    tuner->SetArguments(definition, new_args);
     for (const auto& arg : args)
         tuner->RemoveArgument(arg);
     args = new_args;

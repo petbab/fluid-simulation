@@ -34,7 +34,8 @@ public:
         float4* positions, float* densities,
         float* pressures, float4* velocities,
         float* boundary_mass, unsigned fluid_particles,
-        unsigned boundary_particles, float delta, NSearch *dev_n_search, bool tune
+        unsigned boundary_particles, float delta, NSearch *fluid_n_search,
+        NSearch *boundary_n_search, bool tune
     ) {
         std::vector args{
             tuner->AddArgumentVector<float4>(positions, fluid_particles * sizeof(float4),
@@ -47,13 +48,16 @@ public:
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(fluid_particles),
             tuner->AddArgumentScalar(delta),
-            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+            tuner->AddArgumentVector<NSearch>(fluid_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
         };
 
-        if (boundary_particles > 0)
+        if (boundary_particles > 0) {
             args.push_back(tuner->AddArgumentVector<float>(boundary_mass, boundary_particles * sizeof(float),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device));
+            args.push_back(tuner->AddArgumentVector<NSearch>(boundary_n_search, sizeof(NSearch),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device));
+        }
 
         update_args(args);
         return Tuner::run(tune);

@@ -19,9 +19,6 @@ __global__ void compute_viscosity(
     float4 vi = velocities[i];
 
     dev_n_search->for_neighbors(xi, [=, &velocity_laplacian] (unsigned j) {
-        if (is_boundary(j, n))
-            return;
-
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {

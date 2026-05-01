@@ -6,8 +6,8 @@
 
 class NSearchWrapper {
 public:
-    explicit NSearchWrapper(float cell_size, unsigned total_particles)
-        : rebuild_n_search_tuner(total_particles), total_particles(total_particles) {
+    explicit NSearchWrapper(float cell_size, unsigned total_particles, bool boundary = false)
+        : rebuild_n_search_tuner(total_particles, boundary), total_particles(total_particles) {
         dev_n_search = new_n_search(host_n_search, cell_size);
     }
 

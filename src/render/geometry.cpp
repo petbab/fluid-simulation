@@ -267,7 +267,8 @@ void InstancedGeometry::draw() const {
 
 void InstancedGeometry::update_instance_data(std::span<const float> instance_data) const {
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data(), GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, static_cast<GLintptr>(0),
+        static_cast<GLsizeiptr>(instance_data.size() * sizeof(float)), instance_data.data());
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glCheckError();
 }

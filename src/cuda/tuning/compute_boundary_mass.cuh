@@ -23,7 +23,7 @@ public:
 
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
 
-        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{32, 64, 128, 256, 512});
+        tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{128});
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Local, ktt::ModifierDimension::X, "multiply_block_size",
             ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Global, ktt::ModifierDimension::X, "multiply_block_size",
@@ -31,18 +31,16 @@ public:
     }
 
     ktt::KernelResult run(
-        float4* positions_dev_ptr, float* masses_dev_ptr,
-        unsigned fluid_n, unsigned boundary_n,
-        NSearch* dev_n_search, bool tune
+        float4* positions_dev_ptr, float* masses_dev_ptr, unsigned boundary_n,
+        NSearch* boundary_n_search, bool tune
     ) {
         std::vector args{
-            tuner->AddArgumentVector<float4>(positions_dev_ptr, (fluid_n + boundary_n) * sizeof(float4),
+            tuner->AddArgumentVector<float4>(positions_dev_ptr, boundary_n * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float>(masses_dev_ptr, boundary_n * sizeof(float),
                 ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentScalar(fluid_n),
             tuner->AddArgumentScalar(boundary_n),
-            tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
+            tuner->AddArgumentVector<NSearch>(boundary_n_search, sizeof(NSearch),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device)
         };
         update_args(args);

@@ -20,9 +20,6 @@ __global__ void compute_surface_tension(
     float4 f{0.f};
 
     dev_n_search->for_neighbors(xi, [=, &f] (unsigned j) {
-        if (is_boundary(j, n))
-            return;
-
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
