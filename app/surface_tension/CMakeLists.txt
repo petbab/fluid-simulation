@@ -1,0 +1,1 @@
+register_app(surface_tension)
