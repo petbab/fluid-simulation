@@ -5,7 +5,7 @@
 
 static constexpr float OFFSET = 0.000f;
 static constexpr float COLLISION_BUFFER_MULT = 0.75f;
-static constexpr float ELASTICITY = 0.9f;
+static constexpr float ELASTICITY = 0.5f;
 
 __device__ void resolve_collisions(float4* positions, float4* velocities, const BoundingBoxGPU &bb) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;

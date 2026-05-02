@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cuda/math.cuh>
 #include <cuda/util.cuh>
 #include <debug.h>
 #include "morton.cuh"
@@ -10,9 +9,8 @@ struct NSearch {
     using cell_t = uint3;
     using hash_t = unsigned long long;
     static constexpr hash_t EMPTY_HASH = std::numeric_limits<hash_t>::max();
-    static constexpr unsigned EMPTY_IDX = std::numeric_limits<unsigned>::max();
-    static constexpr unsigned MAX_PARTICLES_IN_CELL = 512;
-    static constexpr unsigned TABLE_SIZE = 4096;
+    static constexpr unsigned EMPTY_CELL = std::numeric_limits<unsigned>::max();
+    static constexpr unsigned TABLE_SIZE = 16192;
 
     // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (eq. 34)
     __device__ __host__ static hash_t cell_hash(cell_t c) {
@@ -31,73 +29,45 @@ struct NSearch {
         };
     }
 
-    __device__ void insert_p_idx(const unsigned p_idx, const unsigned table_i) {
-        unsigned i = atomicAdd(&particle_counts[table_i], 1);
-        if (i < MAX_PARTICLES_IN_CELL)
-            particle_indices[table_i * MAX_PARTICLES_IN_CELL + i] = p_idx;
-    }
-
-    __device__ void insert(float4 pos, unsigned p_idx) {
-        hash_t h = pos_to_cell_hash(pos, cell_size);
-        unsigned i = h % TABLE_SIZE;
-
-        hash_t old_h = atomicCAS(&table[i], EMPTY_HASH, h);
-
-        while (old_h != EMPTY_HASH && old_h != h) {
-            i = (i + 1) % TABLE_SIZE;
-            old_h = atomicCAS(&table[i], EMPTY_HASH, h);
-        }
-
-        insert_p_idx(p_idx, i);
-    }
-
-    __device__ __host__ unsigned* indices_in_cell(cell_t cell) const {
+    __device__ __host__ unsigned find_cell_in_table(cell_t cell) const {
         hash_t h = cell_hash(cell);
         for (unsigned j = 0; j < TABLE_SIZE; ++j) {
             unsigned t_i = (h + j) % TABLE_SIZE;
             if (table[t_i] == EMPTY_HASH)
-                return nullptr;
-
+                return EMPTY_CELL;
             if (table[t_i] == h)
-                return &particle_indices[MAX_PARTICLES_IN_CELL * t_i];
+                return t_i;
         }
         // Can't get here
-        return nullptr;
+        return EMPTY_CELL;
     }
 
-    __device__ __host__ unsigned* indices_in_cell(float4 pos) const {
-        return indices_in_cell(cell_coord(pos, cell_size));
+    __device__ unsigned add_cell(hash_t h) {
+        unsigned i = h % TABLE_SIZE;
+        for (unsigned j = 0; j < TABLE_SIZE; ++j) {
+            hash_t old_h = atomicCAS(&table[i], EMPTY_HASH, h);
+            if (old_h == EMPTY_HASH || old_h == h)
+                return i;
+            i = (i + 1) % TABLE_SIZE;
+        }
+        // Can't get here
+        return std::numeric_limits<unsigned>::max();
     }
 
-    // Expects buffer to have size >= 27 * MAX_PARTICLES_IN_CELL
-    __device__ __host__ unsigned list_neighbors(float4 pos, unsigned *buffer) const {
-        unsigned i = 0;
-        unsigned *i_ptr = &i;
-        return for_neighbors(pos, [=] __device__ __host__ (unsigned p_j) {
-            buffer[*i_ptr] = p_j;
-            ++*i_ptr;
-        });
+    __device__ void set_cell_start(hash_t h, unsigned start) {
+        unsigned cell_i = add_cell(h);
+        cell_start[cell_i] = start;
     }
 
-    // For neighbors with real neighbor check
-    template<typename F>
-    __device__ __host__ unsigned for_neighbors(const float4 *positions, unsigned p_i, float support_radius, F f) const {
-        float4 xi = positions[p_i];
-        return for_neighbors(xi, [=] __device__ __host__ (unsigned p_j) -> void {
-            if (p_i == p_j)
-                return;
-
-            float4 r = xi - positions[p_j];
-            if (dot(r, r) <= support_radius * support_radius)
-                f(p_j);
-        });
+    __device__ void set_cell_end(hash_t h, unsigned end) {
+        unsigned cell_i = add_cell(h);
+        cell_end[cell_i] = end;
     }
 
     template<typename F>
     __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord(pos, cell_size);
-
-        unsigned i = 0;
+        unsigned count = 0;
         #pragma unroll
         for (int x = -1; x <= 1; ++x) {
             #pragma unroll
@@ -105,43 +75,38 @@ struct NSearch {
                 #pragma unroll
                 for (int z = -1; z <= 1; ++z) {
                     cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
-                    unsigned *indices_start = indices_in_cell(n_cell);
-
-                    if (indices_start == nullptr)
+                    unsigned t_i = find_cell_in_table(n_cell);
+                    if (t_i == EMPTY_CELL)
                         continue;
 
-                    for (unsigned j = 0; j < MAX_PARTICLES_IN_CELL; ++j) {
-                        if (indices_start[j] == EMPTY_IDX)
-                            break;
+                    const unsigned start = cell_start[t_i];
+                    const unsigned end = cell_end[t_i];
+                    count += end - start;
 
-                        f(indices_start[j]);
-                        ++i;
-                    }
+                    for (unsigned j = start; j < end; ++j)
+                        f(j);
                 }
             }
         }
-        return i;
+        return count;
     }
 
     // Stores hashes of cells or empty
     // - linear probing
-    // - index in table == index of array in particle_indices
+    // - index in table == index in cell_start/end
     hash_t *table;
 
-    // 2D arrays of particle indices into particle_positions
-    unsigned *particle_indices;
-
-    // Number of particles stored in each cell
-    unsigned *particle_counts;
+    // Indices into sorted particle indices,
+    // cell_end is non-inclusive
+    unsigned *cell_start, *cell_end;
 
     float cell_size;
 };
 
 __host__ inline void clear_n_search(const NSearch& host_n_search) {
     cudaMemset(host_n_search.table, 0xff, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
-    cudaMemset(host_n_search.particle_indices, 0xff,
-               sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
-    cudaMemset(host_n_search.particle_counts, 0, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
+    cudaMemset(host_n_search.cell_start, 0, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
+    cudaMemset(host_n_search.cell_end, 0, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
 }
 
 __host__ inline NSearch* new_n_search(NSearch &host_n_search, float cell_size) {
@@ -149,9 +114,8 @@ __host__ inline NSearch* new_n_search(NSearch &host_n_search, float cell_size) {
     cudaMalloc(&dev_n_search, sizeof(NSearch)); cudaCheckError();
 
     cudaMalloc(&host_n_search.table, sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE); cudaCheckError();
-    cudaMalloc(&host_n_search.particle_indices,
-        sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL); cudaCheckError();
-    cudaMalloc(&host_n_search.particle_counts, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
+    cudaMalloc(&host_n_search.cell_start, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
+    cudaMalloc(&host_n_search.cell_end, sizeof(unsigned) * NSearch::TABLE_SIZE); cudaCheckError();
     host_n_search.cell_size = cell_size;
 
     cudaMemcpy(dev_n_search, &host_n_search, sizeof(NSearch), cudaMemcpyHostToDevice); cudaCheckError();
@@ -163,8 +127,8 @@ __host__ inline NSearch* new_n_search(NSearch &host_n_search, float cell_size) {
 
 __host__ inline void delete_n_search(NSearch* dev_n_search, const NSearch& host_n_search) {
     cudaFree(host_n_search.table); cudaCheckError();
-    cudaFree(host_n_search.particle_indices); cudaCheckError();
-    cudaFree(host_n_search.particle_counts); cudaCheckError();
+    cudaFree(host_n_search.cell_start); cudaCheckError();
+    cudaFree(host_n_search.cell_end); cudaCheckError();
     cudaFree(dev_n_search); cudaCheckError();
 }
 
@@ -176,17 +140,17 @@ struct NSearchHost {
 
         NSearchHost n_search;
         n_search.table.resize(NSearch::TABLE_SIZE);
-        n_search.particle_indices.resize(NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL);
-        n_search.particle_counts.resize(NSearch::TABLE_SIZE);
+        n_search.cell_start.resize(NSearch::TABLE_SIZE);
+        n_search.cell_end.resize(NSearch::TABLE_SIZE);
         n_search.cell_size = h_n_search.cell_size;
 
         cudaMemcpy(n_search.table.data(), h_n_search.table,
         sizeof(NSearch::hash_t) * NSearch::TABLE_SIZE, cudaMemcpyDeviceToHost);
         cudaCheckError();
-        cudaMemcpy(n_search.particle_indices.data(), h_n_search.particle_indices,
-            sizeof(unsigned) * NSearch::TABLE_SIZE * NSearch::MAX_PARTICLES_IN_CELL, cudaMemcpyDeviceToHost);
+        cudaMemcpy(n_search.cell_start.data(), h_n_search.cell_start,
+            sizeof(unsigned) * NSearch::TABLE_SIZE, cudaMemcpyDeviceToHost);
         cudaCheckError();
-        cudaMemcpy(n_search.particle_counts.data(), h_n_search.particle_counts,
+        cudaMemcpy(n_search.cell_end.data(), h_n_search.cell_end,
             sizeof(unsigned) * NSearch::TABLE_SIZE, cudaMemcpyDeviceToHost);
         cudaCheckError();
 
@@ -194,7 +158,7 @@ struct NSearchHost {
     }
 
     std::vector<NSearch::hash_t> table;
-    std::vector<unsigned> particle_indices;
-    std::vector<unsigned> particle_counts;
+    std::vector<unsigned> cell_start;
+    std::vector<unsigned> cell_end;
     float cell_size = 0.f;
 };

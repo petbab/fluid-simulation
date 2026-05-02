@@ -8,5 +8,18 @@ __global__ void rebuild_n_search(NSearch *dev_n_search, const float4 *particle_p
     if (i >= n) return;
 
     float4 pos = particle_positions[i];
-    dev_n_search->insert(pos, i);
+    NSearch::hash_t h = NSearch::pos_to_cell_hash(pos, dev_n_search->cell_size);
+
+    if (i == n - 1) {
+        dev_n_search->set_cell_end(h, n);
+        return;
+    }
+
+    float4 next_pos = particle_positions[i + 1];
+    NSearch::hash_t next_h = NSearch::pos_to_cell_hash(next_pos, dev_n_search->cell_size);
+
+    if (h != next_h) {
+        dev_n_search->set_cell_end(h, i + 1);
+        dev_n_search->set_cell_start(next_h, i + 1);
+    }
 }
