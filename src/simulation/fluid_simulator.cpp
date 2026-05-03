@@ -1,6 +1,5 @@
 #include "fluid_simulator.h"
 #include "SPH/boundary.h"
-#include <random>
 
 
 template<int ELEM_SIZE>
@@ -16,8 +15,6 @@ FluidSimulator::FluidSimulator(const opts_t &opts)
 
     total_particles = positions.size();
     boundary_particles = total_particles - fluid_particles;
-
-    visualizer = std::make_unique<ParticleDataVisualizer>(total_particles, fluid_particles);
 }
 
 auto FluidSimulator::get_position_data() -> std::span<const float> {

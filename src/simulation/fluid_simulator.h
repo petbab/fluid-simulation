@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cuda/particle_data_visualizer.cuh>
 #include <render/box.h>
 
 
@@ -52,6 +51,4 @@ protected:
     const BoundingBox &bounding_box;
     const grid_dims_t grid_dims;
     const glm::vec3 origin;
-
-    std::unique_ptr<ParticleDataVisualizer> visualizer;
 };

@@ -15,6 +15,7 @@
 #include "cuda/tuning/update_velocities.cuh"
 #include <memory>
 #include "particle_data.cuh"
+#include "particle_data_visualizer.cuh"
 #include "simulation/fluid_simulator.h"
 
 
@@ -110,8 +111,10 @@ private:
     std::pair<int, int> tuning_stats() const;
 
     void set_tuning_budget(float tuning_budget);
+    void reset_tuning();
 
     ParticleData particle_data;
+    ParticleDataVisualizer particle_data_visualizer;
 
     NSearchWrapper fluid_n_search;
     std::unique_ptr<NSearchWrapper> boundary_n_search;
