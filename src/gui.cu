@@ -33,6 +33,9 @@ void GUI::update(float delta) {
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
 
+    ///////////////////////////////////
+    //            Tuning             //
+    ///////////////////////////////////
     ImGui::SeparatorText("Tuning");
 
     ImGui::Text("FPS: %f", 1.f / delta);
@@ -51,10 +54,15 @@ void GUI::update(float delta) {
     if (ImGui::Button("Reset Tuning"))
         fluid_sim.reset_tuning();
 
+    ///////////////////////////////////
+    //          Simulation           //
+    ///////////////////////////////////
     ImGui::SeparatorText("Simulation");
 
     ImGui::Text("Fluid Particles: %d", fluid_sim.fluid_particles);
     ImGui::Text("Boundary Particles: %d", fluid_sim.boundary_particles);
+
+    ImGui::Checkbox("Show Boundary [B]", &fluid->show_boundary);
 
     auto &visualizer = fluid_sim.particle_data_visualizer;
     int viz_mode = static_cast<int>(visualizer.mode);
@@ -73,6 +81,9 @@ void GUI::update(float delta) {
             visualizer.max = range[1];
         }
     }
+
+    if (ImGui::Button("Reset Fluid"))
+        fluid->reset();
 
     ImGui::End();
     ImGui::EndFrame();
