@@ -30,15 +30,18 @@ public:
             ktt::ModifierAction::Divide);
     }
 
-    ktt::KernelResult run(float4 *positions_dev_ptr, float4* velocities_dev_ptr,
-            unsigned n, float delta, const BoundingBox &bb, bool tune) {
+    ktt::KernelResult run(float4 *positions_dev_ptr, float4* velocities_dev_ptr, float4* accelerations_dev_ptr,
+            unsigned n, float delta, float np_delta, const BoundingBox &bb, bool tune) {
         std::vector args{
             tuner->AddArgumentVector<float>(positions_dev_ptr, n * sizeof(float) * 3,
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentVector<float4>(velocities_dev_ptr, n * sizeof(float),
+                ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentVector<float4>(accelerations_dev_ptr, n * sizeof(float),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(n),
             tuner->AddArgumentScalar(delta),
+            tuner->AddArgumentScalar(np_delta),
             tuner->AddArgumentScalar<BoundingBoxGPU>(bb)
         };
         update_args(args);

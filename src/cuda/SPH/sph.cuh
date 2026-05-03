@@ -12,7 +12,6 @@
 #include "cuda/tuning/compute_surface_tension.cuh"
 #include "cuda/tuning/compute_viscosity.cuh"
 #include "cuda/tuning/tuning_scheduler.h"
-#include "cuda/tuning/update_velocities.cuh"
 #include <memory>
 #include "particle_data.cuh"
 #include "particle_data_visualizer.cuh"
@@ -25,11 +24,11 @@ public:
     ////                         SIMULATION PARAMETERS                         ////
     ///////////////////////////////////////////////////////////////////////////////
     static constexpr float REST_DENSITY = 1000.f;
-    static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
     static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8;
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
-    static constexpr float XSPH_ALPHA = 0.f;
+    static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
+    static constexpr float CELL_SIZE = 1.5f * SUPPORT_RADIUS;
 
     static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
 
@@ -58,16 +57,10 @@ private:
     void compute_densities(float4* positions_dev_ptr);
     void compute_boundary_mass(float4* positions_dev_ptr);
 
-    void update_positions(float4* positions_dev_ptr, float delta);
-    void update_velocities(float delta);
+    void update_positions(float4* positions_dev_ptr, float delta, float np_delta);
 
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
     float adapt_time_step(float delta, float min_step, float max_step) const;
-
-    /**
-     * Simulates viscosity by smoothing the velocity field [SPH Tutorial, eq. 103].
-     */
-    void compute_XSPH(const float4* positions_dev_ptr);
 
     /**
      * Computes and applies the viscous force using an explicit viscosity model.
@@ -87,7 +80,6 @@ private:
      */
     void compute_surface_normals(float4* positions_dev_ptr);
 
-    void apply_non_pressure_forces(float4* positions_dev_ptr, float delta);
     void apply_external_forces(float4* positions_dev_ptr);
 
     void compute_pressure();
@@ -96,7 +88,6 @@ private:
     enum tuners {
         DENSITY_TUNER,
         UPDATE_POSITIONS_TUNER,
-        UPDATE_VELOCITIES_TUNER,
         COMPUTE_VISCOSITY_TUNER,
         COMPUTE_SURFACE_NORMALS_TUNER,
         COMPUTE_SURFACE_TENSION_TUNER,
@@ -121,7 +112,6 @@ private:
 
     DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
-    UpdateVelocitiesTuner update_velocities_tuner;
     ComputeViscosityTuner compute_viscosity_tuner;
     ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
     ComputeSurfaceTensionTuner compute_surface_tension_tuner;

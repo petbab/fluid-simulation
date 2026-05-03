@@ -6,12 +6,11 @@
 
 CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
     : FluidSimulator(opts),
-      particle_data{fluid_particles, boundary_particles, 2.f * SUPPORT_RADIUS},
+      particle_data{fluid_particles, boundary_particles, CELL_SIZE},
       particle_data_visualizer{&particle_data, total_particles, fluid_particles},
-      fluid_n_search(2.f * SUPPORT_RADIUS, fluid_particles),
+      fluid_n_search(CELL_SIZE, fluid_particles),
       density_tuner(fluid_particles, total_particles),
       update_positions_tuner(fluid_particles),
-      update_velocities_tuner(fluid_particles),
       compute_viscosity_tuner(fluid_particles),
       compute_surface_normals_tuner(fluid_particles),
       compute_surface_tension_tuner(fluid_particles),
@@ -20,7 +19,6 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       active_tuners{
           {DENSITY_TUNER, &density_tuner},
           {UPDATE_POSITIONS_TUNER, &update_positions_tuner},
-          {UPDATE_VELOCITIES_TUNER, &update_velocities_tuner},
           {COMPUTE_VISCOSITY_TUNER, &compute_viscosity_tuner},
           {COMPUTE_SURFACE_NORMALS_TUNER, &compute_surface_normals_tuner},
           {COMPUTE_SURFACE_TENSION_TUNER, &compute_surface_tension_tuner},
@@ -61,14 +59,17 @@ void CUDASPHSimulator::update(float delta) {
 
     compute_densities(positions_dst);
 
-    apply_non_pressure_forces(positions_dst, delta);
+    apply_external_forces(positions_dst);
+    compute_viscosity(positions_dst);
+    compute_surface_tension(positions_dst);
 
+    float np_delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
     delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP);
 
     compute_pressure();
     apply_pressure_force(positions_dst, delta);
 
-    update_positions(positions_dst, delta);
+    update_positions(positions_dst, delta, np_delta);
 
     particle_data_visualizer.update();
 }
@@ -85,20 +86,10 @@ void CUDASPHSimulator::compute_densities(float4* positions_dev_ptr) {
         is_scheduled(DENSITY_TUNER));
 }
 
-void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta) {
-    update_positions_tuner.run(positions_dev_ptr, particle_data.velocity(), fluid_particles, delta, bounding_box,
-                               is_scheduled(UPDATE_POSITIONS_TUNER));
-}
-
-void CUDASPHSimulator::apply_non_pressure_forces(float4* positions_dev_ptr, float delta) {
-    apply_external_forces(positions_dev_ptr);
-
-    compute_viscosity(positions_dev_ptr);
-    compute_surface_tension(positions_dev_ptr);
-
-    update_velocities(delta);
-
-    compute_XSPH(positions_dev_ptr);
+void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta, float np_delta) {
+    update_positions_tuner.run(positions_dev_ptr, particle_data.velocity(),
+        particle_data.non_pressure_accel(), fluid_particles, delta, np_delta,
+        bounding_box, is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
 void CUDASPHSimulator::compute_boundary_mass(float4* positions_dev_ptr) {
@@ -135,7 +126,7 @@ void CUDASPHSimulator::init_boundary() {
 
 void CUDASPHSimulator::build_boundary_n_search(float4* positions_dev_ptr) {
     assert(has_boundary());
-    boundary_n_search = std::make_unique<NSearchWrapper>(2.f * SUPPORT_RADIUS, boundary_particles, true);
+    boundary_n_search = std::make_unique<NSearchWrapper>(CELL_SIZE, boundary_particles, true);
     boundary_n_search->rebuild(positions_dev_ptr + fluid_particles, false);
 }
 
@@ -164,18 +155,6 @@ float CUDASPHSimulator::adapt_time_step(float delta, float min_step, float max_s
     float cfl_max_time_step = CFL_FACTOR * PARTICLE_SPACING / max_velocity;
 
     return std::min(std::clamp(delta, min_step, max_step), cfl_max_time_step);
-}
-
-void CUDASPHSimulator::update_velocities(float delta) {
-    delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
-    update_velocities_tuner.run(particle_data.velocity(), particle_data.non_pressure_accel(), fluid_particles, delta,
-                                is_scheduled(UPDATE_VELOCITIES_TUNER));
-}
-
-void CUDASPHSimulator::compute_XSPH(const float4* positions_dev_ptr) {
-    if constexpr (XSPH_ALPHA == 0.f)
-        return;
-    // TODO
 }
 
 void CUDASPHSimulator::compute_viscosity(float4* positions_dev_ptr) {
