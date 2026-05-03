@@ -48,6 +48,9 @@ void GUI::update(float delta) {
         0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
         fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
 
+    if (ImGui::Button("Reset Tuning"))
+        fluid_sim.reset_tuning();
+
     ImGui::SeparatorText("Simulation");
 
     auto &visualizer = fluid_sim.particle_data_visualizer;

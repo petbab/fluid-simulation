@@ -19,6 +19,11 @@ std::pair<int, int> Tuner::tuning_stats() const {
     return {std::min(searched_count, total), total};
 }
 
+void Tuner::clear_configuration_data() {
+    tuner->ClearConfigurationData(kernel);
+    searched_count = 0;
+}
+
 ktt::KernelResult Tuner::run(bool tune) {
     if (tune || searched_count == 0) {
         ++searched_count;

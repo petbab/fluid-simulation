@@ -243,3 +243,8 @@ void CUDASPHSimulator::set_tuning_budget(float tb) {
     tuning_budget = tb;
     scheduler->set_tune_iterations_per_frame(tb);
 }
+
+void CUDASPHSimulator::reset_tuning() {
+    for (Tuner* tnr : active_tuners | std::views::values)
+        tnr->clear_configuration_data();
+}

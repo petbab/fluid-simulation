@@ -9,6 +9,7 @@ public:
     virtual ~Tuner();
 
     std::pair<int, int> tuning_stats() const;
+    void clear_configuration_data();
 
 protected:
     ktt::KernelResult run(bool tune);
