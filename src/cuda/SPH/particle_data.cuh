@@ -53,6 +53,10 @@ class ParticleData {
     static T* dev_ptr(thrust::device_vector<T>& vec) {
         return thrust::raw_pointer_cast(vec.data());
     }
+    template <class T>
+    static const T* dev_ptr(const thrust::device_vector<T>& vec) {
+        return thrust::raw_pointer_cast(vec.data());
+    }
 
 public:
     ParticleData(unsigned fluid_n, unsigned boundary_n, float cell_size)
@@ -154,6 +158,9 @@ public:
 
     unsigned* get_indices() { return dev_ptr(indices); }
     unsigned* get_boundary_indices() { return dev_ptr(boundary_indices); }
+
+    const unsigned* get_indices() const { return dev_ptr(indices); }
+    const unsigned* get_boundary_indices() const { return dev_ptr(boundary_indices); }
 
 private:
     void swap_buffers() {

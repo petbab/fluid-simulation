@@ -112,6 +112,7 @@ private:
     void set_tuning_budget(float tuning_budget);
 
     ParticleData particle_data;
+    ParticleDataVisualizer particle_data_visualizer;
 
     NSearchWrapper fluid_n_search;
     std::unique_ptr<NSearchWrapper> boundary_n_search;

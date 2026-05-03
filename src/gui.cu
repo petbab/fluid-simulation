@@ -33,6 +33,8 @@ void GUI::update(float delta) {
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
 
+    ImGui::SeparatorText("Tuning");
+
     ImGui::Text("FPS: %f", 1.f / delta);
 
     auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
@@ -45,6 +47,26 @@ void GUI::update(float delta) {
     if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
         0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
         fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
+
+    ImGui::SeparatorText("Simulation");
+
+    auto &visualizer = fluid_sim.particle_data_visualizer;
+    int viz_mode = static_cast<int>(visualizer.mode);
+    if (ImGui::Combo("Visualization", &viz_mode,
+        visualizer.mode_strings.data(),
+        visualizer.mode_strings.size())) {
+        visualizer.set_mode(static_cast<ParticleDataVisualizer::mode_t>(viz_mode));
+        vis_min = visualizer.min;
+        vis_max = visualizer.max;
+    }
+
+    if (visualizer.normalize) {
+        float range[2] = {visualizer.min, visualizer.max};
+        if (ImGui::SliderFloat2("Range", range, vis_min, vis_max, "%.3f")) {
+            visualizer.min = range[0];
+            visualizer.max = range[1];
+        }
+    }
 
     ImGui::End();
     ImGui::EndFrame();

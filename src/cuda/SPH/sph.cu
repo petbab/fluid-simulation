@@ -7,6 +7,7 @@
 CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
     : FluidSimulator(opts),
       particle_data{fluid_particles, boundary_particles, 2.f * SUPPORT_RADIUS},
+      particle_data_visualizer{&particle_data, total_particles, fluid_particles},
       fluid_n_search(2.f * SUPPORT_RADIUS, fluid_particles),
       density_tuner(fluid_particles, total_particles),
       update_positions_tuner(fluid_particles),
@@ -68,17 +69,12 @@ void CUDASPHSimulator::update(float delta) {
     apply_pressure_force(positions_dst, delta);
 
     update_positions(positions_dst, delta);
+
+    particle_data_visualizer.update();
 }
 
 void CUDASPHSimulator::visualize(Shader* shader) {
-    // visualizer->visualize(shader, particle_data.get_indices(), 0.f, static_cast<float>(fluid_particles));
-    // visualizer->visualize(shader, dev_ptr(density),
-    //     REST_DENSITY * 0.5f, REST_DENSITY * 1.2f);
-    // visualizer->visualize(shader, dev_ptr(velocity));
-    // visualizer->visualize(shader, particle_data.boundary_mass(),
-    //     0.f, PARTICLE_MASS * 2.f, true);
-    // visualizer->visualize(shader, particle_data.get_boundary_indices(),
-    //     0.f, static_cast<float>(boundary_particles), true);
+    particle_data_visualizer.visualize(shader);
 }
 
 void CUDASPHSimulator::compute_densities(float4* positions_dev_ptr) {
