@@ -100,9 +100,6 @@ public:
         cudaMemcpy(pos_src.get(), pos_dst.get(), boundary_n * sizeof(float4), cudaMemcpyDeviceToDevice);
         cudaCheckError();
 
-        thrust::gather(boundary_indices.begin(), boundary_indices.end(), boundary_mass_buf.src().begin(), boundary_mass_buf.dst().begin());
-        boundary_mass_buf.swap();
-
         // Sequence again for visualization
         thrust::sequence(boundary_indices.begin(), boundary_indices.end());
     }
@@ -126,7 +123,7 @@ public:
 
         const thrust::device_ptr<float4> pos_dst{positions_dst};
         thrust::gather(indices.begin(), indices.end(), pos_src, pos_dst);
-        gather_buffers();
+        thrust::gather(indices.begin(), indices.end(), velocity_buf.src().begin(), velocity_buf.dst().begin());
         swap_buffers();
     }
 
@@ -135,26 +132,26 @@ public:
         return *position_buf;
     }
 
-    float* density() { return dev_ptr(density_buf.src()); }
-    float* boundary_mass() { return dev_ptr(boundary_mass_buf.src()); }
-    float* pressure() { return dev_ptr(pressure_buf.src()); }
+    float* density() { return dev_ptr(density_buf); }
+    float* boundary_mass() { return dev_ptr(boundary_mass_buf); }
+    float* pressure() { return dev_ptr(pressure_buf); }
     float4* velocity() { return dev_ptr(velocity_buf.src()); }
-    float4* non_pressure_accel() { return dev_ptr(non_pressure_accel_buf.src()); }
-    float4* normal() { return dev_ptr(normal_buf.src()); }
+    float4* non_pressure_accel() { return dev_ptr(non_pressure_accel_buf); }
+    float4* normal() { return dev_ptr(normal_buf); }
 
-    thrust::device_vector<float>& density_vec() { return density_buf.src(); }
-    thrust::device_vector<float>& boundary_mass_vec() { return boundary_mass_buf.src(); }
-    thrust::device_vector<float>& pressure_vec() { return pressure_buf.src(); }
+    thrust::device_vector<float>& density_vec() { return density_buf; }
+    thrust::device_vector<float>& boundary_mass_vec() { return boundary_mass_buf; }
+    thrust::device_vector<float>& pressure_vec() { return pressure_buf; }
     thrust::device_vector<float4>& velocity_vec() { return velocity_buf.src(); }
-    thrust::device_vector<float4>& non_pressure_accel_vec() { return non_pressure_accel_buf.src(); }
-    thrust::device_vector<float4>& normal_vec() { return normal_buf.src(); }
+    thrust::device_vector<float4>& non_pressure_accel_vec() { return non_pressure_accel_buf; }
+    thrust::device_vector<float4>& normal_vec() { return normal_buf; }
 
-    const thrust::device_vector<float>& density_vec() const { return density_buf.src(); }
-    const thrust::device_vector<float>& boundary_mass_vec() const { return boundary_mass_buf.src(); }
-    const thrust::device_vector<float>& pressure_vec() const { return pressure_buf.src(); }
+    const thrust::device_vector<float>& density_vec() const { return density_buf; }
+    const thrust::device_vector<float>& boundary_mass_vec() const { return boundary_mass_buf; }
+    const thrust::device_vector<float>& pressure_vec() const { return pressure_buf; }
     const thrust::device_vector<float4>& velocity_vec() const { return velocity_buf.src(); }
-    const thrust::device_vector<float4>& non_pressure_accel_vec() const { return non_pressure_accel_buf.src(); }
-    const thrust::device_vector<float4>& normal_vec() const { return normal_buf.src(); }
+    const thrust::device_vector<float4>& non_pressure_accel_vec() const { return non_pressure_accel_buf; }
+    const thrust::device_vector<float4>& normal_vec() const { return normal_buf; }
 
     unsigned* get_indices() { return dev_ptr(indices); }
     unsigned* get_boundary_indices() { return dev_ptr(boundary_indices); }
@@ -164,20 +161,8 @@ public:
 
 private:
     void swap_buffers() {
-        density_buf.swap();
-        pressure_buf.swap();
         velocity_buf.swap();
-        non_pressure_accel_buf.swap();
-        normal_buf.swap();
         position_buf->swap();
-    }
-
-    void gather_buffers() {
-        thrust::gather(indices.begin(), indices.end(), density_buf.src().begin(), density_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), pressure_buf.src().begin(), pressure_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), velocity_buf.src().begin(), velocity_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), non_pressure_accel_buf.src().begin(), non_pressure_accel_buf.dst().begin());
-        thrust::gather(indices.begin(), indices.end(), normal_buf.src().begin(), normal_buf.dst().begin());
     }
 
     unsigned fluid_n, boundary_n;
@@ -185,8 +170,9 @@ private:
     thrust::device_vector<morton_t> morton_codes, boundary_morton_codes;
     thrust::device_vector<unsigned> indices, boundary_indices;
 
-    DoubleBuffer<float> density_buf, boundary_mass_buf, pressure_buf;
-    DoubleBuffer<float4> velocity_buf, non_pressure_accel_buf, normal_buf;
+    thrust::device_vector<float> density_buf, boundary_mass_buf, pressure_buf;
+    thrust::device_vector<float4> non_pressure_accel_buf, normal_buf;
 
+    DoubleBuffer<float4> velocity_buf;
     std::unique_ptr<DoubleGLBuffer> position_buf;
 };
