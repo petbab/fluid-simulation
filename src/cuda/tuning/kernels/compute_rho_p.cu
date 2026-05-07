@@ -1,3 +1,7 @@
+#ifdef NOT_IN_KTT
+#include "common.cuh"
+#endif
+
 #define KERNEL_PATH(file) <KERNEL_DIR ## file>
 
 #include KERNEL_PATH(/common.cuh)
@@ -7,26 +11,43 @@ static constexpr float STIFFNESS = 0.1f;
 static constexpr float EXPONENT = 7.f;
 static constexpr float MAX_DENSITY_RATIO = 1.5f;
 
-__global__ void compute_rho_p(const float4* positions, float* densities, float* pressures,
-    unsigned n, const NSearch *dev_n_search) {
+__global__ void compute_rho_p(
+    const float4* positions, float* densities, float* pressures,
+    unsigned n, const NSearch *dev_n_search,
+    const unsigned* nl_offsets,
+    const unsigned* nl_counts,
+    const unsigned* nl_neighbors
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
     float4 xi = positions[i];
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
-    dev_n_search->for_neighbors<
-        compute_rho_p_u_x,
-        compute_rho_p_u_y,
-        compute_rho_p_u_z
-    >(xi, [=, &density] (unsigned j) {
+
+#if NEIGHBOR_LIST
+    const unsigned start = nl_offsets[i];
+    const unsigned end   = start + nl_counts[i];
+    // #pragma unroll compute_non_pressure_accel_u_n
+    for (unsigned k = start; k < end; ++k) {
+        unsigned j = nl_neighbors[k];
+
+#else
+    dev_n_search->for_neighbors<compute_rho_p_u_n>(xi, [=, &density] (unsigned j) {
+#endif
         float4 xj = positions[j];
 
-        if (is_neighbor(xi, xj, i, j)) {
-            float q = r_to_q(xi - xj, SUPPORT_RADIUS);
-            density += cubic_spline(q, SUPPORT_RADIUS);
-        }
-    });
+#if !NEIGHBOR_LIST
+        if (!is_neighbor(xi, xj, i, j))
+            return;
+#endif
+
+        float q = r_to_q(xi - xj, SUPPORT_RADIUS);
+        density += cubic_spline(q, SUPPORT_RADIUS);
+    }
+#if !NEIGHBOR_LIST
+    );
+#endif
     density *= PARTICLE_MASS;
     densities[i] = density;
 
@@ -38,6 +59,9 @@ __global__ void compute_rho_p(const float4* positions, float* densities, float* 
 __global__ void compute_rho_p_with_boundary(
     const float4* positions, float* densities, float* pressures,
     unsigned fluid_n, const NSearch *fluid_n_search,
+    const unsigned* nl_offsets,
+    const unsigned* nl_counts,
+    const unsigned* nl_neighbors,
     const float *boundary_mass, const NSearch *boundary_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -48,19 +72,28 @@ __global__ void compute_rho_p_with_boundary(
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
     float boundary_density = 0.f;
 
-    fluid_n_search->for_neighbors<
-        compute_rho_p_u_x,
-        compute_rho_p_u_y,
-        compute_rho_p_u_z
-    >(xi, [=, &density] (unsigned j) {
+#if NEIGHBOR_LIST
+    const unsigned start = nl_offsets[i];
+    const unsigned end   = start + nl_counts[i];
+    // #pragma unroll compute_non_pressure_accel_u_n
+    for (unsigned k = start; k < end; ++k) {
+        unsigned j = nl_neighbors[k];
+#else
+    fluid_n_search->for_neighbors<compute_rho_p_u_n>(xi, [=, &density] (unsigned j) {
+#endif
         float4 xj = positions[j];
 
-        if (is_neighbor(xi, xj, i, j)) {
-            float q = r_to_q(xi - xj, SUPPORT_RADIUS);
-            float W = cubic_spline(q, SUPPORT_RADIUS);
-            density += W;
-        }
-    });
+#if !NEIGHBOR_LIST
+        if (!is_neighbor(xi, xj, i, j))
+            return;
+#endif
+
+        float q = r_to_q(xi - xj, SUPPORT_RADIUS);
+        density += cubic_spline(q, SUPPORT_RADIUS);
+    }
+#if !NEIGHBOR_LIST
+    );
+#endif
 
     boundary_n_search->for_boundary_neighbors(xi, [=, &boundary_density] (unsigned j) {
         j += fluid_n;

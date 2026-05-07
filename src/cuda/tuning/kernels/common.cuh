@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef NOT_IN_KTT
+#include "cuda/math.cuh"
+#include "cuda/util.cuh"
+#include "cuda/SPH/kernel.cuh"
+#include "cuda/nsearch/morton.cuh"
+#endif
 
 #define CUDA_DIR KERNEL_DIR/../..
 #define CUDA_PATH(file) <CUDA_DIR ## file>
@@ -104,17 +110,15 @@ struct NSearch {
         cell_end[cell_i] = end;
     }
 
-    template<int U_X, int U_Y, int U_Z, typename F>
+    template<int U_N, typename F>
     __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord(pos);
 
         unsigned count = 0;
         static constexpr int RANGE = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
-        #pragma unroll U_X
         for (int x = -RANGE; x <= RANGE; ++x) {
-            #pragma unroll U_Y
             for (int y = -RANGE; y <= RANGE; ++y) {
-                #pragma unroll U_Z
+                #pragma unroll U_N
                 for (int z = -RANGE; z <= RANGE; ++z) {
                     cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
                     unsigned t_i = find_cell_in_table<TABLE_SIZE>(n_cell);
@@ -139,9 +143,7 @@ struct NSearch {
 
         unsigned count = 0;
         static constexpr int RANGE = 1;
-        // #pragma unroll
         for (int x = -RANGE; x <= RANGE; ++x) {
-            // #pragma unroll
             for (int y = -RANGE; y <= RANGE; ++y) {
                 // #pragma unroll
                 for (int z = -RANGE; z <= RANGE; ++z) {

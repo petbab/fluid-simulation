@@ -1,3 +1,7 @@
+#ifdef NOT_IN_KTT
+#include "common.cuh"
+#endif
+
 #define KERNEL_PATH(file) <KERNEL_DIR ## file>
 
 #include KERNEL_PATH(/common.cuh)

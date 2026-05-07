@@ -83,8 +83,7 @@ void GUI::update(float delta) {
 
     if (ImGui::Button("Reset Tuning"))
         fluid_sim.reset_tuning();
-
-    if (searched > 0) {
+    else if (searched > 0) {
         std::stringstream best_config;
         fluid_sim.step_tuner.print_best_config(best_config);
         fluid_sim.update_positions_tuner.print_best_config(best_config);

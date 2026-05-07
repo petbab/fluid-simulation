@@ -29,6 +29,7 @@ public:
 
     void set_tune_iterations_per_frame(float tipf) {
         tune_iterations_per_frame = tipf;
+        accumulator = 0.f;
     }
 
 private:
