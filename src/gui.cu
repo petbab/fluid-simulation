@@ -47,8 +47,14 @@ void GUI::update(float delta) {
     auto [searched, total] = fluid_sim.tuning_stats();
     ImGui::Text("Searched Configurations: %i/%i", searched, total);
 
+    if (searched > 0) {
+        std::stringstream best_config;
+        fluid_sim.step_tuner.print_best_config(best_config);
+        ImGui::Text(best_config.str().c_str());
+    }
+
     if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
-        0.01f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+        0.f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
         fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
 
     if (ImGui::Button("Reset Tuning"))

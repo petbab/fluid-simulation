@@ -10,13 +10,13 @@ public:
 
     std::pair<int, int> tuning_stats() const;
     void clear_configuration_data();
+    void print_best_config(std::ostream& out) const;
 
 protected:
     ktt::KernelResult run(bool tune);
     void update_args(const std::vector<ktt::ArgumentId>& new_args);
 
 private:
-    void print_best_config() const;
     static ktt::Tuner* instance();
 
 protected:

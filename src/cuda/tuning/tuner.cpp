@@ -8,7 +8,7 @@ Tuner::Tuner() : tuner{instance()} {}
 
 Tuner::~Tuner() {
     if (searched_count > 0)
-        print_best_config();
+        print_best_config(std::cout);
 }
 
 std::pair<int, int> Tuner::tuning_stats() const {
@@ -41,16 +41,16 @@ void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {
     args = new_args;
 }
 
-void Tuner::print_best_config() const {
+void Tuner::print_best_config(std::ostream& out) const {
     assert(tuner != nullptr);
 
     auto bestConfig = tuner->GetBestConfiguration(kernel);
-    std::cout << "Best configuration:" << std::endl;
+    out << "Best configuration:\n";
 
     for (const auto& param : bestConfig.GetPairs()) {
-        std::cout << "  " << param.GetName() << " = ";
-        std::visit([](auto&& arg){ std::cout << arg; }, param.GetValue());
-        std::cout << '\n';
+        out << "  " << param.GetName() << " = ";
+        std::visit([&](auto&& arg){ out << arg; }, param.GetValue());
+        out << '\n';
     }
 }
 
