@@ -10,7 +10,7 @@ struct NSearch {
     using hash_t = unsigned long long;
     static constexpr hash_t EMPTY_HASH = std::numeric_limits<hash_t>::max();
     static constexpr unsigned EMPTY_CELL = std::numeric_limits<unsigned>::max();
-    static constexpr unsigned TABLE_SIZE = 16192;
+    static constexpr unsigned TABLE_SIZE = 129536;
 
     // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (eq. 34)
     __device__ __host__ static hash_t cell_hash(cell_t c) {

@@ -22,12 +22,17 @@ __device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j)
     return i != j && dot(r, r) <= SUPPORT_RADIUS * SUPPORT_RADIUS;
 }
 
+__device__ inline bool is_neighbor(float4 xi, float4 xj) {
+    float4 r = xi - xj;
+    return dot(r, r) <= SUPPORT_RADIUS * SUPPORT_RADIUS;
+}
+
 struct NSearch {
     using cell_t = uint3;
     using hash_t = unsigned long long;
     static constexpr hash_t EMPTY_HASH = -1;
     static constexpr unsigned EMPTY_CELL = -1;
-    static constexpr unsigned TABLE_SIZE = 16192;
+    static constexpr unsigned TABLE_SIZE = 129536;
 
     // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (eq. 34)
     __device__ static hash_t cell_hash(cell_t c) {

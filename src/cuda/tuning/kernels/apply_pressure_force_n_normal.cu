@@ -31,9 +31,9 @@
 //     return dot(fluid_grad_sum, boundary_grad_sum) / denom;
 // }
 
-__global__ void apply_pressure_force(
+__global__ void apply_pressure_force_n_normal(
     const float4* positions, const float* densities,
-    const float* pressures, float4* velocities,
+    const float* pressures, float4* velocities, float4* normals,
     unsigned n, float delta, const NSearch *dev_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -45,7 +45,9 @@ __global__ void apply_pressure_force(
     float di = densities[i];
     float dpi = pressures[i] / (di * di);
 
-    dev_n_search->for_neighbors(xi, [=, &p_accel] (unsigned j) {
+    float4 normal{0.f};
+
+    dev_n_search->for_neighbors(xi, [=, &p_accel, &normal] (unsigned j) {
         float4 xj = positions[j];
 
         if (!is_neighbor(xi, xj, i, j))
@@ -57,14 +59,18 @@ __global__ void apply_pressure_force(
         float dj = densities[j];
         float dpj = pressures[j] / (dj * dj);
         p_accel -= (dpi + dpj) * grad_W;
+
+        normal += r * cubic_spline_grad(q, SUPPORT_RADIUS) / dj;
     });
 
     velocities[i] += delta * (PARTICLE_MASS * p_accel);
+
+    normals[i] = SUPPORT_RADIUS * PARTICLE_MASS * normal;
 }
 
-__global__ void apply_pressure_force_with_boundary(
+__global__ void apply_pressure_force_n_normal_with_boundary(
     const float4* positions, const float* densities,
-    const float* pressures, float4* velocities,
+    const float* pressures, float4* velocities, float4* normals,
     unsigned fluid_n, float delta, const NSearch *fluid_n_search,
     const float* boundary_mass, const NSearch *boundary_n_search
 ) {
@@ -79,7 +85,9 @@ __global__ void apply_pressure_force_with_boundary(
     float dpi = pressures[i] / (di * di);
     float b_p_term = dpi + pressures[i] / (REST_DENSITY * REST_DENSITY);
 
-    fluid_n_search->for_neighbors(xi, [=, &p_accel] (unsigned j) {
+    float4 normal{0.f};
+
+    fluid_n_search->for_neighbors(xi, [=, &p_accel, &normal] (unsigned j) {
         float4 xj = positions[j];
         if (!is_neighbor(xi, xj, i, j))
             return;
@@ -90,7 +98,11 @@ __global__ void apply_pressure_force_with_boundary(
         float dj = densities[j];
         float dpj = pressures[j] / (dj * dj);
         p_accel -= (dpi + dpj) * grad_W;
+
+        normal += r * cubic_spline_grad(q, SUPPORT_RADIUS) / dj;
     });
+
+    normals[i] = SUPPORT_RADIUS * PARTICLE_MASS * normal;
 
     boundary_n_search->for_neighbors(xi, [=, &boundary_p_accel] (unsigned j) {
         j += fluid_n;

@@ -3,7 +3,11 @@
 #include KERNEL_PATH(/common.cuh)
 
 
-__global__ void compute_densities(const float4* positions, float* densities,
+static constexpr float STIFFNESS = 0.1f;
+static constexpr float EXPONENT = 7.f;
+static constexpr float MAX_DENSITY_RATIO = 1.5f;
+
+__global__ void compute_rho_p(const float4* positions, float* densities, float* pressures,
     unsigned n, const NSearch *dev_n_search) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
@@ -19,11 +23,16 @@ __global__ void compute_densities(const float4* positions, float* densities,
             density += cubic_spline(q, SUPPORT_RADIUS);
         }
     });
-    densities[i] = density * PARTICLE_MASS;
+    density *= PARTICLE_MASS;
+    densities[i] = density;
+
+    float ratio = fmaxf(density / REST_DENSITY, 1.0f);
+    ratio = fminf(ratio, MAX_DENSITY_RATIO);
+    pressures[i] = STIFFNESS * (powf(ratio, EXPONENT) - 1.f);
 }
 
-__global__ void compute_densities_with_boundary(
-    const float4* positions, float* densities,
+__global__ void compute_rho_p_with_boundary(
+    const float4* positions, float* densities, float* pressures,
     unsigned fluid_n, const NSearch *fluid_n_search,
     const float *boundary_mass, const NSearch *boundary_n_search
 ) {
@@ -56,7 +65,12 @@ __global__ void compute_densities_with_boundary(
         }
     });
 
-    densities[i] = density * PARTICLE_MASS + boundary_density;
+    density = density * PARTICLE_MASS + boundary_density;
+    densities[i] = density;
+
+    float ratio = fmaxf(density / REST_DENSITY, 1.0f);
+    ratio = fminf(ratio, MAX_DENSITY_RATIO);
+    pressures[i] = STIFFNESS * (powf(ratio, EXPONENT) - 1.f);
 }
 
 // __global__ void compute_densities_k(const float* positions, float* densities,

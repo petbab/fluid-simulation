@@ -6,19 +6,16 @@
 
 class NSearchWrapper {
 public:
-    explicit NSearchWrapper(float cell_size, unsigned total_particles, bool boundary = false)
-        : rebuild_n_search_tuner(total_particles, boundary), total_particles(total_particles) {
+    explicit NSearchWrapper(float cell_size, unsigned particle_n)
+        : particle_n(particle_n) {
         dev_n_search = new_n_search(host_n_search, cell_size);
     }
 
-    ~NSearchWrapper() {
+    virtual ~NSearchWrapper() {
         delete_n_search(dev_n_search, host_n_search);
     }
 
-    void rebuild(float4 *particle_positions, bool tune) {
-        clear_n_search(host_n_search);
-        rebuild_n_search_tuner.run(dev_n_search, particle_positions, total_particles, tune);
-    }
+    void clear() { clear_n_search(host_n_search); }
 
     const NSearch* dev_ptr() const { return dev_n_search; }
     NSearch* dev_ptr() { return dev_n_search; }
@@ -43,9 +40,22 @@ public:
             << static_cast<float>(sum) / static_cast<float>(count) << std::endl;
     }
 
-private:
+protected:
     NSearch *dev_n_search;
     NSearch host_n_search;
+    unsigned particle_n;
+};
+
+class NSearchWrapperTuned : public NSearchWrapper {
+public:
+    explicit NSearchWrapperTuned(float cell_size, unsigned particle_n, bool boundary = false)
+        : NSearchWrapper(cell_size, particle_n), rebuild_n_search_tuner(particle_n, boundary) {}
+
+    void rebuild(float4 *particle_positions, bool tune) {
+        clear();
+        rebuild_n_search_tuner.run(dev_n_search, particle_positions, particle_n, tune);
+    }
+
+private:
     RebuildNSearchTuner rebuild_n_search_tuner;
-    unsigned total_particles;
 };

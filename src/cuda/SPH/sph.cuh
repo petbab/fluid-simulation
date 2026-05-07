@@ -2,19 +2,13 @@
 
 #include <thrust/device_vector.h>
 #include <cuda/nsearch/nsearch.h>
-#include <cuda/tuning/compute_densities.cuh>
 #include <cuda/tuning/update_positions.cuh>
-#include "cuda/tuning/apply_external_forces.cuh"
-#include "cuda/tuning/apply_pressure_force.cuh"
 #include "cuda/tuning/compute_boundary_mass.cuh"
-#include "cuda/tuning/compute_pressure.cuh"
-#include "cuda/tuning/compute_surface_normals.cuh"
-#include "cuda/tuning/compute_surface_tension.cuh"
-#include "cuda/tuning/compute_viscosity.cuh"
 #include "cuda/tuning/tuning_scheduler.h"
 #include <memory>
 #include "particle_data.cuh"
 #include "particle_data_visualizer.cuh"
+#include "cuda/tuning/step_tuner.cuh"
 #include "simulation/fluid_simulator.h"
 
 
@@ -28,7 +22,7 @@ public:
     static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
     static constexpr float SUPPORT_RADIUS = 2.f * PARTICLE_SPACING;
-    static constexpr float CELL_SIZE = 1.5f * SUPPORT_RADIUS;
+    static constexpr float CELL_SIZE = SUPPORT_RADIUS;
 
     static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
 
@@ -53,8 +47,6 @@ private:
     void init_boundary();
     void build_boundary_n_search(float4* positions_dev_ptr);
     bool has_boundary() const;
-
-    void compute_densities(float4* positions_dev_ptr);
     void compute_boundary_mass(float4* positions_dev_ptr);
 
     void update_positions(float4* positions_dev_ptr, float delta, float np_delta);
@@ -62,39 +54,9 @@ private:
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
     float adapt_time_step(float delta, float min_step, float max_step) const;
 
-    /**
-     * Computes and applies the viscous force using an explicit viscosity model.
-     * Approximates the Laplacian of the velocity field via finite differences
-     * [SPH Tutorial, eq. 102].
-     */
-    void compute_viscosity(float4* positions_dev_ptr);
-
-    /**
-     * Simulates surface tension using the macroscopic approach by Akinci et al. (2013).
-     */
-    void compute_surface_tension(float4* positions_dev_ptr);
-
-    /**
-     * Computes surface normals used to calculate the curvature force
-     * in compute_surface_tension [SPH Tutorial, eq. 125].
-     */
-    void compute_surface_normals(float4* positions_dev_ptr);
-
-    void apply_external_forces(float4* positions_dev_ptr);
-
-    void compute_pressure();
-    void apply_pressure_force(float4* positions_dev_ptr, float delta);
-
     enum tuners {
-        DENSITY_TUNER,
+        STEP_TUNER,
         UPDATE_POSITIONS_TUNER,
-        COMPUTE_VISCOSITY_TUNER,
-        COMPUTE_SURFACE_NORMALS_TUNER,
-        COMPUTE_SURFACE_TENSION_TUNER,
-        COMPUTE_PRESSURE_TUNER,
-        APPLY_PRESSURE_FORCE_TUNER,
-        APPLY_EXTERNAL_FORCES_TUNER,
-        REBUILD_N_SEARCH_TUNER,
     };
 
     bool is_scheduled(tuners tuner_i) const;
@@ -108,18 +70,12 @@ private:
     ParticleDataVisualizer particle_data_visualizer;
 
     NSearchWrapper fluid_n_search;
-    std::unique_ptr<NSearchWrapper> boundary_n_search;
+    std::unique_ptr<NSearchWrapperTuned> boundary_n_search;
 
-    DensityTuner density_tuner;
     UpdatePositionsTuner update_positions_tuner;
-    ComputeViscosityTuner compute_viscosity_tuner;
-    ComputeSurfaceNormalsTuner compute_surface_normals_tuner;
-    ComputeSurfaceTensionTuner compute_surface_tension_tuner;
-    ComputePressureTuner compute_pressure_tuner;
-    ApplyPressureForceTuner apply_pressure_force_tuner;
+    StepTuner step_tuner;
 
     std::unique_ptr<ComputeBoundaryMassTuner> compute_boundary_mass_tuner;
-    std::unique_ptr<ApplyExternalForcesTuner> apply_external_forces_tuner;
 
     std::map<tuners, Tuner*> active_tuners;
     std::unique_ptr<TuningScheduler> scheduler;
