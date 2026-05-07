@@ -10,7 +10,8 @@ class StepTuner final : public Tuner {
 public:
     StepTuner(unsigned fluid_particles, unsigned boundary_particles,
               std::string external_force = {})
-        : fluid_n(fluid_particles),
+        : Tuner("Step"),
+        fluid_n(fluid_particles),
         boundary_n(boundary_particles),
         total_n(fluid_particles + boundary_particles),
         has_boundary(boundary_particles > 0),

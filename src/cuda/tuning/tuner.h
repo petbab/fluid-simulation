@@ -5,7 +5,7 @@
 
 class Tuner {
 public:
-    Tuner();
+    explicit Tuner(std::string name);
     virtual ~Tuner();
 
     std::pair<int, int> tuning_stats() const;
@@ -21,8 +21,11 @@ private:
 
 protected:
     ktt::Tuner* tuner;
+
+    std::string name;
     ktt::KernelDefinitionId definition = 0;
     ktt::KernelId kernel = 0;
     std::vector<ktt::ArgumentId> args;
+
     int searched_count = 0;
 };

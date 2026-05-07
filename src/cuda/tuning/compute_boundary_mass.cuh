@@ -8,7 +8,7 @@
 
 class ComputeBoundaryMassTuner final : public Tuner {
 public:
-    explicit ComputeBoundaryMassTuner(unsigned boundary_particles) {
+    explicit ComputeBoundaryMassTuner(unsigned boundary_particles) : Tuner("ComputeBoundaryMass") {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(boundary_particles));

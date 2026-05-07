@@ -8,7 +8,7 @@
 
 class UpdatePositionsTuner final : public Tuner {
 public:
-    explicit UpdatePositionsTuner(unsigned particles) {
+    explicit UpdatePositionsTuner(unsigned particles) : Tuner("UpdatePositions") {
         assert(tuner != nullptr);
 
         const ktt::DimensionVector gridDimensions(std::bit_ceil(particles));

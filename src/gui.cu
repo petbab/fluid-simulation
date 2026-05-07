@@ -33,32 +33,9 @@ void GUI::update(float delta) {
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
 
-    ///////////////////////////////////
-    //            Tuning             //
-    ///////////////////////////////////
-    ImGui::SeparatorText("Tuning");
-
-    ImGui::Text("FPS: %f", 1.f / delta);
-
     auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
     assert(fluid != nullptr);
     CUDASPHSimulator &fluid_sim = fluid->get_simulator();
-
-    auto [searched, total] = fluid_sim.tuning_stats();
-    ImGui::Text("Searched Configurations: %i/%i", searched, total);
-
-    if (searched > 0) {
-        std::stringstream best_config;
-        fluid_sim.step_tuner.print_best_config(best_config);
-        ImGui::Text(best_config.str().c_str());
-    }
-
-    if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
-        0.f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-        fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
-
-    if (ImGui::Button("Reset Tuning"))
-        fluid_sim.reset_tuning();
 
     ///////////////////////////////////
     //          Simulation           //
@@ -90,6 +67,29 @@ void GUI::update(float delta) {
 
     if (ImGui::Button("Reset Fluid"))
         fluid->reset();
+
+    ///////////////////////////////////
+    //            Tuning             //
+    ///////////////////////////////////
+    ImGui::SeparatorText("Tuning");
+    ImGui::Text("FPS: %f", 1.f / delta);
+
+    auto [searched, total] = fluid_sim.tuning_stats();
+    ImGui::Text("Searched Configurations: %i/%i", searched, total);
+
+    if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
+        0.f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+        fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
+
+    if (ImGui::Button("Reset Tuning"))
+        fluid_sim.reset_tuning();
+
+    if (searched > 0) {
+        std::stringstream best_config;
+        fluid_sim.step_tuner.print_best_config(best_config);
+        fluid_sim.update_positions_tuner.print_best_config(best_config);
+        ImGui::Text(best_config.str().c_str());
+    }
 
     ImGui::End();
     ImGui::EndFrame();

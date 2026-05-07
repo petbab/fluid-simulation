@@ -4,7 +4,7 @@
 #include <cuda.h>
 
 
-Tuner::Tuner() : tuner{instance()} {}
+Tuner::Tuner(std::string name) : tuner{instance()}, name{std::move(name)} {}
 
 Tuner::~Tuner() {
     if (searched_count > 0)
@@ -45,9 +45,12 @@ void Tuner::print_best_config(std::ostream& out) const {
     assert(tuner != nullptr);
 
     auto bestConfig = tuner->GetBestConfiguration(kernel);
-    out << "Best configuration:\n";
+    out << "Best configuration for " << name << ":\n";
 
     for (const auto& param : bestConfig.GetPairs()) {
+        if (param.GetName() == "EXTERNAL_FORCE" || param.GetName() == "KERNEL_DIR")
+            continue;
+
         out << "  " << param.GetName() << " = ";
         std::visit([&](auto&& arg){ out << arg; }, param.GetValue());
         out << '\n';
