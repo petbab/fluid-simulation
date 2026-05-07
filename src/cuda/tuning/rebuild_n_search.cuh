@@ -38,6 +38,7 @@ public:
         tuner->SetSearcher(kernel, std::make_unique<ktt::McmcSearcher>());
 
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
+        tuner->AddParameter<std::uint64_t>(kernel, "TABLE_SIZE", {std::bit_ceil(total_particles) / 2});
     }
 
     ktt::KernelResult run(NSearch *dev_n_search, float4 *particle_positions, unsigned total_particles, bool tune) {

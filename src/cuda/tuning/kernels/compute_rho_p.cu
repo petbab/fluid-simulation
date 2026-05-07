@@ -15,7 +15,11 @@ __global__ void compute_rho_p(const float4* positions, float* densities, float* 
 
     float4 xi = positions[i];
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
-    dev_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
+    dev_n_search->for_neighbors<
+        compute_rho_p_u_x,
+        compute_rho_p_u_y,
+        compute_rho_p_u_z
+    >(xi, [=, &density] (unsigned j) {
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
@@ -44,7 +48,11 @@ __global__ void compute_rho_p_with_boundary(
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
     float boundary_density = 0.f;
 
-    fluid_n_search->for_neighbors(xi, [=, &density] (unsigned j) {
+    fluid_n_search->for_neighbors<
+        compute_rho_p_u_x,
+        compute_rho_p_u_y,
+        compute_rho_p_u_z
+    >(xi, [=, &density] (unsigned j) {
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {
@@ -54,7 +62,7 @@ __global__ void compute_rho_p_with_boundary(
         }
     });
 
-    boundary_n_search->for_neighbors(xi, [=, &boundary_density] (unsigned j) {
+    boundary_n_search->for_boundary_neighbors(xi, [=, &boundary_density] (unsigned j) {
         j += fluid_n;
         float4 xj = positions[j];
 

@@ -63,12 +63,6 @@ public:
         if (!external_force.empty())
             tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector{std::move(external_force)});
 
-        // Per-definition block size: each tunable independently inside the joint space.
-        add_block_param("block_rebuild_n_search", def_rebuild_n_search);
-        add_block_param("block_compute_rho_p", def_compute_rho_p);
-        add_block_param("block_compute_pressure_accel_n_normal", def_compute_pressure_accel_n_normal);
-        add_block_param("block_compute_non_pressure_accel", def_compute_non_pressure_accel);
-
         tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 0.75, 1., 1.5, 2.});
 
         auto sizes = fluid_n_search_map | std::views::keys;
@@ -82,6 +76,19 @@ public:
                 auto min_size = min_table_size * static_cast<std::uint64_t>(1. / std::pow(cell_size_mult, 3.));
                 return table_size >= min_size;
             });
+
+        tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE", {std::bit_ceil(boundary_n) / 2});
+
+        // Per-definition block size: each tunable independently inside the joint space.
+        add_block_param("rebuild_n_search", def_rebuild_n_search);
+        add_block_param("compute_rho_p", def_compute_rho_p);
+        add_block_param("compute_pressure_accel_n_normal", def_compute_pressure_accel_n_normal);
+        add_block_param("compute_non_pressure_accel", def_compute_non_pressure_accel);
+
+        add_unroll_params("rebuild_n_search");
+        add_unroll_params("compute_rho_p");
+        add_unroll_params("compute_pressure_accel_n_normal");
+        add_unroll_params("compute_non_pressure_accel");
     }
 
     ~StepTuner() override {
@@ -210,11 +217,27 @@ private:
         // Each block-size parameter is its own independent group. Kernels run
         // sequentially inside the composite launcher, so one kernel's optimal
         // block size is independent of the others'.
-        tuner->AddParameter(kernel, name, std::vector<uint64_t>{32, 64, 128, 256, 512}, name);
+        auto p_name = name + "_block";
+        tuner->AddParameter(kernel, p_name, std::vector<uint64_t>{32, 64, 128, 256, 512}, name);
         tuner->AddThreadModifier(kernel, {def}, ktt::ModifierType::Local,
-            ktt::ModifierDimension::X, name, ktt::ModifierAction::Multiply);
+            ktt::ModifierDimension::X, p_name, ktt::ModifierAction::Multiply);
         tuner->AddThreadModifier(kernel, {def}, ktt::ModifierType::Global,
-            ktt::ModifierDimension::X, name, ktt::ModifierAction::DivideCeil);
+            ktt::ModifierDimension::X, p_name, ktt::ModifierAction::DivideCeil);
+    }
+
+    void add_unroll_params(const std::string& name) const {
+        tuner->AddParameter(kernel, name + "_u_x", std::vector<uint64_t>{1, 3, 5}, name);
+        tuner->AddParameter(kernel, name + "_u_y", std::vector<uint64_t>{1, 3, 5}, name);
+        tuner->AddParameter(kernel, name + "_u_z", std::vector<uint64_t>{1, 3, 5}, name);
+        tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", name + "_u_x", name + "_u_y", name + "_u_z"},
+            [this](const std::vector<const ktt::ParameterValue*>& values) -> bool {
+                auto cell_size_mult = std::get<double>(*values[0]);
+                int iters = static_cast<int>(1. / cell_size_mult + .5) * 2 + 1;
+                auto x = std::get<std::uint64_t>(*values[1]);
+                auto y = std::get<std::uint64_t>(*values[2]);
+                auto z = std::get<std::uint64_t>(*values[3]);
+                return x <= iters && y <= iters && z <= iters;
+            });
     }
     
     template <typename T>

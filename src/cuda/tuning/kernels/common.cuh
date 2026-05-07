@@ -16,6 +16,15 @@ static constexpr float REST_DENSITY = 1000.f;
 static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8f;
 static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
+#ifndef BOUNDARY_TABLE_SIZE
+#define BOUNDARY_TABLE_SIZE TABLE_SIZE
+#endif
+
+#ifndef CELL_SIZE_MULT
+#define CELL_SIZE_MULT 1.f
+#endif
+
+static constexpr float CELL_SIZE = SUPPORT_RADIUS * CELL_SIZE_MULT;
 
 __device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
     float4 r = xi - xj;
@@ -39,22 +48,31 @@ struct NSearch {
         return 73856093*c.x ^ 19349663*c.y ^ 83492791*c.z;
     }
 
-    __device__ static hash_t pos_to_cell_hash(float4 pos, float cell_size) {
-        return cell_hash(cell_coord(pos, cell_size));
+    __device__ static hash_t pos_to_cell_hash(float4 pos) {
+        return cell_hash(cell_coord(pos));
     }
 
-    __device__ static cell_t cell_coord(float4 pos, float cell_size) {
+    __device__ static cell_t cell_coord(float4 pos) {
         return {
-            signed_to_unsigned(static_cast<int>(floorf(pos.x / cell_size))),
-            signed_to_unsigned(static_cast<int>(floorf(pos.y / cell_size))),
-            signed_to_unsigned(static_cast<int>(floorf(pos.z / cell_size)))
+            signed_to_unsigned(static_cast<int>(floorf(pos.x / CELL_SIZE))),
+            signed_to_unsigned(static_cast<int>(floorf(pos.y / CELL_SIZE))),
+            signed_to_unsigned(static_cast<int>(floorf(pos.z / CELL_SIZE)))
         };
     }
 
+    __device__ static cell_t cell_coord_boundary(float4 pos) {
+        return {
+            signed_to_unsigned(static_cast<int>(floorf(pos.x / SUPPORT_RADIUS))),
+            signed_to_unsigned(static_cast<int>(floorf(pos.y / SUPPORT_RADIUS))),
+            signed_to_unsigned(static_cast<int>(floorf(pos.z / SUPPORT_RADIUS)))
+        };
+    }
+
+    template<unsigned T_SIZE>
     __device__ __host__ unsigned find_cell_in_table(cell_t cell) const {
         hash_t h = cell_hash(cell);
-        for (unsigned j = 0; j < table_size; ++j) {
-            unsigned t_i = (h + j) % table_size;
+        for (unsigned j = 0; j < T_SIZE; ++j) {
+            unsigned t_i = (h + j) % T_SIZE;
             if (table[t_i] == EMPTY_HASH)
                 return EMPTY_CELL;
             if (table[t_i] == h)
@@ -65,12 +83,12 @@ struct NSearch {
     }
 
     __device__ unsigned add_cell(hash_t h) {
-        unsigned i = h % table_size;
-        for (unsigned j = 0; j < table_size; ++j) {
+        unsigned i = h % TABLE_SIZE;
+        for (unsigned j = 0; j < TABLE_SIZE; ++j) {
             hash_t old_h = atomicCAS(&table[i], EMPTY_HASH, h);
             if (old_h == EMPTY_HASH || old_h == h)
                 return i;
-            i = (i + 1) % table_size;
+            i = (i + 1) % TABLE_SIZE;
         }
         // Can't get here
         return -1;
@@ -86,21 +104,49 @@ struct NSearch {
         cell_end[cell_i] = end;
     }
 
-    template<typename F>
+    template<int U_X, int U_Y, int U_Z, typename F>
     __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
-        cell_t cell = cell_coord(pos, cell_size);
-
-        int range = static_cast<int>(ceilf(SUPPORT_RADIUS / cell_size));
+        cell_t cell = cell_coord(pos);
 
         unsigned count = 0;
-        #pragma unroll
-        for (int x = -range; x <= range; ++x) {
-            #pragma unroll
-            for (int y = -range; y <= range; ++y) {
-                #pragma unroll
-                for (int z = -range; z <= range; ++z) {
+        static constexpr int RANGE = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
+        #pragma unroll U_X
+        for (int x = -RANGE; x <= RANGE; ++x) {
+            #pragma unroll U_Y
+            for (int y = -RANGE; y <= RANGE; ++y) {
+                #pragma unroll U_Z
+                for (int z = -RANGE; z <= RANGE; ++z) {
                     cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
-                    unsigned t_i = find_cell_in_table(n_cell);
+                    unsigned t_i = find_cell_in_table<TABLE_SIZE>(n_cell);
+                    if (t_i == EMPTY_CELL)
+                        continue;
+
+                    const unsigned start = cell_start[t_i];
+                    const unsigned end = cell_end[t_i];
+                    count += end - start;
+
+                    for (unsigned j = start; j < end; ++j)
+                        f(j);
+                }
+            }
+        }
+        return count;
+    }
+
+    template<typename F>
+    __device__ __host__ unsigned for_boundary_neighbors(float4 pos, F f) const {
+        cell_t cell = cell_coord_boundary(pos);
+
+        unsigned count = 0;
+        static constexpr int RANGE = 1;
+        // #pragma unroll
+        for (int x = -RANGE; x <= RANGE; ++x) {
+            // #pragma unroll
+            for (int y = -RANGE; y <= RANGE; ++y) {
+                // #pragma unroll
+                for (int z = -RANGE; z <= RANGE; ++z) {
+                    cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
+                    unsigned t_i = find_cell_in_table<BOUNDARY_TABLE_SIZE>(n_cell);
                     if (t_i == EMPTY_CELL)
                         continue;
 

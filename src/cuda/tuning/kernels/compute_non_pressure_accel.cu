@@ -29,7 +29,11 @@ __global__ void compute_non_pressure_accel(
     float4 vi = velocities[i];
     float4 velocity_laplacian{0.f};
 
-    dev_n_search->for_neighbors(xi, [=, &f, &velocity_laplacian] (unsigned j) {
+    dev_n_search->for_neighbors<
+        compute_non_pressure_accel_u_x,
+        compute_non_pressure_accel_u_y,
+        compute_non_pressure_accel_u_z
+    >(xi, [=, &f, &velocity_laplacian] (unsigned j) {
         float4 xj = positions[j];
 
         if (is_neighbor(xi, xj, i, j)) {

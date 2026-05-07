@@ -13,7 +13,7 @@ __global__ void compute_boundary_mass(
 
     float4 xi = positions[i];
     float sum = cubic_spline(0.f, SUPPORT_RADIUS);
-    boundary_n_search->for_neighbors(xi, [=, &sum] (unsigned j) {
+    boundary_n_search->for_boundary_neighbors(xi, [=, &sum] (unsigned j) {
         float4 xj = positions[j];
         if (is_neighbor(xi, xj, i, j)) {
             float4 r = xi - xj;
