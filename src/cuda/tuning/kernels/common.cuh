@@ -16,6 +16,12 @@ static constexpr float REST_DENSITY = 1000.f;
 static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8f;
 static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
+#ifndef CELL_SIZE_MULT
+#define CELL_SIZE_MULT 1.f
+#endif
+
+static constexpr float CELL_SIZE = SUPPORT_RADIUS * CELL_SIZE_MULT;
+
 
 __device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
     float4 r = xi - xj;
@@ -32,7 +38,7 @@ struct NSearch {
     using hash_t = unsigned long long;
     static constexpr hash_t EMPTY_HASH = -1;
     static constexpr unsigned EMPTY_CELL = -1;
-    static constexpr unsigned TABLE_SIZE = 129536;
+    // static constexpr unsigned TABLE_SIZE = 129536;
 
     // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (eq. 34)
     __device__ static hash_t cell_hash(cell_t c) {
@@ -53,8 +59,8 @@ struct NSearch {
 
     __device__ __host__ unsigned find_cell_in_table(cell_t cell) const {
         hash_t h = cell_hash(cell);
-        for (unsigned j = 0; j < TABLE_SIZE; ++j) {
-            unsigned t_i = (h + j) % TABLE_SIZE;
+        for (unsigned j = 0; j < table_size; ++j) {
+            unsigned t_i = (h + j) % table_size;
             if (table[t_i] == EMPTY_HASH)
                 return EMPTY_CELL;
             if (table[t_i] == h)
@@ -65,12 +71,12 @@ struct NSearch {
     }
 
     __device__ unsigned add_cell(hash_t h) {
-        unsigned i = h % TABLE_SIZE;
-        for (unsigned j = 0; j < TABLE_SIZE; ++j) {
+        unsigned i = h % table_size;
+        for (unsigned j = 0; j < table_size; ++j) {
             hash_t old_h = atomicCAS(&table[i], EMPTY_HASH, h);
             if (old_h == EMPTY_HASH || old_h == h)
                 return i;
-            i = (i + 1) % TABLE_SIZE;
+            i = (i + 1) % table_size;
         }
         // Can't get here
         return -1;
@@ -117,6 +123,7 @@ struct NSearch {
     // - linear probing
     // - index in table == index in cell_start/end
     hash_t *table;
+    unsigned table_size;
 
     // Indices into sorted particle indices,
     // cell_end is non-inclusive

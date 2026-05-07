@@ -47,12 +47,17 @@ __device__ void resolve_collisions(float4* positions, float4* velocities, const 
     }
 }
 
-__global__ void update_positions(float4* positions, float4* velocities, const float4* acceleration, unsigned n, float delta, float np_delta, BoundingBoxGPU bb) {
+__global__ void update_positions(
+    float4* positions, float4* velocities,
+    const float4* p_accel, const float4* np_accel,
+    unsigned n, float delta,
+    float np_delta, BoundingBoxGPU bb
+) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
         return;
 
-    velocities[i] += np_delta * acceleration[i];
+    velocities[i] += np_delta * np_accel[i] + delta * p_accel[i];
     positions[i] += delta * velocities[i];
 
     resolve_collisions(positions, velocities, bb);

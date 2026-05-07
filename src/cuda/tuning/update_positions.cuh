@@ -30,14 +30,17 @@ public:
             ktt::ModifierAction::Divide);
     }
 
-    ktt::KernelResult run(float4 *positions_dev_ptr, float4* velocities_dev_ptr, float4* accelerations_dev_ptr,
+    ktt::KernelResult run(float4 *positions_dev_ptr, float4* velocities_dev_ptr,
+            float4* p_accelerations, float4* np_accelerations,
             unsigned n, float delta, float np_delta, const BoundingBox &bb, bool tune) {
         std::vector args{
-            tuner->AddArgumentVector<float>(positions_dev_ptr, n * sizeof(float) * 3,
+            tuner->AddArgumentVector<float>(positions_dev_ptr, n * sizeof(float4),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentVector<float4>(velocities_dev_ptr, n * sizeof(float),
+            tuner->AddArgumentVector<float4>(velocities_dev_ptr, n * sizeof(float4),
                 ktt::ArgumentAccessType::ReadWrite, ktt::ArgumentMemoryLocation::Device),
-            tuner->AddArgumentVector<float4>(accelerations_dev_ptr, n * sizeof(float),
+            tuner->AddArgumentVector<float4>(p_accelerations, n * sizeof(float4),
+                ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
+            tuner->AddArgumentVector<float4>(np_accelerations, n * sizeof(float4),
                 ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device),
             tuner->AddArgumentScalar(n),
             tuner->AddArgumentScalar(delta),

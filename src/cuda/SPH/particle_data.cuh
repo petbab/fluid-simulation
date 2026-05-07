@@ -60,7 +60,8 @@ class ParticleData {
 
 public:
     ParticleData(unsigned fluid_n, unsigned boundary_n, float cell_size)
-        : fluid_n{fluid_n}, boundary_n{boundary_n}, cell_size{cell_size},
+        : fluid_n{fluid_n}, boundary_n{boundary_n},
+        cell_size{cell_size}, cell_size_mult{1.f},
         morton_codes(fluid_n),
         boundary_morton_codes(boundary_n),
         indices(fluid_n),
@@ -70,11 +71,14 @@ public:
         pressure_buf(fluid_n),
         velocity_buf(fluid_n),
         non_pressure_accel_buf(fluid_n),
+        pressure_accel_buf(fluid_n),
         normal_buf(fluid_n) {}
 
     void init_positions(GLuint pos_vao_a, GLuint pos_vao_b) {
         position_buf = std::make_unique<DoubleGLBuffer>(pos_vao_a, pos_vao_b);
     }
+
+    void set_cell_size_mult(float cs_mult) { cell_size_mult = cs_mult; }
 
     void sort_boundary(float4 *positions_src, float4 *positions_dst) {
         assert(boundary_n > 0);
@@ -82,7 +86,7 @@ public:
         thrust::sequence(boundary_indices.begin(), boundary_indices.end());
 
         const thrust::device_ptr<float4> pos_src{positions_src + fluid_n};
-        const float cs = cell_size;
+        const float cs = cell_size * cell_size_mult;
         thrust::transform(pos_src, pos_src + boundary_n, boundary_morton_codes.begin(),
             [cs] __device__ (float4 p) -> morton_t {
                 int3 cell_coord{
@@ -108,7 +112,7 @@ public:
         thrust::sequence(indices.begin(), indices.end());
 
         const thrust::device_ptr<const float4> pos_src{positions_src};
-        const float cs = cell_size;
+        const float cs = cell_size * cell_size_mult;
         thrust::transform(pos_src, pos_src + fluid_n, morton_codes.begin(),
             [cs] __device__ (float4 p) -> morton_t {
                 int3 cell_coord{
@@ -137,13 +141,17 @@ public:
     float* pressure() { return dev_ptr(pressure_buf); }
     float4* velocity() { return dev_ptr(velocity_buf.src()); }
     float4* non_pressure_accel() { return dev_ptr(non_pressure_accel_buf); }
+    float4* pressure_accel() { return dev_ptr(pressure_accel_buf); }
     float4* normal() { return dev_ptr(normal_buf); }
+
+    float4* velocity_dst() { return dev_ptr(velocity_buf.dst()); }
 
     thrust::device_vector<float>& density_vec() { return density_buf; }
     thrust::device_vector<float>& boundary_mass_vec() { return boundary_mass_buf; }
     thrust::device_vector<float>& pressure_vec() { return pressure_buf; }
     thrust::device_vector<float4>& velocity_vec() { return velocity_buf.src(); }
     thrust::device_vector<float4>& non_pressure_accel_vec() { return non_pressure_accel_buf; }
+    thrust::device_vector<float4>& pressure_accel_vec() { return pressure_accel_buf; }
     thrust::device_vector<float4>& normal_vec() { return normal_buf; }
 
     const thrust::device_vector<float>& density_vec() const { return density_buf; }
@@ -151,6 +159,7 @@ public:
     const thrust::device_vector<float>& pressure_vec() const { return pressure_buf; }
     const thrust::device_vector<float4>& velocity_vec() const { return velocity_buf.src(); }
     const thrust::device_vector<float4>& non_pressure_accel_vec() const { return non_pressure_accel_buf; }
+    const thrust::device_vector<float4>& pressure_accel_vec() const { return pressure_accel_buf; }
     const thrust::device_vector<float4>& normal_vec() const { return normal_buf; }
 
     unsigned* get_indices() { return dev_ptr(indices); }
@@ -166,12 +175,12 @@ private:
     }
 
     unsigned fluid_n, boundary_n;
-    float cell_size;
+    float cell_size, cell_size_mult;
     thrust::device_vector<morton_t> morton_codes, boundary_morton_codes;
     thrust::device_vector<unsigned> indices, boundary_indices;
 
     thrust::device_vector<float> density_buf, boundary_mass_buf, pressure_buf;
-    thrust::device_vector<float4> non_pressure_accel_buf, normal_buf;
+    thrust::device_vector<float4> non_pressure_accel_buf, pressure_accel_buf, normal_buf;
 
     DoubleBuffer<float4> velocity_buf;
     std::unique_ptr<DoubleGLBuffer> position_buf;

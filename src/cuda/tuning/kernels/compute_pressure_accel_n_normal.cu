@@ -31,10 +31,10 @@
 //     return dot(fluid_grad_sum, boundary_grad_sum) / denom;
 // }
 
-__global__ void apply_pressure_force_n_normal(
+__global__ void compute_pressure_accel_n_normal(
     const float4* positions, const float* densities,
-    const float* pressures, float4* velocities, float4* normals,
-    unsigned n, float delta, const NSearch *dev_n_search
+    const float* pressures, float4* accelerations, float4* normals,
+    unsigned n, const NSearch *dev_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n)
@@ -63,15 +63,15 @@ __global__ void apply_pressure_force_n_normal(
         normal += r * cubic_spline_grad(q, SUPPORT_RADIUS) / dj;
     });
 
-    velocities[i] += delta * (PARTICLE_MASS * p_accel);
+    accelerations[i] = PARTICLE_MASS * p_accel;
 
     normals[i] = SUPPORT_RADIUS * PARTICLE_MASS * normal;
 }
 
-__global__ void apply_pressure_force_n_normal_with_boundary(
+__global__ void compute_pressure_accel_n_normal_with_boundary(
     const float4* positions, const float* densities,
-    const float* pressures, float4* velocities, float4* normals,
-    unsigned fluid_n, float delta, const NSearch *fluid_n_search,
+    const float* pressures, float4* accelerations, float4* normals,
+    unsigned fluid_n, const NSearch *fluid_n_search,
     const float* boundary_mass, const NSearch *boundary_n_search
 ) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -116,5 +116,5 @@ __global__ void apply_pressure_force_n_normal_with_boundary(
         boundary_p_accel -= get_mass(boundary_mass, j, fluid_n) * b_p_term * grad_W;
     });
 
-    velocities[i] += delta * (PARTICLE_MASS * p_accel + boundary_p_accel);
+    accelerations[i] = PARTICLE_MASS * p_accel + boundary_p_accel;
 }

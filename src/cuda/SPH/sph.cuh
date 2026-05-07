@@ -69,7 +69,6 @@ private:
     ParticleData particle_data;
     ParticleDataVisualizer particle_data_visualizer;
 
-    NSearchWrapper fluid_n_search;
     std::unique_ptr<NSearchWrapperTuned> boundary_n_search;
 
     UpdatePositionsTuner update_positions_tuner;

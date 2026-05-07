@@ -8,8 +8,7 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
     : FluidSimulator(opts),
       particle_data{fluid_particles, boundary_particles, CELL_SIZE},
       particle_data_visualizer{&particle_data, total_particles, fluid_particles},
-      fluid_n_search(CELL_SIZE, fluid_particles),
-      step_tuner(fluid_particles, boundary_particles, opts.external_force),
+      step_tuner(fluid_particles, boundary_particles, SUPPORT_RADIUS, opts.external_force),
       update_positions_tuner(fluid_particles),
       active_tuners{
           {STEP_TUNER, &step_tuner},
@@ -37,24 +36,23 @@ void CUDASPHSimulator::update(float delta) {
     float4* positions_src = static_cast<float4*>(lock_src.get_ptr());
     float4* positions_dst = static_cast<float4*>(lock_dst.get_ptr());
 
-    // Sort saves updated positions into 'positions_dst'
-    particle_data.sort(positions_src, positions_dst);
-
-    fluid_n_search.clear();
-
     float np_delta = std::min(delta, NON_PRESSURE_MAX_TIME_STEP);
     delta = adapt_time_step(delta, MIN_TIME_STEP, MAX_TIME_STEP);
 
-    step_tuner.run(fluid_n_search.dev_ptr(),
+    step_tuner.run([&](float cell_size_mult) {
+            particle_data.set_cell_size_mult(cell_size_mult);
+            particle_data.sort(positions_src, positions_dst);
+        },
         has_boundary() ? boundary_n_search->dev_ptr() : nullptr,
         positions_dst,
-        particle_data.velocity(),
+        particle_data.velocity_dst(),
         particle_data.density(),
         particle_data.pressure(),
+        particle_data.pressure_accel(),
         particle_data.non_pressure_accel(),
         particle_data.normal(),
         has_boundary() ? particle_data.boundary_mass() : nullptr,
-        np_delta, is_scheduled(STEP_TUNER)
+        is_scheduled(STEP_TUNER)
     );
 
     update_positions(positions_dst, delta, np_delta);
@@ -68,7 +66,8 @@ void CUDASPHSimulator::visualize(Shader* shader) {
 
 void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta, float np_delta) {
     update_positions_tuner.run(positions_dev_ptr, particle_data.velocity(),
-        particle_data.non_pressure_accel(), fluid_particles, delta, np_delta,
+        particle_data.pressure_accel(), particle_data.non_pressure_accel(),
+        fluid_particles, delta, np_delta,
         bounding_box, is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
@@ -106,7 +105,8 @@ void CUDASPHSimulator::init_boundary() {
 
 void CUDASPHSimulator::build_boundary_n_search(float4* positions_dev_ptr) {
     assert(has_boundary());
-    boundary_n_search = std::make_unique<NSearchWrapperTuned>(CELL_SIZE, boundary_particles, true);
+    boundary_n_search = std::make_unique<NSearchWrapperTuned>(
+        std::bit_ceil(boundary_particles), CELL_SIZE, boundary_particles, true);
     boundary_n_search->rebuild(positions_dev_ptr + fluid_particles, false);
 }
 

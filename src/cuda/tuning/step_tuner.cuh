@@ -2,16 +2,19 @@
 #include "config.h"
 #include "tuner.h"
 #include "cuda/nsearch/nsearch.cuh"
+#include <functional>
 
 
 class StepTuner final : public Tuner {
 public:
     StepTuner(unsigned fluid_particles, unsigned boundary_particles,
+              float support_radius,
               std::string external_force = {})
         : fluid_n(fluid_particles),
         boundary_n(boundary_particles),
         total_n(fluid_particles + boundary_particles),
-        has_boundary(boundary_particles > 0)
+        has_boundary(boundary_particles > 0),
+        fluid_n_search(std::bit_ceil(fluid_particles), support_radius, fluid_particles)
     {
         // populated via thread modifier
         const ktt::DimensionVector grid_size(fluid_n);
@@ -33,9 +36,9 @@ public:
             grid_size, block_size);
 
         const std::string pforce_name = has_boundary
-            ? "apply_pressure_force_n_normal_with_boundary" : "apply_pressure_force_n_normal";
-        def_apply_pressure_force_n_normal = tuner->AddKernelDefinitionFromFile(
-            pforce_name, cfg::tuned_kernels_dir / "apply_pressure_force_n_normal.cu",
+            ? "compute_pressure_accel_n_normal_with_boundary" : "compute_pressure_accel_n_normal";
+        def_compute_pressure_accel_n_normal = tuner->AddKernelDefinitionFromFile(
+            pforce_name, cfg::tuned_kernels_dir / "compute_pressure_accel_n_normal.cu",
             grid_size, block_size);
 
         def_compute_non_pressure_accel = tuner->AddKernelDefinitionFromFile(
@@ -43,8 +46,9 @@ public:
             grid_size, block_size);
 
         std::vector defs{
-            def_rebuild_n_search, def_compute_rho_p, def_apply_pressure_force_n_normal,
-            def_compute_non_pressure_accel, //def_update_positions
+            def_rebuild_n_search, def_compute_rho_p,
+            def_compute_pressure_accel_n_normal,
+            def_compute_non_pressure_accel,
         };
         kernel = tuner->CreateCompositeKernel(
             "simulation_step", defs,
@@ -60,21 +64,28 @@ public:
         // Per-definition block size: each tunable independently inside the joint space.
         add_block_param("block_rebuild_n_search", def_rebuild_n_search);
         add_block_param("block_compute_rho_p", def_compute_rho_p);
-        add_block_param("block_apply_pressure_force_n_normal", def_apply_pressure_force_n_normal);
+        add_block_param("block_compute_pressure_accel_n_normal", def_compute_pressure_accel_n_normal);
         add_block_param("block_compute_non_pressure_accel", def_compute_non_pressure_accel);
+
+        tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{1., 1.5, 2., 2.5, 3.});
     }
 
-    // Caller must invoke fluid_n_search.clear() before this.
+
+    using sort_particle_data_t = std::function<void(float)>;
+
     // pressure_delta is the result of adapt_time_step from the previous frame's velocities.
     // non_pressure_delta is the caller-supplied delta capped at NON_PRESSURE_MAX_TIME_STEP.
     ktt::KernelResult run(
-        NSearch* fluid_n_search, NSearch* boundary_n_search,
+        sort_particle_data_t sort,
+        NSearch* boundary_n_search,
         float4* positions, float4* velocities,
         float* densities, float* pressures,
-        float4* non_pressure_accel, float4* normals,
-        float* boundary_mass, float pressure_delta,
+        float4* pressure_accel, float4* non_pressure_accel, float4* normals,
+        float* boundary_mass,
         bool tune)
     {
+        sort_particle_data = sort;
+
         auto old_args = std::move(owned_args);
         owned_args.clear();
 
@@ -82,7 +93,7 @@ public:
         // Access types are the union over all kernels reading/writing the buffer
         // within this composite invocation; KTT only validates this lazily.
         const auto a_fluid_search = vec_arg<NSearch>(
-            fluid_n_search, sizeof(NSearch), ktt::ArgumentAccessType::ReadWrite);
+            fluid_n_search.dev_ptr(), sizeof(NSearch), ktt::ArgumentAccessType::ReadWrite);
         const auto a_positions = vec_arg<float4>(
             positions, total_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
         const auto a_velocities = vec_arg<float4>(
@@ -93,11 +104,12 @@ public:
             pressures, fluid_n * sizeof(float), ktt::ArgumentAccessType::ReadWrite);
         const auto a_np_accel = vec_arg<float4>(
             non_pressure_accel, fluid_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
+        const auto a_p_accel = vec_arg<float4>(
+            pressure_accel, fluid_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
         const auto a_normals = vec_arg<float4>(
             normals, fluid_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
 
         const auto a_n_fluid   = scalar_arg(fluid_n);
-        const auto a_p_delta   = scalar_arg(pressure_delta);
 
         ktt::ArgumentId a_boundary_mass{}, a_boundary_search{};
         if (has_boundary) {
@@ -119,19 +131,20 @@ public:
                 {a_positions, a_densities, a_pressures, a_n_fluid, a_fluid_search});
 
         if (has_boundary)
-            tuner->SetArguments(def_apply_pressure_force_n_normal,
-                {a_positions, a_densities, a_pressures, a_velocities, a_normals,
-                 a_n_fluid, a_p_delta, a_fluid_search,
+            tuner->SetArguments(def_compute_pressure_accel_n_normal,
+                {a_positions, a_densities, a_pressures, a_p_accel, a_normals,
+                 a_n_fluid, a_fluid_search,
                  a_boundary_mass, a_boundary_search});
         else
-            tuner->SetArguments(def_apply_pressure_force_n_normal,
-                {a_positions, a_densities, a_pressures, a_velocities, a_normals,
-                 a_n_fluid, a_p_delta, a_fluid_search});
+            tuner->SetArguments(def_compute_pressure_accel_n_normal,
+                {a_positions, a_densities, a_pressures, a_p_accel, a_normals,
+                 a_n_fluid, a_fluid_search});
 
         tuner->SetArguments(def_compute_non_pressure_accel,
             {a_positions, a_densities, a_velocities, a_normals,
                 a_np_accel, a_n_fluid, a_fluid_search});
 
+        fluid_n_search.clear();
         ktt::KernelResult result = Tuner::run(tune);
 
         // Args are owned per-call; release them so the next invocation can rebind freshly.
@@ -142,9 +155,17 @@ public:
 
 private:
     void launch(ktt::ComputeInterface& iface) const {
+        float cell_size_mult = 1.f;
+        const auto &config = iface.GetCurrentConfiguration();
+        for (const auto &p : config.GetPairs())
+            if (p.GetName() == "CELL_SIZE_MULT")
+                cell_size_mult = std::get<double>(p.GetValue());
+
+        sort_particle_data(cell_size_mult);
+
         iface.RunKernel(def_rebuild_n_search);
         iface.RunKernel(def_compute_rho_p);
-        iface.RunKernel(def_apply_pressure_force_n_normal);
+        iface.RunKernel(def_compute_pressure_accel_n_normal);
         iface.RunKernel(def_compute_non_pressure_accel);
     }
     
@@ -177,9 +198,12 @@ private:
     unsigned fluid_n, boundary_n, total_n;
     bool has_boundary;
 
+    NSearchWrapper fluid_n_search;
+    sort_particle_data_t sort_particle_data;
+
     ktt::KernelDefinitionId def_rebuild_n_search = 0,
                             def_compute_rho_p = 0,
-                            def_apply_pressure_force_n_normal = 0,
+                            def_compute_pressure_accel_n_normal = 0,
                             def_compute_non_pressure_accel = 0;
 
     std::vector<ktt::ArgumentId> owned_args;

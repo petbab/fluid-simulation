@@ -6,9 +6,9 @@
 
 class NSearchWrapper {
 public:
-    explicit NSearchWrapper(float cell_size, unsigned particle_n)
+    explicit NSearchWrapper(unsigned table_size, float cell_size, unsigned particle_n)
         : particle_n(particle_n) {
-        dev_n_search = new_n_search(host_n_search, cell_size);
+        dev_n_search = new_n_search(host_n_search, table_size, cell_size);
     }
 
     virtual ~NSearchWrapper() {
@@ -26,7 +26,7 @@ public:
         int min = 10000;
         int sum = 0;
         int count = 0;
-        for (int i = 0; i < NSearch::TABLE_SIZE; ++i) {
+        for (int i = 0; i < host_search.table_size; ++i) {
             if (host_search.table[i] == NSearch::EMPTY_HASH)
                 continue;
 
@@ -48,8 +48,8 @@ protected:
 
 class NSearchWrapperTuned : public NSearchWrapper {
 public:
-    explicit NSearchWrapperTuned(float cell_size, unsigned particle_n, bool boundary = false)
-        : NSearchWrapper(cell_size, particle_n), rebuild_n_search_tuner(particle_n, boundary) {}
+    explicit NSearchWrapperTuned(unsigned table_size, float cell_size, unsigned particle_n, bool boundary = false)
+        : NSearchWrapper(table_size, cell_size, particle_n), rebuild_n_search_tuner(particle_n, boundary) {}
 
     void rebuild(float4 *particle_positions, bool tune) {
         clear();
