@@ -2,6 +2,11 @@
 
 #include KERNEL_PATH(/common.cuh)
 
+#ifndef CELL_SIZE_MULT
+#define CELL_SIZE_MULT 1.f
+#endif
+
+static constexpr float CELL_SIZE = SUPPORT_RADIUS * CELL_SIZE_MULT;
 
 __global__ void rebuild_n_search(NSearch *dev_n_search, const float4 *particle_positions, unsigned n) {
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;

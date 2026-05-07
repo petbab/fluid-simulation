@@ -17,6 +17,10 @@ public:
 
     void clear() { clear_n_search(host_n_search); }
 
+    void shallow_copy(NSearch *dev_dst) const {
+        shallow_copy_n_search(dev_dst, host_n_search);
+    }
+
     const NSearch* dev_ptr() const { return dev_n_search; }
     NSearch* dev_ptr() { return dev_n_search; }
 

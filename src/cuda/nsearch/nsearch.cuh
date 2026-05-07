@@ -134,6 +134,11 @@ __host__ inline void delete_n_search(NSearch* dev_n_search, const NSearch& host_
     cudaFree(dev_n_search); cudaCheckError();
 }
 
+__host__ inline void shallow_copy_n_search(NSearch *dev_n_search, const NSearch &host_n_search) {
+    cudaMemcpy(dev_n_search, &host_n_search, sizeof(NSearch), cudaMemcpyHostToDevice);
+    cudaCheckError();
+}
+
 struct NSearchHost {
     static NSearchHost copy_from_device(const NSearch *dev_n_search) {
         NSearch h_n_search;

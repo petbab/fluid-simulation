@@ -16,12 +16,6 @@ static constexpr float REST_DENSITY = 1000.f;
 static constexpr float PARTICLE_VOLUME = PARTICLE_SPACING * PARTICLE_SPACING * PARTICLE_SPACING * 0.8f;
 static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 
-#ifndef CELL_SIZE_MULT
-#define CELL_SIZE_MULT 1.f
-#endif
-
-static constexpr float CELL_SIZE = SUPPORT_RADIUS * CELL_SIZE_MULT;
-
 
 __device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
     float4 r = xi - xj;
@@ -95,13 +89,16 @@ struct NSearch {
     template<typename F>
     __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord(pos, cell_size);
+
+        int range = static_cast<int>(ceilf(SUPPORT_RADIUS / cell_size));
+
         unsigned count = 0;
         #pragma unroll
-        for (int x = -1; x <= 1; ++x) {
+        for (int x = -range; x <= range; ++x) {
             #pragma unroll
-            for (int y = -1; y <= 1; ++y) {
+            for (int y = -range; y <= range; ++y) {
                 #pragma unroll
-                for (int z = -1; z <= 1; ++z) {
+                for (int z = -range; z <= range; ++z) {
                     cell_t n_cell{cell.x + x, cell.y + y, cell.z + z};
                     unsigned t_i = find_cell_in_table(n_cell);
                     if (t_i == EMPTY_CELL)

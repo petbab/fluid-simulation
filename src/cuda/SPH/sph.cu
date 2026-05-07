@@ -8,7 +8,7 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
     : FluidSimulator(opts),
       particle_data{fluid_particles, boundary_particles, CELL_SIZE},
       particle_data_visualizer{&particle_data, total_particles, fluid_particles},
-      step_tuner(fluid_particles, boundary_particles, SUPPORT_RADIUS, opts.external_force),
+      step_tuner(fluid_particles, boundary_particles, opts.external_force),
       update_positions_tuner(fluid_particles),
       active_tuners{
           {STEP_TUNER, &step_tuner},

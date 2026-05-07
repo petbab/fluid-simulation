@@ -3,19 +3,21 @@
 #include "tuner.h"
 #include "cuda/nsearch/nsearch.cuh"
 #include <functional>
+#include <ranges>
 
 
 class StepTuner final : public Tuner {
 public:
     StepTuner(unsigned fluid_particles, unsigned boundary_particles,
-              float support_radius,
               std::string external_force = {})
         : fluid_n(fluid_particles),
         boundary_n(boundary_particles),
         total_n(fluid_particles + boundary_particles),
         has_boundary(boundary_particles > 0),
-        fluid_n_search(std::bit_ceil(fluid_particles), support_radius, fluid_particles)
+        min_table_size(std::bit_ceil(fluid_n) / 4)
     {
+        init_neighbor_search();
+
         // populated via thread modifier
         const ktt::DimensionVector grid_size(fluid_n);
         const ktt::DimensionVector block_size;
@@ -67,9 +69,25 @@ public:
         add_block_param("block_compute_pressure_accel_n_normal", def_compute_pressure_accel_n_normal);
         add_block_param("block_compute_non_pressure_accel", def_compute_non_pressure_accel);
 
-        tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{1., 1.5, 2., 2.5, 3.});
+        tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 0.75, 1., 1.5, 2.});
+
+        auto sizes = fluid_n_search_map | std::views::keys;
+        tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});
+
+        tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", "TABLE_SIZE"},
+            [this](const std::vector<const ktt::ParameterValue*>& values) -> bool {
+                auto cell_size_mult = std::get<double>(*values[0]);
+                auto table_size = std::get<std::uint64_t>(*values[1]);
+
+                auto min_size = min_table_size * static_cast<std::uint64_t>(1. / std::pow(cell_size_mult, 3.));
+                return table_size >= min_size;
+            });
     }
 
+    ~StepTuner() override {
+        cudaFree(dev_fluid_n_search);
+        cudaCheckError();
+    }
 
     using sort_particle_data_t = std::function<void(float)>;
 
@@ -93,7 +111,7 @@ public:
         // Access types are the union over all kernels reading/writing the buffer
         // within this composite invocation; KTT only validates this lazily.
         const auto a_fluid_search = vec_arg<NSearch>(
-            fluid_n_search.dev_ptr(), sizeof(NSearch), ktt::ArgumentAccessType::ReadWrite);
+            dev_fluid_n_search, sizeof(NSearch), ktt::ArgumentAccessType::ReadWrite);
         const auto a_positions = vec_arg<float4>(
             positions, total_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
         const auto a_velocities = vec_arg<float4>(
@@ -144,7 +162,6 @@ public:
             {a_positions, a_densities, a_velocities, a_normals,
                 a_np_accel, a_n_fluid, a_fluid_search});
 
-        fluid_n_search.clear();
         ktt::KernelResult result = Tuner::run(tune);
 
         // Args are owned per-call; release them so the next invocation can rebind freshly.
@@ -154,14 +171,34 @@ public:
     }
 
 private:
-    void launch(ktt::ComputeInterface& iface) const {
+    void init_neighbor_search() {
+        cudaMalloc(&dev_fluid_n_search, sizeof(NSearch));
+        cudaCheckError();
+
+        std::uint64_t size = min_table_size;
+        for (int i = 0; i < 6; ++i) {
+            fluid_n_search_map[size] = std::make_unique<NSearchWrapper>(size, 1.f, fluid_n);
+            size *= 2;
+        }
+    }
+
+    void launch(ktt::ComputeInterface& iface) {
         float cell_size_mult = 1.f;
+        std::uint64_t table_size = 1;
+
         const auto &config = iface.GetCurrentConfiguration();
-        for (const auto &p : config.GetPairs())
+        for (const auto &p : config.GetPairs()) {
             if (p.GetName() == "CELL_SIZE_MULT")
                 cell_size_mult = std::get<double>(p.GetValue());
+            else if (p.GetName() == "TABLE_SIZE")
+                table_size = std::get<std::uint64_t>(p.GetValue());
+        }
 
         sort_particle_data(cell_size_mult);
+
+        NSearchWrapper &n_search = *fluid_n_search_map.at(table_size);
+        n_search.clear();
+        n_search.shallow_copy(dev_fluid_n_search);
 
         iface.RunKernel(def_rebuild_n_search);
         iface.RunKernel(def_compute_rho_p);
@@ -198,7 +235,10 @@ private:
     unsigned fluid_n, boundary_n, total_n;
     bool has_boundary;
 
-    NSearchWrapper fluid_n_search;
+    const std::uint64_t min_table_size;
+    std::map<std::uint64_t, std::unique_ptr<NSearchWrapper>> fluid_n_search_map;
+    NSearch *dev_fluid_n_search = nullptr;
+
     sort_particle_data_t sort_particle_data;
 
     ktt::KernelDefinitionId def_rebuild_n_search = 0,
