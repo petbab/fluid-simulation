@@ -9,10 +9,8 @@ CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
       particle_data{fluid_particles, boundary_particles, CELL_SIZE},
       particle_data_visualizer{&particle_data, total_particles, fluid_particles},
       step_tuner(fluid_particles, boundary_particles, opts.external_force),
-      update_positions_tuner(fluid_particles),
       active_tuners{
           {STEP_TUNER, &step_tuner},
-          {UPDATE_POSITIONS_TUNER, &update_positions_tuner},
       },
       tuning_budget{0.1f} {
     if (boundary_particles > 0) {
@@ -52,23 +50,15 @@ void CUDASPHSimulator::update(float delta) {
         particle_data.non_pressure_accel(),
         particle_data.normal(),
         has_boundary() ? particle_data.boundary_mass() : nullptr,
+        delta, np_delta, bounding_box,
         is_scheduled(STEP_TUNER)
     );
-
-    update_positions(positions_dst, delta, np_delta);
 
     particle_data_visualizer.update();
 }
 
 void CUDASPHSimulator::visualize(Shader* shader) {
     particle_data_visualizer.visualize(shader);
-}
-
-void CUDASPHSimulator::update_positions(float4* positions_dev_ptr, float delta, float np_delta) {
-    update_positions_tuner.run(positions_dev_ptr, particle_data.velocity(),
-        particle_data.pressure_accel(), particle_data.non_pressure_accel(),
-        fluid_particles, delta, np_delta,
-        bounding_box, is_scheduled(UPDATE_POSITIONS_TUNER));
 }
 
 void CUDASPHSimulator::compute_boundary_mass(float4* positions_dev_ptr) {

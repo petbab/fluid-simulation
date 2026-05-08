@@ -57,6 +57,9 @@ public:
         def_compute_non_pressure_accel = tuner->AddKernelDefinitionFromFile(
             "compute_non_pressure_accel", cfg::tuned_kernels_dir / "compute_non_pressure_accel.cu",
             grid_size, block_size);
+        def_update_positions = tuner->AddKernelDefinitionFromFile(
+            "update_positions", cfg::tuned_kernels_dir / "update_positions.cu",
+            grid_size, block_size);
 
         std::vector defs{
             def_rebuild_n_search,
@@ -65,6 +68,7 @@ public:
             def_compute_rho_p,
             def_compute_pressure_accel_n_normal,
             def_compute_non_pressure_accel,
+            def_update_positions,
         };
         kernel = tuner->CreateCompositeKernel(
             "simulation_step", defs,
@@ -101,6 +105,7 @@ public:
         add_block_param("compute_rho_p", def_compute_rho_p);
         add_block_param("compute_pressure_accel_n_normal", def_compute_pressure_accel_n_normal);
         add_block_param("compute_non_pressure_accel", def_compute_non_pressure_accel);
+        add_block_param("update_positions", def_update_positions);
 
         add_unroll_param("count_neighbors");
         add_unroll_param("fill_neighbors");
@@ -116,8 +121,6 @@ public:
 
     using sort_particle_data_t = std::function<void(float)>;
 
-    // pressure_delta is the result of adapt_time_step from the previous frame's velocities.
-    // non_pressure_delta is the caller-supplied delta capped at NON_PRESSURE_MAX_TIME_STEP.
     ktt::KernelResult run(
         sort_particle_data_t sort,
         NSearch* boundary_n_search,
@@ -125,6 +128,7 @@ public:
         float* densities, float* pressures,
         float4* pressure_accel, float4* non_pressure_accel, float4* normals,
         float* boundary_mass,
+        float p_delta, float np_delta, const BoundingBox &bb,
         bool tune)
     {
         sort_particle_data = sort;
@@ -158,7 +162,10 @@ public:
         const auto a_nl_neighbors = vec_arg<unsigned>(
             neighbor_list.neighbors(), sizeof(unsigned) * fluid_n, ktt::ArgumentAccessType::ReadWrite);
 
-        const auto a_n_fluid   = scalar_arg(fluid_n);
+        const auto a_n_fluid = scalar_arg(fluid_n);
+        const auto a_p_delta = scalar_arg(p_delta);
+        const auto a_np_delta = scalar_arg(np_delta);
+        const auto a_bb = scalar_arg<BoundingBoxGPU>(bb);
 
         ktt::ArgumentId a_boundary_mass{}, a_boundary_search{};
         if (has_boundary) {
@@ -200,6 +207,11 @@ public:
             {a_positions, a_densities, a_velocities, a_normals,
                 a_np_accel, a_n_fluid, a_fluid_search,
                 a_nl_offsets, a_nl_counts, a_nl_neighbors});
+
+        tuner->SetArguments(def_update_positions,
+            {a_positions, a_velocities,
+                a_p_accel, a_np_accel, a_n_fluid,
+                a_p_delta, a_np_delta, a_bb});
 
         ktt::KernelResult result = Tuner::run(tune);
 
@@ -255,6 +267,7 @@ private:
         iface.RunKernel(def_compute_rho_p);
         iface.RunKernel(def_compute_pressure_accel_n_normal);
         iface.RunKernel(def_compute_non_pressure_accel);
+        iface.RunKernel(def_update_positions);
     }
     
     void add_block_param(const std::string& name, ktt::KernelDefinitionId def) const {
@@ -304,7 +317,8 @@ private:
                             def_compute_pressure_accel_n_normal = 0,
                             def_compute_non_pressure_accel = 0,
                             def_count_neighbors = 0,
-                            def_fill_neighbors = 0;
+                            def_fill_neighbors = 0,
+                            def_update_positions = 0;
 
     std::vector<ktt::ArgumentId> owned_args;
 };

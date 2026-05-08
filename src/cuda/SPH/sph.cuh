@@ -49,8 +49,6 @@ private:
     bool has_boundary() const;
     void compute_boundary_mass(float4* positions_dev_ptr);
 
-    void update_positions(float4* positions_dev_ptr, float delta, float np_delta);
-
     // Adapt the time step size according to the Courant-Friedrich-Levy (CFL) condition
     float adapt_time_step(float delta, float min_step, float max_step) const;
 
@@ -71,7 +69,6 @@ private:
 
     std::unique_ptr<NSearchWrapperTuned> boundary_n_search;
 
-    UpdatePositionsTuner update_positions_tuner;
     StepTuner step_tuner;
 
     std::unique_ptr<ComputeBoundaryMassTuner> compute_boundary_mass_tuner;
