@@ -2,16 +2,23 @@
 #include <memory>
 #include <debug.h>
 #include <cuda.h>
-
+#include <filesystem>
 #include "config.h"
 
 
-Tuner::Tuner(std::string name) : tuner{instance()}, name{std::move(name)} {}
+static std::string result_name() {
+    unsigned count = 0;
+    for (const auto &de : std::filesystem::directory_iterator{cfg::results_dir})
+        ++count;
+    return (count > 9 ? "result_" : "result_0") + std::to_string(count);
+}
+
+Tuner::Tuner() : tuner{instance()} {}
 
 Tuner::~Tuner() {
     if (searched_count > 0) {
         print_best_config(std::cout);
-        tuner->SaveResults(results, cfg::results_dir / name, ktt::OutputFormat::JSON);
+        tuner->SaveResults(results, cfg::results_dir / result_name(), ktt::OutputFormat::JSON);
     }
 }
 
@@ -53,13 +60,13 @@ void Tuner::print_best_config(std::ostream& out) const {
     assert(tuner != nullptr);
 
     auto bestConfig = tuner->GetBestConfiguration(kernel);
-    out << "Best configuration for " << name << ":\n";
+    // out << "Best configuration for " << name << ":\n";
 
     for (const auto& param : bestConfig.GetPairs()) {
         if (param.GetName() == "EXTERNAL_FORCE" || param.GetName() == "KERNEL_DIR")
             continue;
 
-        out << "  " << param.GetName() << " = ";
+        out << param.GetName() << " = ";
         std::visit([&](auto&& arg){ out << arg; }, param.GetValue());
         out << '\n';
     }

@@ -12,8 +12,7 @@ class StepTuner final : public Tuner {
 public:
     StepTuner(unsigned fluid_particles, unsigned boundary_particles,
               std::string external_force = {})
-        : Tuner("Step"),
-        fluid_n(fluid_particles),
+        : fluid_n(fluid_particles),
         boundary_n(boundary_particles),
         total_n(fluid_particles + boundary_particles),
         has_boundary(boundary_particles > 0),
@@ -81,7 +80,11 @@ public:
         if (!external_force.empty())
             tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector{std::move(external_force)});
 
-        tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 0.75, 1., 1.5, 2.});
+        tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 2./3., 1., 1.5, 2.});
+        // 0.75: Max: 9, Min: 1, Count: 100358, Mean: 4.19333
+        // 1: Max: 17, Min: 1, Count: 44814, Mean: 9.41391
+        // 1.5: Max: 43, Min: 1, Count: 13710, Mean: 30.7713
+        // tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{2./3.});
 
         auto sizes = fluid_n_search_map | std::views::keys;
         tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});

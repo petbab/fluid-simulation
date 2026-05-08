@@ -5,7 +5,7 @@
 
 class Tuner {
 public:
-    explicit Tuner(std::string name);
+    explicit Tuner();
     virtual ~Tuner();
 
     std::pair<int, int> tuning_stats() const;

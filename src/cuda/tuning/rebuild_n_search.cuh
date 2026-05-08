@@ -7,7 +7,7 @@
 
 class RebuildNSearchTuner final : public Tuner {
 public:
-    explicit RebuildNSearchTuner(unsigned total_particles, bool boundary = false) : Tuner("RebuildNSearch") {
+    explicit RebuildNSearchTuner(unsigned total_particles, bool boundary = false) {
         assert(tuner != nullptr);
 
         static const std::string kernel_name = "rebuild_n_search";

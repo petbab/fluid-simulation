@@ -2,7 +2,6 @@
 
 #include <thrust/device_vector.h>
 #include <cuda/nsearch/nsearch.h>
-#include <cuda/tuning/update_positions.cuh>
 #include "cuda/tuning/compute_boundary_mass.cuh"
 #include "cuda/tuning/tuning_scheduler.h"
 #include <memory>

@@ -94,7 +94,7 @@ void GUI::update(float delta) {
     ImGui::Text("Searched Configurations: %i/%i", searched, total);
 
     if (ImGui::SliderFloat("Tuning Budget", &fluid_sim.tuning_budget,
-        0.f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+        0.f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
         fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
 
     bool reset = ImGui::Button("Reset Tuning");
