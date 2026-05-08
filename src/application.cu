@@ -7,11 +7,11 @@
 #include <render/fluid.h>
 
 
-Application::Application(GLFWwindow *window, int width, int height)
+Application::Application(GLFWwindow *window, int width, int height, const std::string& name)
     : window{window},
       camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height} {
     configure_window();
-    gui = std::make_unique<GUI>(window);
+    gui = std::make_unique<GUI>(window, name);
 }
 
 void Application::init() {

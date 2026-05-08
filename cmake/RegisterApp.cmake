@@ -4,6 +4,8 @@ macro(register_app APP_NAME)
 
     add_executable(${APP_NAME} ${APP_SOURCES} ${APP_HEADERS})
 
+    target_compile_definitions(${APP_NAME} PUBLIC APP_NAME="${APP_NAME}")
+
     target_link_libraries(${APP_NAME} PUBLIC fluid_simulation_lib)
     target_include_directories(${APP_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/src")
 

@@ -5,7 +5,7 @@
 
 class GUI {
 public:
-    explicit GUI(GLFWwindow* window);
+    explicit GUI(GLFWwindow* window, const std::string& name);
     ~GUI();
 
     void update(float delta);
@@ -13,4 +13,5 @@ public:
 
 private:
     float vis_min = 0.f, vis_max = 0.f;
+    std::string name;
 };

@@ -14,12 +14,12 @@ int main() {
     // Initialize GLFW
     GLFW glfw{};
 
-    Window window{800, 600, "Fluid Simulation"};
+    Window window{800, 600, APP_NAME};
 
     cuda_init();
 
     {
-        DragonCollisionApp application{window.get(), window.width(), window.height()};
+        DragonCollisionApp application{window.get(), window.width(), window.height(), APP_NAME};
         application.init();
         application.run();
 

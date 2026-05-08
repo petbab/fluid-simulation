@@ -102,6 +102,7 @@ foreach(APP_DIR ${APP_DIRS})
 endforeach()
 
 file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/results")
+file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/snapshots")
 
 ################################################################################
 ##                                  Testing                                   ##

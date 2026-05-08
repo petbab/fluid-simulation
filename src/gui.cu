@@ -3,12 +3,13 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "cuda/SPH/snapshot.cuh"
 #include "cuda/SPH/sph.cuh"
 #include "render/asset_manager.h"
 #include "render/fluid.h"
 
 
-GUI::GUI(GLFWwindow* window) {
+GUI::GUI(GLFWwindow* window, const std::string& name) : name(name) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -31,7 +32,7 @@ void GUI::update(float delta) {
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-    ImGui::Begin("Fluid Simulation");
+    ImGui::Begin(name.c_str());
 
     auto *fluid = AssetManager::get<Fluid<CUDASPHSimulator>>("fluid");
     assert(fluid != nullptr);
@@ -68,6 +69,21 @@ void GUI::update(float delta) {
     if (ImGui::Button("Reset Fluid"))
         fluid->reset();
 
+    static char file_name[64];
+    ImGui::InputText("Snapshot File (in snapshots/)", file_name, sizeof(file_name));
+    std::string error;
+    if (ImGui::Button("Load")) {
+        error = Snapshot::load(cfg::snapshots_dir / (std::string{file_name} + ".sphs"),
+            name, fluid_sim.particle_data, fluid_sim.fluid_particles);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save")) {
+        error = Snapshot::save(cfg::snapshots_dir / (std::string{file_name} + ".sphs"),
+            name, fluid_sim.particle_data, fluid_sim.fluid_particles);
+    }
+    if (!error.empty())
+        std::cerr << "ERROR: " << error << std::endl;
+
     ///////////////////////////////////
     //            Tuning             //
     ///////////////////////////////////
@@ -81,13 +97,18 @@ void GUI::update(float delta) {
         0.f, 2.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
         fluid_sim.set_tuning_budget(fluid_sim.tuning_budget);
 
-    if (ImGui::Button("Reset Tuning"))
+    bool reset = ImGui::Button("Reset Tuning");
+    if (reset)
         fluid_sim.reset_tuning();
-    else if (searched > 0) {
-        std::stringstream best_config;
-        fluid_sim.step_tuner.print_best_config(best_config);
-        fluid_sim.update_positions_tuner.print_best_config(best_config);
-        ImGui::Text(best_config.str().c_str());
+
+    if (ImGui::TreeNode("Best Config")) {
+        if (!reset && searched > 0) {
+            std::stringstream best_config;
+            fluid_sim.step_tuner.print_best_config(best_config);
+            ImGui::Text(best_config.str().c_str());
+        }
+
+        ImGui::TreePop();
     }
 
     ImGui::End();

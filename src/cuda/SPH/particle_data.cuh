@@ -8,6 +8,7 @@
 #include <glad/glad.h>
 #include <cuda/cuda_gl_buffer.h>
 #include <cuda/nsearch/morton.cuh>
+#include <debug.h>
 
 
 template<typename T>

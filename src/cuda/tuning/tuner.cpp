@@ -26,6 +26,7 @@ std::pair<int, int> Tuner::tuning_stats() const {
 void Tuner::clear_configuration_data() {
     tuner->ClearConfigurationData(kernel);
     searched_count = 0;
+    results.clear();
 }
 
 ktt::KernelResult Tuner::run(bool tune) {

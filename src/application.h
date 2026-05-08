@@ -13,7 +13,7 @@ public:
     using FluidSim = CUDASPHSimulator;
     static constexpr float DEFAULT_TIME_STEP = 0.01;
 
-    Application(GLFWwindow *window, int width, int height);
+    Application(GLFWwindow *window, int width, int height, const std::string& name);
     virtual ~Application() = default;
 
     void init();
