@@ -12,4 +12,6 @@ static const std::filesystem::path models_dir = root_dir / "models";
 
 static const std::filesystem::path tuned_kernels_dir = root_dir / "src/cuda/tuning/kernels";
 
+static const std::filesystem::path results_dir = root_dir / "results";
+
 }

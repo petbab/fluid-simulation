@@ -3,12 +3,16 @@
 #include <debug.h>
 #include <cuda.h>
 
+#include "config.h"
+
 
 Tuner::Tuner(std::string name) : tuner{instance()}, name{std::move(name)} {}
 
 Tuner::~Tuner() {
-    if (searched_count > 0)
+    if (searched_count > 0) {
         print_best_config(std::cout);
+        tuner->SaveResults(results, cfg::results_dir / name, ktt::OutputFormat::JSON);
+    }
 }
 
 std::pair<int, int> Tuner::tuning_stats() const {
@@ -25,13 +29,16 @@ void Tuner::clear_configuration_data() {
 }
 
 ktt::KernelResult Tuner::run(bool tune) {
+    ktt::KernelResult res;
     if (tune || searched_count == 0) {
         ++searched_count;
-        return tuner->TuneIteration(kernel, {});
+        res = tuner->TuneIteration(kernel, {});
+    } else {
+        auto best_configuration = tuner->GetBestConfiguration(kernel);
+        res = tuner->Run(kernel, best_configuration, {});
     }
-
-    auto best_configuration = tuner->GetBestConfiguration(kernel);
-    return tuner->Run(kernel, best_configuration, {});
+    results.push_back(res);
+    return res;
 }
 
 void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {

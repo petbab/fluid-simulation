@@ -28,4 +28,5 @@ protected:
     std::vector<ktt::ArgumentId> args;
 
     int searched_count = 0;
+    std::vector<ktt::KernelResult> results;
 };

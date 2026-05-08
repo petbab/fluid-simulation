@@ -31,6 +31,11 @@ public:
             ktt::ModifierAction::Divide);
     }
 
+    ~ComputeBoundaryMassTuner() override {
+        searched_count = 0;
+        results.clear();
+    }
+
     ktt::KernelResult run(
         float4* positions_dev_ptr, float* masses_dev_ptr, unsigned boundary_n,
         NSearch* boundary_n_search, bool tune

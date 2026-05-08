@@ -101,6 +101,8 @@ foreach(APP_DIR ${APP_DIRS})
     add_subdirectory(${APP_DIR})
 endforeach()
 
+file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/results")
+
 ################################################################################
 ##                                  Testing                                   ##
 ################################################################################

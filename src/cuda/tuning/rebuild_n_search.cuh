@@ -41,6 +41,11 @@ public:
         tuner->AddParameter<std::uint64_t>(kernel, "TABLE_SIZE", {std::bit_ceil(total_particles) / 2});
     }
 
+    ~RebuildNSearchTuner() override {
+        searched_count = 0;
+        results.clear();
+    }
+
     ktt::KernelResult run(NSearch *dev_n_search, float4 *particle_positions, unsigned total_particles, bool tune) {
         std::vector args{
             tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),
