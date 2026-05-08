@@ -40,7 +40,7 @@ public:
             sum += n;
             count++;
         }
-        std::cout << "Max: " << max << ", Min: " << min << ", Mean: "
+        std::cout << "Max: " << max << ", Min: " << min << ", Count: " << count << ", Mean: "
             << static_cast<float>(sum) / static_cast<float>(count) << std::endl;
     }
 

@@ -11,6 +11,11 @@ __global__ void rebuild_n_search(NSearch *dev_n_search, const float4 *particle_p
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
+    if (i == 0) {
+        dev_n_search->cell_size = CELL_SIZE;
+        dev_n_search->table_size = TABLE_SIZE;
+    }
+
     float4 pos = particle_positions[i];
     NSearch::hash_t h = NSearch::pos_to_cell_hash(pos);
 

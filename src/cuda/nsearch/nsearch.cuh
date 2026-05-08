@@ -150,6 +150,7 @@ struct NSearchHost {
         n_search.cell_start.resize(h_n_search.table_size);
         n_search.cell_end.resize(h_n_search.table_size);
         n_search.cell_size = h_n_search.cell_size;
+        n_search.table_size = h_n_search.table_size;
 
         cudaMemcpy(n_search.table.data(), h_n_search.table,
         sizeof(NSearch::hash_t) * h_n_search.table_size, cudaMemcpyDeviceToHost);
