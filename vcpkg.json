@@ -2,9 +2,9 @@
   "name": "fluid-simulation",
   "version": "1.0.0",
   "dependencies": [
+    "glad",
     "glfw3",
     "glm",
-    "glad",
     "gtest",
     {
       "name": "imgui",
@@ -12,6 +12,7 @@
         "glfw-binding",
         "opengl3-binding"
       ]
-    }
+    },
+    "nlohmann-json"
   ]
 }

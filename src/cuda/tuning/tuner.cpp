@@ -4,6 +4,9 @@
 #include <cuda.h>
 #include <filesystem>
 #include "config.h"
+#include <Api/Searcher/McmcSearcher.h>
+#include <Api/Searcher/RandomSearcher.h>
+#include <Api/Searcher/DeterministicSearcher.h>
 
 
 static std::string result_name() {
@@ -37,6 +40,11 @@ void Tuner::clear_configuration_data() {
 }
 
 ktt::KernelResult Tuner::run(bool tune) {
+    if (frozen_config) {
+        auto res = tuner->Run(kernel, *frozen_config, {});
+        results.push_back(res);
+        return res;
+    }
     ktt::KernelResult res;
     if (tune || searched_count == 0) {
         ++searched_count;
@@ -47,6 +55,30 @@ ktt::KernelResult Tuner::run(bool tune) {
     }
     results.push_back(res);
     return res;
+}
+
+void Tuner::set_searcher(RunOptions::Searcher s) {
+    std::unique_ptr<ktt::Searcher> searcher;
+    switch (s) {
+    case RunOptions::Searcher::Mcmc:
+        searcher = std::make_unique<ktt::McmcSearcher>();
+        break;
+    case RunOptions::Searcher::Random:
+        searcher = std::make_unique<ktt::RandomSearcher>();
+        break;
+    case RunOptions::Searcher::Full:
+        searcher = std::make_unique<ktt::DeterministicSearcher>();
+        break;
+    }
+    tuner->SetSearcher(kernel, std::move(searcher));
+}
+
+void Tuner::set_frozen_config(ktt::KernelConfiguration cfg) {
+    frozen_config = std::move(cfg);
+}
+
+void Tuner::clear_frozen_config() {
+    frozen_config.reset();
 }
 
 void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {

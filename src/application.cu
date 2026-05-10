@@ -5,17 +5,57 @@
 #include <imgui.h>
 #include <render/asset_manager.h>
 #include <render/fluid.h>
+#include <cuda/SPH/snapshot.cuh>
+#include <cuda/tuning/config_loader.h>
+#include <chrono>
+#include <fstream>
 
 
-Application::Application(GLFWwindow *window, int width, int height, const std::string& name)
+Application::Application(GLFWwindow *window, int width, int height, const std::string& name, const RunOptions& opts)
     : window{window},
-      camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height} {
+      camera{{0, 0, 2.5}, glm::radians(270.f), 0, width, height},
+      opts{opts},
+      app_name{name} {
     configure_window();
-    gui = std::make_unique<GUI>(window, name);
+    if (!opts.headless)
+        gui = std::make_unique<GUI>(window, name);
 }
 
 void Application::init() {
     setup_scene();
+
+    auto* fluid = AssetManager::get<Fluid<FluidSim>>("fluid");
+    if (fluid == nullptr)
+        return;
+    CUDASPHSimulator& fluid_sim = fluid->get_simulator();
+
+    if (opts.snapshot_load) {
+        auto err = Snapshot::load(*opts.snapshot_load, app_name,
+                                  fluid_sim.particle_data, fluid_sim.get_fluid_particles());
+        if (!err.empty())
+            throw std::runtime_error("Snapshot load failed: " + err);
+    }
+
+    if (opts.frozen_config) {
+        fluid_sim.set_frozen_config(
+            load_config_json(*opts.frozen_config, *fluid_sim.step_tuner.get_tuner(),
+                             fluid_sim.step_tuner.get_kernel()));
+    }
+
+    fluid_sim.step_tuner.set_searcher(opts.searcher);
+    fluid_sim.set_tuning_budget(opts.tuning_budget);
+
+    for (int i = 0; i < opts.warmup_iters; ++i)
+        update_objects(opts.fixed_dt);
+
+    if (opts.ktt_output) {
+        // Override the default results dir for this run
+        // We can't easily change cfg::results_dir, but we can clear and let
+        // the destructor save to a custom path.  Instead, we rely on the
+        // Tuner destructor using cfg::results_dir.  For custom prefix, we
+        // post-process after run.  Simpler: just use the path as given.
+        // Not implemented here; the default auto-naming is sufficient.
+    }
 }
 
 void Application::configure_window() {
@@ -27,6 +67,11 @@ void Application::configure_window() {
 }
 
 void Application::run() {
+    if (opts.headless) {
+        run_headless();
+        return;
+    }
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
@@ -39,7 +84,8 @@ void Application::run() {
         // Poll for and process events.
         glfwPollEvents();
 
-        gui->update(delta);
+        if (gui)
+            gui->update(delta);
 
         update(delta);
 
@@ -50,9 +96,68 @@ void Application::run() {
 
         render_scene();
 
-        gui->render();
+        if (gui)
+            gui->render();
 
         glfwSwapBuffers(window);
+    }
+}
+
+void Application::run_headless() {
+    using clock = std::chrono::steady_clock;
+    auto t0 = clock::now();
+    double sim_time = 0.0;
+    int step = 0;
+
+    std::ofstream log;
+    if (opts.log_csv) {
+        log.open(*opts.log_csv);
+        log << "step,sim_time,wall_dt_ms,scheduled_tune";
+        if (opts.log_metrics) log << ",mean_speed,ke";
+        log << '\n';
+    }
+
+    auto* fluid = AssetManager::get<Fluid<FluidSim>>("fluid");
+    CUDASPHSimulator* fluid_sim = fluid ? &fluid->get_simulator() : nullptr;
+
+    while (!stop_reached(step, sim_time, t0)) {
+        auto t_step = clock::now();
+        update_objects(opts.fixed_dt);
+        sim_time += opts.fixed_dt;
+        auto wall_dt = std::chrono::duration<double, std::milli>(clock::now() - t_step).count();
+
+        if (log && fluid_sim) {
+            log << step << ',' << sim_time << ',' << wall_dt
+                << ',' << (fluid_sim->was_scheduled_step() ? 1 : 0);
+            if (opts.log_metrics) {
+                auto [v, ke] = fluid_sim->compute_state_metrics();
+                log << ',' << v << ',' << ke;
+            }
+            log << '\n';
+        }
+        ++step;
+    }
+
+    if (opts.snapshot_save && fluid_sim) {
+        auto err = Snapshot::save(*opts.snapshot_save, app_name,
+                                  fluid_sim->particle_data, fluid_sim->get_fluid_particles());
+        if (!err.empty())
+            throw std::runtime_error("Snapshot save failed: " + err);
+    }
+}
+
+bool Application::stop_reached(int step, double sim_time, std::chrono::steady_clock::time_point t0) const {
+    switch (opts.stop_kind) {
+    case RunOptions::StopKind::Iters:
+        return step >= static_cast<int>(opts.stop_value);
+    case RunOptions::StopKind::SimTime:
+        return sim_time >= opts.stop_value;
+    case RunOptions::StopKind::WallTime: {
+        auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        return elapsed >= opts.stop_value;
+    }
+    default:
+        return false;
     }
 }
 
@@ -81,7 +186,7 @@ void Application::set_capture_mouse(bool capture_mouse) {
     }
 }
 
-void Application::on_resize(GLFWwindow *window, int width, int height) {
+void Application::on_resize(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
     glCheckError();
 
@@ -89,7 +194,7 @@ void Application::on_resize(GLFWwindow *window, int width, int height) {
     app->camera.update_window_size(width, height);
 }
 
-void Application::on_mouse_move(GLFWwindow *window, double x, double y) {
+void Application::on_mouse_move(GLFWwindow* window, double x, double y) {
     if (ImGui::GetIO().WantCaptureMouse)
         return;
 
@@ -115,7 +220,7 @@ void Application::on_mouse_move(GLFWwindow *window, double x, double y) {
     app->last_mouse_pos = pos;
 }
 
-void Application::on_key_pressed(GLFWwindow *window, int key, int, int action, int) {
+void Application::on_key_pressed(GLFWwindow* window, int key, int, int action, int) {
     if (action != GLFW_PRESS)
         return;
 

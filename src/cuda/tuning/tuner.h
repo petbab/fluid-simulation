@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ktt.h>
+#include <cli.h>
 
 
 class Tuner {
@@ -11,6 +12,13 @@ public:
     std::pair<int, int> tuning_stats() const;
     void clear_configuration_data();
     void print_best_config(std::ostream& out) const;
+
+    void set_searcher(RunOptions::Searcher s);
+    void set_frozen_config(ktt::KernelConfiguration cfg);
+    void clear_frozen_config();
+
+    ktt::Tuner* get_tuner() const { return tuner; }
+    ktt::KernelId get_kernel() const { return kernel; }
 
 protected:
     ktt::KernelResult run(bool tune);
@@ -29,4 +37,6 @@ protected:
 
     int searched_count = 0;
     std::vector<ktt::KernelResult> results;
+
+    std::optional<ktt::KernelConfiguration> frozen_config;
 };

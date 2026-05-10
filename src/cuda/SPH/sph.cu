@@ -2,6 +2,8 @@
 
 #include <ranges>
 #include <thrust/transform_reduce.h>
+#include <thrust/reduce.h>
+#include <thrust/functional.h>
 
 
 CUDASPHSimulator::CUDASPHSimulator(const opts_t& opts)
@@ -152,4 +154,40 @@ void CUDASPHSimulator::set_tuning_budget(float tb) {
 void CUDASPHSimulator::reset_tuning() {
     for (Tuner* tnr : active_tuners | std::views::values)
         tnr->clear_configuration_data();
+}
+
+void CUDASPHSimulator::set_frozen_config(ktt::KernelConfiguration cfg) {
+    step_tuner.set_frozen_config(std::move(cfg));
+}
+
+struct float4_length {
+    __host__ __device__ float operator()(const float4& v) const {
+        return sqrtf(dot(v, v));
+    }
+};
+
+struct float4_ke {
+    __host__ __device__ float operator()(const float4& v) const {
+        float speed_sq = dot(v, v);
+        return 0.5f * CUDASPHSimulator::PARTICLE_MASS * speed_sq;
+    }
+};
+
+std::pair<float, float> CUDASPHSimulator::compute_state_metrics() const {
+    const auto& vel = particle_data.velocity_vec();
+    float mean_speed = thrust::transform_reduce(
+        vel.begin(), vel.end(),
+        float4_length(),
+        0.0f,
+        thrust::plus<float>()
+    ) / static_cast<float>(fluid_particles);
+
+    float ke = thrust::transform_reduce(
+        vel.begin(), vel.end(),
+        float4_ke(),
+        0.0f,
+        thrust::plus<float>()
+    );
+
+    return {mean_speed, ke};
 }
