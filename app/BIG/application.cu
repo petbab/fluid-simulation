@@ -7,7 +7,11 @@
 #include <render/box.h>
 
 
-void FountainApp::setup_scene() {
+static constexpr float WORLD_SCALE = 2.25f;
+
+void BIGApp::setup_scene() {
+    camera.set_position(camera.get_position() * WORLD_SCALE);
+
     auto *lit_shader = AssetManager::make<Shader>("lit_shader",
         cfg::shaders_dir/"lit.vert",
         cfg::shaders_dir/"lit.frag");
@@ -20,32 +24,22 @@ void FountainApp::setup_scene() {
     auto *dragon_obj = AssetManager::make<Object>("dragon", lit_shader, dragon_geom);
     dragon_obj->set_material(glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, glm::vec3{1., 0., 1.}, 32., 1.);
 
-    glm::mat4 dragon_model{1.f};
+    glm::mat4 dragon_model = glm::scale(glm::mat4{1.f}, glm::vec3{WORLD_SCALE});
     dragon_model = glm::translate(dragon_model, glm::vec3{1., -0.45, 0.});
     dragon_model = glm::rotate(dragon_model, -glm::pi<float>() * 0.5f, glm::vec3{1., 0., 0.});
     dragon_obj->set_model(dragon_model);
 
-    /*
-     * Fluid Box
-     */
     Box *fluid_box = AssetManager::make<Box>(
-        "fluid_box", glm::vec3{2.5, 1., 0.82}, glm::vec3{0.9});
-    fluid_box->set_model(glm::translate(glm::mat4{1.f}, glm::vec3{0., 0.3, 0.}));
+        "fluid_box", glm::vec3{2.5, 0.7, 0.7} * WORLD_SCALE, glm::vec3{0.9});
 
     /*
      * Fluid
      */
     FluidSimulator::opts_t fluid_opts{
-        {-1.5, 0.25, 0.}, 40, fluid_box->bounding_box(),
-        {fluid_box, dragon_obj},
-        "([](float4 pos) {"
-        "if (pos.x*pos.x + pos.z*pos.z < .2f && pos.y < 0.f)"
-        " return make_float4(0., 25., 0., 0.);"
-        "if (pos.y < -0.3f)"
-        " return 2.f * normalize(make_float4(-pos.x, 0.f, -pos.z, 0.f));"
-        "return make_float4(0.f); })"
+        glm::vec3{-1.5, 0., 0.} * WORLD_SCALE, 75,
+        fluid_box->bounding_box(), {dragon_obj, fluid_box}
     };
-    AssetManager::make<Fluid<CUDASPHSimulator>>("fluid", fluid_opts);
+    AssetManager::make<Fluid<FluidSim>>("fluid", fluid_opts);
 
     /*
      * Lights
@@ -53,12 +47,12 @@ void FountainApp::setup_scene() {
     lights = std::make_unique<LightArray>();
     lights->set_ambient_light(glm::vec3{0.1f});
     lights->add_directional_light(glm::vec3{0.2, 1., 0.4}, glm::vec3{0.2f}, glm::vec3{0.9f, 0.85, 0.8}, glm::vec3{1.0f});
-    lights->add_point_light(glm::vec3{-0.7, 0.2, 0.4}, glm::vec3{0., 0., 0.1},
+    lights->add_point_light(glm::vec3{-0.7, 0.2, 0.4} * WORLD_SCALE, glm::vec3{0., 0., 0.1},
         glm::vec3{0.1f, 0.1, 0.8}, glm::vec3{1.0f}, 1., 0.7, 1.8);
     lights->upload_data();
 }
 
-void FountainApp::update_objects(float delta) {
+void BIGApp::update_objects(float delta) {
     for (auto object : AssetManager::container<Object>())
         object->update(delta);
 }
