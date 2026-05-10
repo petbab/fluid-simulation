@@ -45,13 +45,21 @@ __device__ inline bool is_neighbor(float4 xi, float4 xj) {
 struct NSearch {
     using cell_t = uint3;
     using hash_t = unsigned long long;
-    static constexpr hash_t EMPTY_HASH = -1;
-    static constexpr unsigned EMPTY_CELL = -1;
-    // static constexpr unsigned TABLE_SIZE = 129536;
+    static constexpr hash_t EMPTY_HASH = ~0ULL;
+    static constexpr unsigned EMPTY_CELL = ~0u;
+
+    __device__ static hash_t pack(cell_t c) {
+        return static_cast<hash_t>(c.x) | (static_cast<hash_t>(c.y) << 21) | (static_cast<hash_t>(c.z) << 42);
+    }
+    __device__ static cell_t unpack(hash_t p) {
+        return { (unsigned)(p & 0x1FFFFFu),
+                 (unsigned)((p >> 21) & 0x1FFFFFu),
+                 (unsigned)((p >> 42) & 0x1FFFFFu) };
+    }
 
     // https://sph-tutorial.physics-simulation.org/pdf/SPH_Tutorial.pdf (eq. 34)
     __device__ static hash_t cell_hash(cell_t c) {
-        return 73856093*c.x ^ 19349663*c.y ^ 83492791*c.z;
+        return 73856093ull*c.x ^ 19349663ull*c.y ^ 83492791ull*c.z;
     }
 
     __device__ static hash_t pos_to_cell_hash(float4 pos) {
@@ -75,43 +83,44 @@ struct NSearch {
     }
 
     template<unsigned T_SIZE>
-    __device__ __host__ unsigned find_cell_in_table(cell_t cell) const {
-        hash_t h = cell_hash(cell);
+    __device__ unsigned find_cell_in_table(cell_t c) const {
+        hash_t pk = pack(c);
+        unsigned t_i = cell_hash(c) % T_SIZE;
         for (unsigned j = 0; j < T_SIZE; ++j) {
-            unsigned t_i = (h + j) % T_SIZE;
-            if (table[t_i] == EMPTY_HASH)
+            hash_t k = table[t_i];
+            if (k == EMPTY_HASH)
                 return EMPTY_CELL;
-            if (table[t_i] == h)
+            if (k == pk)
                 return t_i;
+            t_i = (t_i + 1) % T_SIZE;
         }
-        // Can't get here
         return EMPTY_CELL;
     }
 
-    __device__ unsigned add_cell(hash_t h) {
-        unsigned i = h % TABLE_SIZE;
+    __device__ unsigned add_cell(cell_t c) {
+        hash_t pk = pack(c);
+        unsigned i = cell_hash(c) % TABLE_SIZE;
         for (unsigned j = 0; j < TABLE_SIZE; ++j) {
-            hash_t old_h = atomicCAS(&table[i], EMPTY_HASH, h);
-            if (old_h == EMPTY_HASH || old_h == h)
+            hash_t old = atomicCAS((unsigned long long*)&table[i], EMPTY_HASH, pk);
+            if (old == EMPTY_HASH || old == pk)
                 return i;
             i = (i + 1) % TABLE_SIZE;
         }
-        // Can't get here
         return -1;
     }
 
-    __device__ void set_cell_start(hash_t h, unsigned start) {
-        unsigned cell_i = add_cell(h);
+    __device__ void set_cell_start(cell_t c, unsigned start) {
+        unsigned cell_i = add_cell(c);
         cell_start[cell_i] = start;
     }
 
-    __device__ void set_cell_end(hash_t h, unsigned end) {
-        unsigned cell_i = add_cell(h);
+    __device__ void set_cell_end(cell_t c, unsigned end) {
+        unsigned cell_i = add_cell(c);
         cell_end[cell_i] = end;
     }
 
     template<int U_N, typename F>
-    __device__ __host__ unsigned for_neighbors(float4 pos, F f) const {
+    __device__ unsigned for_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord(pos);
 
         unsigned count = 0;
@@ -138,7 +147,7 @@ struct NSearch {
     }
 
     template<typename F>
-    __device__ __host__ unsigned for_boundary_neighbors(float4 pos, F f) const {
+    __device__ unsigned for_boundary_neighbors(float4 pos, F f) const {
         cell_t cell = cell_coord_boundary(pos);
 
         unsigned count = 0;

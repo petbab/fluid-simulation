@@ -6,6 +6,7 @@
 #include <ranges>
 #include <thrust/scan.h>
 #include "cuda/nsearch/neighbor_list.cuh"
+#include "cuda/nsearch/nsearch.h"
 
 
 class StepTuner final : public Tuner {
@@ -84,10 +85,10 @@ public:
         // 0.75: Max: 9, Min: 1, Count: 100358, Mean: 4.19333
         // 1: Max: 17, Min: 1, Count: 44814, Mean: 9.41391
         // 1.5: Max: 43, Min: 1, Count: 13710, Mean: 30.7713
-        // tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{2./3.});
 
         auto sizes = fluid_n_search_map | std::views::keys;
         tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});
+        // tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{524288});
 
         tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", "TABLE_SIZE"},
             [this](const std::vector<const ktt::ParameterValue*>& values) -> bool {
@@ -99,7 +100,6 @@ public:
             });
 
         tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE", {std::bit_ceil(boundary_n) / 2});
-        tuner->AddParameter<std::uint64_t>(kernel, "NEIGHBOR_LIST", {0, 1});
 
         // Per-definition block size: each tunable independently inside the joint space.
         add_block_param("rebuild_n_search", def_rebuild_n_search);
@@ -115,6 +115,8 @@ public:
         add_unroll_param("compute_rho_p");
         add_unroll_param("compute_pressure_accel_n_normal");
         add_unroll_param("compute_non_pressure_accel");
+
+        add_nsearch_params("compute_non_pressure_accel");
     }
 
     ~StepTuner() override {
@@ -240,6 +242,8 @@ private:
         float cell_size_mult = 1.f;
         std::uint64_t table_size = 1;
         bool nlist = false;
+        bool shared = false;
+        std::uint64_t block_size = 1;
 
         const auto &config = iface.GetCurrentConfiguration();
         for (const auto &p : config.GetPairs()) {
@@ -247,8 +251,12 @@ private:
                 cell_size_mult = std::get<double>(p.GetValue());
             else if (p.GetName() == "TABLE_SIZE")
                 table_size = std::get<std::uint64_t>(p.GetValue());
-            else if (p.GetName() ==  "NEIGHBOR_LIST")
-                nlist = std::get<std::uint64_t>(p.GetValue()) == 1;
+            else if (p.GetName().ends_with("_nlist") && std::get<std::uint64_t>(p.GetValue()) == 1)
+                nlist = true;
+            else if (p.GetName().ends_with("_shared") && std::get<std::uint64_t>(p.GetValue()) == 1)
+                shared = true;
+            else if (p.GetName() == "compute_non_pressure_accel_block")
+                block_size = std::get<std::uint64_t>(p.GetValue());
         }
 
         sort_particle_data(cell_size_mult);
@@ -269,7 +277,13 @@ private:
 
         iface.RunKernel(def_compute_rho_p);
         iface.RunKernel(def_compute_pressure_accel_n_normal);
-        iface.RunKernel(def_compute_non_pressure_accel);
+
+        if (!nlist && shared)
+            iface.RunKernel(def_compute_non_pressure_accel,
+                ktt::DimensionVector(table_size), ktt::DimensionVector(block_size));
+        else
+            iface.RunKernel(def_compute_non_pressure_accel);
+
         iface.RunKernel(def_update_positions);
     }
     
@@ -287,6 +301,29 @@ private:
 
     void add_unroll_param(const std::string& name) const {
         tuner->AddParameter(kernel, name + "_u_n", std::vector<uint64_t>{1, 2, 4, 8}, name);
+    }
+
+    void add_nsearch_params(const std::string& name) const {
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_nlist", {0, 1}, name);
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_shared", {0, 1}, name);
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_cache_log2", {1, 2, 3}, name);
+
+        tuner->AddGenericConstraint(kernel,{
+            name + "_block",
+            name + "_nlist",
+            name + "_shared",
+            name + "_cache_log2"
+        }, [](const std::vector<const ktt::ParameterValue*>& v) {
+            auto block = std::get<std::uint64_t>(*v[0]);
+            auto nlist = std::get<std::uint64_t>(*v[1]);
+            auto shared = std::get<std::uint64_t>(*v[2]);
+            auto cache = std::get<std::uint64_t>(*v[3]);
+
+            if (nlist && shared)
+                // 56B per slot: float4 pos + vel + norm (48B) + float den (4B) + unsigned key (4B)
+                return (block << (2 + cache)) * 56ull <= 48ull * 1024ull;
+            return cache == 1;
+        });
     }
 
     template <typename T>
