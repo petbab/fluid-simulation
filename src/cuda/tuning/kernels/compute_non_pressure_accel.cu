@@ -9,15 +9,6 @@
 #ifndef EXTERNAL_FORCE
 #define EXTERNAL_FORCE ([](float4 pos) { return make_float4(0., 0., 0., 0.); })
 #endif
-#ifndef compute_non_pressure_accel_u_n
-#define compute_non_pressure_accel_u_n 1
-#endif
-#ifndef compute_non_pressure_accel_block
-#define compute_non_pressure_accel_block 128
-#endif
-#ifndef compute_non_pressure_accel_cache_log2
-#define compute_non_pressure_accel_cache_log2 2  // CACHE = BS << 2
-#endif
 
 
 static constexpr float4 GRAVITY{0, -9.81f, 0, 0};
@@ -165,81 +156,86 @@ void compute_non_pressure_accel(
     const unsigned home_count = home_end - home_start;
     if (home_start >= home_end) return;
 
-    const bool active = tid < home_count;
-    const unsigned i = active ? home_start + tid : home_start;
+    const unsigned tiles = (home_count + BS - 1) / BS;
 
-    const float4 xi = positions [i];
-    const float4 vi = velocities[i];
-    const float4 ni = normals   [i];
-    const float  di = densities [i];
+    for (unsigned t = 0; t < tiles; ++t) {
+        const unsigned in_cell_offset = BS * t + threadIdx.x;
+        const bool active = in_cell_offset < home_count;
+        const unsigned i = active ? home_start + in_cell_offset : home_start;
 
-    const NSearch::cell_t anchor = NSearch::cell_coord(xi);
+        const float4 xi = positions [i];
+        const float4 vi = velocities[i];
+        const float4 ni = normals   [i];
+        const float  di = densities [i];
 
-    __shared__ float4   s_pos [BS];
-    __shared__ float4   s_vel [BS];
-    __shared__ float4   s_norm[BS];
-    __shared__ float    s_den [BS];
-    __shared__ unsigned s_idx [BS];
+        const NSearch::cell_t anchor = NSearch::cell_coord(xi);
 
-    float4 f{0.f}, vlap{0.f};
+        __shared__ float4   s_pos [BS];
+        __shared__ float4   s_vel [BS];
+        __shared__ float4   s_norm[BS];
+        __shared__ float    s_den [BS];
+        __shared__ unsigned s_idx [BS];
 
-    constexpr int R = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
+        float4 f{0.f}, vlap{0.f};
 
-    for (int x = -R; x <= R; ++x)
-    for (int y = -R; y <= R; ++y)
-    for (int z = -R; z <= R; ++z) {
-        NSearch::cell_t nc{anchor.x + x, anchor.y + y, anchor.z + z};
-        unsigned n_t_i = dev_n_search->find_cell_in_table<TABLE_SIZE>(nc);
-        if (n_t_i == NSearch::EMPTY_CELL) continue;
+        constexpr int R = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
 
-        const unsigned start = dev_n_search->cell_start[n_t_i];
-        const unsigned end   = dev_n_search->cell_end  [n_t_i];
-        const unsigned cnt   = end - start;
-        if (start >= end) continue;
+        for (int x = -R; x <= R; ++x)
+            for (int y = -R; y <= R; ++y)
+                for (int z = -R; z <= R; ++z) {
+                    NSearch::cell_t nc{anchor.x + x, anchor.y + y, anchor.z + z};
+                    unsigned n_t_i = dev_n_search->find_cell_in_table<TABLE_SIZE>(nc);
+                    if (n_t_i == NSearch::EMPTY_CELL) continue;
 
-        // Cooperative load
-        for (unsigned base = 0; base < cnt; base += BS) {
-            const unsigned tile_n = min(BS, cnt - base);
+                    const unsigned start = dev_n_search->cell_start[n_t_i];
+                    const unsigned end   = dev_n_search->cell_end  [n_t_i];
+                    const unsigned cnt   = end - start;
+                    if (start >= end) continue;
 
-            if (tid < tile_n) {
-                unsigned j = start + base + tid;
-                s_pos [tid] = positions [j];
-                s_vel [tid] = velocities[j];
-                s_norm[tid] = normals   [j];
-                s_den [tid] = densities [j];
-                s_idx [tid] = j;
-            }
-            __syncthreads();
+                    // Cooperative load
+                    for (unsigned base = 0; base < cnt; base += BS) {
+                        const unsigned tile_n = min(BS, cnt - base);
 
-            // Each home thread consumes the cell.
-            if (active) {
-                for (unsigned k = 0; k < tile_n; ++k) {
-                    if (i == s_idx[k]) continue;
-                    float4 x_ij = xi - s_pos[k];
-                    float r2 = dot(x_ij, x_ij);
-                    if (r2 > SUPPORT_RADIUS * SUPPORT_RADIUS) continue;
+                        if (tid < tile_n) {
+                            unsigned j = start + base + tid;
+                            s_pos [tid] = positions [j];
+                            s_vel [tid] = velocities[j];
+                            s_norm[tid] = normals   [j];
+                            s_den [tid] = densities [j];
+                            s_idx [tid] = j;
+                        }
+                        __syncthreads();
 
-                    float dj = s_den[k];
-                    float q = r_to_q(x_ij, SUPPORT_RADIUS);
-                    float4 nj = s_norm[k];
+                        // Each home thread consumes the cell.
+                        if (active) {
+                            for (unsigned k = 0; k < tile_n; ++k) {
+                                if (i == s_idx[k]) continue;
+                                float4 x_ij = xi - s_pos[k];
+                                float r2 = dot(x_ij, x_ij);
+                                if (r2 > SUPPORT_RADIUS * SUPPORT_RADIUS) continue;
 
-                    if (r2 > 1e-6f)
-                        f += (PARTICLE_MASS * normalize(x_ij) * cohesion(q, SUPPORT_RADIUS)
-                              + ni - nj) / (di + dj);
+                                float dj = s_den[k];
+                                float q = r_to_q(x_ij, SUPPORT_RADIUS);
+                                float4 nj = s_norm[k];
 
-                    float4 v_ij = vi - s_vel[k];
-                    vlap += dot(v_ij, x_ij) * cubic_spline_grad(q, SUPPORT_RADIUS) * x_ij
-                          / (dj * (r2 + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
+                                if (r2 > 1e-6f)
+                                    f += (PARTICLE_MASS * normalize(x_ij) * cohesion(q, SUPPORT_RADIUS)
+                                          + ni - nj) / (di + dj);
+
+                                float4 v_ij = vi - s_vel[k];
+                                vlap += dot(v_ij, x_ij) * cubic_spline_grad(q, SUPPORT_RADIUS) * x_ij
+                                      / (dj * (r2 + 0.01f * SUPPORT_RADIUS * SUPPORT_RADIUS));
+                            }
+                        }
+                        __syncthreads();
+                    }
                 }
-            }
-            __syncthreads();
-        }
-    }
 
-    if (active) {
-        acceleration[i] = GRAVITY + EXTERNAL_FORCE(xi)
-            + VISCOSITY * 10.f * PARTICLE_MASS * vlap
-            - SURFACE_TENSION_ALPHA * 2.f * REST_DENSITY * f;
+        if (active) {
+            acceleration[i] = GRAVITY + EXTERNAL_FORCE(xi)
+                + VISCOSITY * 10.f * PARTICLE_MASS * vlap
+                - SURFACE_TENSION_ALPHA * 2.f * REST_DENSITY * f;
+        }
     }
 #else
     unsigned i = blockIdx.x * blockDim.x + threadIdx.x;

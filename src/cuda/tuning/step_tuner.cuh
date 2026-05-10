@@ -82,13 +82,9 @@ public:
             tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector{std::move(external_force)});
 
         tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 2./3., 1., 1.5, 2.});
-        // 0.75: Max: 9, Min: 1, Count: 100358, Mean: 4.19333
-        // 1: Max: 17, Min: 1, Count: 44814, Mean: 9.41391
-        // 1.5: Max: 43, Min: 1, Count: 13710, Mean: 30.7713
 
         auto sizes = fluid_n_search_map | std::views::keys;
         tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});
-        // tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{524288});
 
         tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", "TABLE_SIZE"},
             [this](const std::vector<const ktt::ParameterValue*>& values) -> bool {
@@ -116,6 +112,8 @@ public:
         add_unroll_param("compute_pressure_accel_n_normal");
         add_unroll_param("compute_non_pressure_accel");
 
+        add_nsearch_params("compute_rho_p");
+        add_nsearch_params("compute_pressure_accel_n_normal");
         add_nsearch_params("compute_non_pressure_accel");
     }
 
@@ -242,8 +240,6 @@ private:
         float cell_size_mult = 1.f;
         std::uint64_t table_size = 1;
         bool nlist = false;
-        bool shared = false;
-        std::uint64_t block_size = 1;
 
         const auto &config = iface.GetCurrentConfiguration();
         for (const auto &p : config.GetPairs()) {
@@ -253,10 +249,6 @@ private:
                 table_size = std::get<std::uint64_t>(p.GetValue());
             else if (p.GetName().ends_with("_nlist") && std::get<std::uint64_t>(p.GetValue()) == 1)
                 nlist = true;
-            else if (p.GetName().ends_with("_shared") && std::get<std::uint64_t>(p.GetValue()) == 1)
-                shared = true;
-            else if (p.GetName() == "compute_non_pressure_accel_block")
-                block_size = std::get<std::uint64_t>(p.GetValue());
         }
 
         sort_particle_data(cell_size_mult);
@@ -275,18 +267,42 @@ private:
             iface.RunKernel(def_fill_neighbors);
         }
 
-        iface.RunKernel(def_compute_rho_p);
-        iface.RunKernel(def_compute_pressure_accel_n_normal);
-
-        if (!nlist && shared)
-            iface.RunKernel(def_compute_non_pressure_accel,
-                ktt::DimensionVector(table_size), ktt::DimensionVector(block_size));
-        else
-            iface.RunKernel(def_compute_non_pressure_accel);
+        launch_sph_kernel(def_compute_rho_p, "compute_rho_p", iface);
+        launch_sph_kernel(def_compute_pressure_accel_n_normal, "compute_pressure_accel_n_normal", iface);
+        launch_sph_kernel(def_compute_non_pressure_accel, "compute_non_pressure_accel", iface);
 
         iface.RunKernel(def_update_positions);
     }
-    
+
+    static void launch_sph_kernel(
+        const ktt::KernelDefinitionId &def,
+        const std::string &name,
+        ktt::ComputeInterface& iface
+    ) {
+        std::uint64_t table_size = 1;
+        bool nlist = false;
+        bool shared = false;
+        std::uint64_t block_size = 1;
+
+        const auto &config = iface.GetCurrentConfiguration();
+        for (const auto &p : config.GetPairs()) {
+            if (p.GetName() == "TABLE_SIZE")
+                table_size = std::get<std::uint64_t>(p.GetValue());
+            else if (p.GetName() == name + "_nlist" && std::get<std::uint64_t>(p.GetValue()) == 1)
+                nlist = true;
+            else if (p.GetName() == name + "_shared" && std::get<std::uint64_t>(p.GetValue()) == 1)
+                shared = true;
+            else if (p.GetName() == name + "_block")
+                block_size = std::get<std::uint64_t>(p.GetValue());
+        }
+
+        if (!nlist && shared)
+            iface.RunKernel(def, ktt::DimensionVector(table_size),
+                ktt::DimensionVector(block_size));
+        else
+            iface.RunKernel(def);
+    }
+
     void add_block_param(const std::string& name, ktt::KernelDefinitionId def) const {
         // Each block-size parameter is its own independent group. Kernels run
         // sequentially inside the composite launcher, so one kernel's optimal
@@ -304,25 +320,19 @@ private:
     }
 
     void add_nsearch_params(const std::string& name) const {
-        tuner->AddParameter<std::uint64_t>(kernel, name + "_nlist", {0, 1}, name);
-        tuner->AddParameter<std::uint64_t>(kernel, name + "_shared", {0, 1}, name);
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_nlist", {0, 1});
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_shared", {0, 1});
         tuner->AddParameter<std::uint64_t>(kernel, name + "_cache_log2", {1, 2, 3}, name);
 
         tuner->AddGenericConstraint(kernel,{
             name + "_block",
-            name + "_nlist",
-            name + "_shared",
             name + "_cache_log2"
         }, [](const std::vector<const ktt::ParameterValue*>& v) {
             auto block = std::get<std::uint64_t>(*v[0]);
-            auto nlist = std::get<std::uint64_t>(*v[1]);
-            auto shared = std::get<std::uint64_t>(*v[2]);
-            auto cache = std::get<std::uint64_t>(*v[3]);
+            auto cache = std::get<std::uint64_t>(*v[1]);
 
-            if (nlist && shared)
-                // 56B per slot: float4 pos + vel + norm (48B) + float den (4B) + unsigned key (4B)
-                return (block << (2 + cache)) * 56ull <= 48ull * 1024ull;
-            return cache == 1;
+            // 56B per slot: float4 pos + vel + norm (48B) + float den (4B) + unsigned key (4B)
+            return (block << (2 + cache)) * 56ull <= 48ull * 1024ull;
         });
     }
 
