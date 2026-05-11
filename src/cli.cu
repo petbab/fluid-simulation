@@ -15,11 +15,10 @@ static void print_usage(const char* prog) {
         "  --tuning-budget FLOAT           Default: 0.1 (0 disables tuning)\n"
         "  --stop iters=N | sim-time=T | wall-time=T   Required in --headless\n"
         "  --fixed-dt FLOAT                Default: 0.01\n"
-        "  --warmup-iters N                Default: 200\n"
+        "  --warmup-iters N                Default: 0\n"
         "  --ktt-output PATH               Prefix for tuner.SaveResults\n"
         "  --log-csv FILE                  Per-step CSV log\n"
         "  --log-metrics                   Add mean_speed,ke columns\n"
-        "  --seed N                        Default: 42\n";
 }
 
 static RunOptions::Searcher parse_searcher(const char* s) {
@@ -87,9 +86,6 @@ RunOptions parse_cli(int argc, char** argv) {
             opts.log_csv = argv[i];
         } else if (std::strcmp(arg, "--log-metrics") == 0) {
             opts.log_metrics = true;
-        } else if (std::strcmp(arg, "--seed") == 0) {
-            if (++i >= argc) throw std::invalid_argument("--seed requires an argument");
-            opts.seed = std::strtoull(argv[i], nullptr, 10);
         } else if (std::strcmp(arg, "--help") == 0 || std::strcmp(arg, "-h") == 0) {
             print_usage(argv[0]);
             std::exit(EXIT_SUCCESS);

@@ -14,7 +14,8 @@ public:
     void print_best_config(std::ostream& out) const;
 
     void set_searcher(RunOptions::Searcher s);
-    void set_frozen_config(ktt::KernelConfiguration cfg);
+    void set_results_out(std::optional<std::filesystem::path> out);
+    virtual void set_frozen_config(ktt::KernelConfiguration cfg);
     void clear_frozen_config();
 
     ktt::Tuner* get_tuner() const { return tuner; }
@@ -38,5 +39,6 @@ protected:
     int searched_count = 0;
     std::vector<ktt::KernelResult> results;
 
+    std::optional<std::filesystem::path> results_out;
     std::optional<ktt::KernelConfiguration> frozen_config;
 };

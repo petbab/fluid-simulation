@@ -80,22 +80,26 @@ public:
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
         if (!external_force.empty())
             tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector{std::move(external_force)});
+        else
+            tuner->AddParameter(kernel, "EXTERNAL_FORCE", std::vector<std::string>{
+                "([](float4) {return make_float4(0.f); })"
+            });
 
         tuner->AddParameter(kernel, "CELL_SIZE_MULT", std::vector{0.5, 2./3., 1., 1.5, 2.});
 
         auto sizes = fluid_n_search_map | std::views::keys;
-        tuner->AddParameter(kernel, "TABLE_SIZE", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});
+        tuner->AddParameter(kernel, "TABLE_SIZE_MULT", std::vector<std::uint64_t>{sizes.begin(), sizes.end()});
+        tuner->AddParameter(kernel, "MIN_TABLE_SIZE", std::vector<std::uint64_t>{min_table_size});
 
-        tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", "TABLE_SIZE"},
+        tuner->AddGenericConstraint(kernel, {"CELL_SIZE_MULT", "TABLE_SIZE_MULT"},
             [this](const std::vector<const ktt::ParameterValue*>& values) -> bool {
                 auto cell_size_mult = std::get<double>(*values[0]);
-                auto table_size = std::get<std::uint64_t>(*values[1]);
-
-                auto min_size = min_table_size * static_cast<std::uint64_t>(1. / std::pow(cell_size_mult, 3.));
-                return table_size >= min_size;
+                auto table_size_mult = std::get<std::uint64_t>(*values[1]);
+                return table_size_mult >= static_cast<std::uint64_t>(1. / std::pow(cell_size_mult, 3.));
             });
 
-        tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE", {std::bit_ceil(boundary_n) / 2});
+        tuner->AddParameter<std::uint64_t>(kernel, "MIN_BOUNDARY_TABLE_SIZE", {std::bit_ceil(boundary_n) / 2});
+        tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE_MULT", {1});
 
         // Per-definition block size: each tunable independently inside the joint space.
         add_block_param("rebuild_n_search", def_rebuild_n_search);
@@ -120,6 +124,19 @@ public:
     ~StepTuner() override {
         cudaFree(dev_fluid_n_search);
         cudaCheckError();
+    }
+
+    void set_frozen_config(ktt::KernelConfiguration cfg) override {
+        ktt::ParameterInput params;
+        for (const auto& pair : cfg.GetPairs()) {
+            if (pair.GetName() == "MIN_TABLE_SIZE")
+                params.emplace_back(pair.GetName(), uint64_t{min_table_size}); // override
+            else if (pair.GetName() == "MIN_BOUNDARY_TABLE_SIZE")
+                params.emplace_back(pair.GetName(), uint64_t{std::bit_ceil(boundary_n) / 2}); // override
+            else
+                params.emplace_back(pair.GetName(), pair.GetValue());
+        }
+        Tuner::set_frozen_config(tuner->CreateConfiguration(kernel, params));
     }
 
     using sort_particle_data_t = std::function<void(float)>;
@@ -229,31 +246,32 @@ private:
         cudaMalloc(&dev_fluid_n_search, sizeof(NSearch));
         cudaCheckError();
 
-        std::uint64_t size = min_table_size;
+        std::uint64_t mult = 1;
         for (int i = 0; i < 6; ++i) {
-            fluid_n_search_map[size] = std::make_unique<NSearchWrapper>(size, 1.f, fluid_n);
-            size *= 2;
+            fluid_n_search_map[mult] = std::make_unique<NSearchWrapper>(
+                min_table_size * mult, 1.f, fluid_n);
+            mult *= 2;
         }
     }
 
     void launch(ktt::ComputeInterface& iface) {
         float cell_size_mult = 1.f;
-        std::uint64_t table_size = 1;
+        std::uint64_t table_size_mult = 1;
         bool nlist = false;
 
         const auto &config = iface.GetCurrentConfiguration();
         for (const auto &p : config.GetPairs()) {
             if (p.GetName() == "CELL_SIZE_MULT")
                 cell_size_mult = std::get<double>(p.GetValue());
-            else if (p.GetName() == "TABLE_SIZE")
-                table_size = std::get<std::uint64_t>(p.GetValue());
+            else if (p.GetName() == "TABLE_SIZE_MULT")
+                table_size_mult = std::get<std::uint64_t>(p.GetValue());
             else if (p.GetName().ends_with("_nlist") && std::get<std::uint64_t>(p.GetValue()) == 1)
                 nlist = true;
         }
 
         sort_particle_data(cell_size_mult);
 
-        NSearchWrapper &n_search = *fluid_n_search_map.at(table_size);
+        NSearchWrapper &n_search = *fluid_n_search_map.at(table_size_mult);
         n_search.clear();
         n_search.shallow_copy(dev_fluid_n_search);
         iface.RunKernel(def_rebuild_n_search);
@@ -274,20 +292,20 @@ private:
         iface.RunKernel(def_update_positions);
     }
 
-    static void launch_sph_kernel(
+    void launch_sph_kernel(
         const ktt::KernelDefinitionId &def,
         const std::string &name,
         ktt::ComputeInterface& iface
     ) {
-        std::uint64_t table_size = 1;
+        std::uint64_t table_size_mult = 1;
         bool nlist = false;
         bool shared = false;
         std::uint64_t block_size = 1;
 
         const auto &config = iface.GetCurrentConfiguration();
         for (const auto &p : config.GetPairs()) {
-            if (p.GetName() == "TABLE_SIZE")
-                table_size = std::get<std::uint64_t>(p.GetValue());
+            if (p.GetName() == "TABLE_SIZE_MULT")
+                table_size_mult = std::get<std::uint64_t>(p.GetValue());
             else if (p.GetName() == name + "_nlist" && std::get<std::uint64_t>(p.GetValue()) == 1)
                 nlist = true;
             else if (p.GetName() == name + "_shared" && std::get<std::uint64_t>(p.GetValue()) == 1)
@@ -297,7 +315,7 @@ private:
         }
 
         if (!nlist && shared)
-            iface.RunKernel(def, ktt::DimensionVector(table_size),
+            iface.RunKernel(def, ktt::DimensionVector(min_table_size * table_size_mult),
                 ktt::DimensionVector(block_size));
         else
             iface.RunKernel(def);

@@ -19,13 +19,11 @@ struct RunOptions {
     double stop_value = 0.0;
 
     float fixed_dt = 0.01f;
-    int warmup_iters = 200;
+    int warmup_iters = 0;
 
     std::optional<std::filesystem::path> ktt_output;
     std::optional<std::filesystem::path> log_csv;
     bool log_metrics = false;
-
-    uint64_t seed = 42;
 };
 
 RunOptions parse_cli(int argc, char** argv);

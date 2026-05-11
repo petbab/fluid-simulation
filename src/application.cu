@@ -36,6 +36,13 @@ void Application::init() {
             throw std::runtime_error("Snapshot load failed: " + err);
     }
 
+    if (opts.warmup_iters) {
+        fluid_sim.set_tuning_budget(0.f);
+        for (int i = 0; i < opts.warmup_iters; ++i)
+            update_objects(opts.fixed_dt);
+        fluid_sim.reset_tuning();
+    }
+
     if (opts.frozen_config) {
         fluid_sim.set_frozen_config(
             load_config_json(*opts.frozen_config, *fluid_sim.step_tuner.get_tuner(),
@@ -45,16 +52,8 @@ void Application::init() {
     fluid_sim.step_tuner.set_searcher(opts.searcher);
     fluid_sim.set_tuning_budget(opts.tuning_budget);
 
-    for (int i = 0; i < opts.warmup_iters; ++i)
-        update_objects(opts.fixed_dt);
-
     if (opts.ktt_output) {
-        // Override the default results dir for this run
-        // We can't easily change cfg::results_dir, but we can clear and let
-        // the destructor save to a custom path.  Instead, we rely on the
-        // Tuner destructor using cfg::results_dir.  For custom prefix, we
-        // post-process after run.  Simpler: just use the path as given.
-        // Not implemented here; the default auto-naming is sufficient.
+        fluid_sim.set_result_out(opts.ktt_output);
     }
 }
 

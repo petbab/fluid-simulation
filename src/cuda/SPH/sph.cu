@@ -160,6 +160,10 @@ void CUDASPHSimulator::set_frozen_config(ktt::KernelConfiguration cfg) {
     step_tuner.set_frozen_config(std::move(cfg));
 }
 
+void CUDASPHSimulator::set_result_out(std::optional<std::filesystem::path> out) {
+    step_tuner.set_results_out(std::move(out));
+}
+
 struct float4_length {
     __host__ __device__ float operator()(const float4& v) const {
         return sqrtf(dot(v, v));

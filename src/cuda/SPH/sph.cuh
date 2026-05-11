@@ -42,6 +42,7 @@ public:
 
     void reset() override;
 
+    void set_result_out(std::optional<std::filesystem::path> out);
     void set_frozen_config(ktt::KernelConfiguration cfg);
     bool was_scheduled_step() const { return is_scheduled(STEP_TUNER); }
     std::pair<float, float> compute_state_metrics() const;
