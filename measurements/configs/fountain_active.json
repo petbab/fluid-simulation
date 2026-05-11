@@ -1,0 +1,142 @@
+[
+  {
+    "Name": "update_positions_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "count_neighbors_block",
+    "Value": 512,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "count_neighbors_u_n",
+    "Value": 2,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "CELL_SIZE_MULT",
+    "Value": 0.6666666666666666,
+    "ValueType": "Double"
+  },
+  {
+    "Name": "MIN_TABLE_SIZE",
+    "Value": 16384,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "TABLE_SIZE_MULT",
+    "Value": 8,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "MIN_BOUNDARY_TABLE_SIZE",
+    "Value": 32768,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "BOUNDARY_TABLE_SIZE_MULT",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "EXTERNAL_FORCE",
+    "Value": "([](float4 pos) {if (pos.x*pos.x + pos.z*pos.z < .2f && pos.y < 0.f) return make_float4(0., 25., 0., 0.);if (pos.y < -0.3f) return 2.f * normalize(make_float4(-pos.x, 0.f, -pos.z, 0.f));return make_float4(0.f); })",
+    "ValueType": "String"
+  },
+  {
+    "Name": "KERNEL_DIR",
+    "Value": "/home/pbabic/Repositories/fluid-simulation-agent/src/cuda/tuning/kernels",
+    "ValueType": "String"
+  },
+  {
+    "Name": "compute_non_pressure_accel_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "fill_neighbors_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "fill_neighbors_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "rebuild_n_search_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  }
+]

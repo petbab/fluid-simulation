@@ -1,0 +1,137 @@
+[
+  {
+    "Name": "CELL_SIZE_MULT",
+    "Value": 1.0,
+    "ValueType": "Double"
+  },
+  {
+    "Name": "MIN_TABLE_SIZE",
+    "Value": 131072,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "TABLE_SIZE_MULT",
+    "Value": 4,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "MIN_BOUNDARY_TABLE_SIZE",
+    "Value": 131072,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "BOUNDARY_TABLE_SIZE_MULT",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "KERNEL_DIR",
+    "Value": "/home/pbabic/Repositories/fluid-simulation-agent/src/cuda/tuning/kernels",
+    "ValueType": "String"
+  },
+  {
+    "Name": "compute_non_pressure_accel_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_nlist",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_shared",
+    "Value": 0,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_non_pressure_accel_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_pressure_accel_n_normal_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_cache_log2",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "compute_rho_p_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "count_neighbors_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "count_neighbors_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "fill_neighbors_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "fill_neighbors_u_n",
+    "Value": 1,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "rebuild_n_search_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  },
+  {
+    "Name": "update_positions_block",
+    "Value": 32,
+    "ValueType": "UnsignedInt"
+  }
+]
