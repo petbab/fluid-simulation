@@ -25,8 +25,8 @@ def parse_e2_filename(stem: str) -> tuple[str, str] | None:
     if "_tgt-" not in body:
         return None
     src_part, tgt_part = body.split("_tgt-", 1)
-    src = src_part.removeprefix("src-")
-    tgt = tgt_part.split("_rep", 1)[0]  # strip optional _repNN suffix
+    src = src_part.removeprefix("src-").replace('_', '-')
+    tgt = tgt_part.split("_rep", 1)[0].replace('_', '-')  # strip optional _repNN suffix
     return src, tgt
 
 

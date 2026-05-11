@@ -18,7 +18,7 @@ static void print_usage(const char* prog) {
         "  --warmup-iters N                Default: 0\n"
         "  --ktt-output PATH               Prefix for tuner.SaveResults\n"
         "  --log-csv FILE                  Per-step CSV log\n"
-        "  --log-metrics                   Add mean_speed,ke columns\n"
+        "  --log-metrics                   Add mean_speed,ke columns\n";
 }
 
 static RunOptions::Searcher parse_searcher(const char* s) {
