@@ -55,7 +55,7 @@ def plot_stacked_bars(file_medians, all_kernels, output_path: Path | None = None
     cmap = plt.cm.get_cmap("tab20", n_kernels)
     colors = {k: cmap(i) for i, k in enumerate(all_kernels)}
 
-    fig, ax = plt.subplots(figsize=(max(8, n_files * 1.5), 6))
+    fig, ax = plt.subplots(figsize=(max(8, n_files * 1.2), 6))
 
     x = np.arange(n_files)
     bottom = np.zeros(n_files)
@@ -79,7 +79,7 @@ def plot_stacked_bars(file_medians, all_kernels, output_path: Path | None = None
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=30, ha="right")
     ax.set_ylabel("Median Duration (ms)")
-    ax.set_title("Kernel Runtime Composition per Scenario (e3 KTT Results)")
+    ax.set_title("Kernel Runtime Composition per Scenario (KTT Results)")
 
     # Total height annotation
     totals = [
@@ -99,8 +99,8 @@ def plot_stacked_bars(file_medians, all_kernels, output_path: Path | None = None
 
     ax.legend(
         title="Kernel",
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left",
+        # bbox_to_anchor=(1.02, 1),
+        loc="upper right",
         fontsize="small",
     )
     ax.grid(axis="y", linestyle="--", alpha=0.4)
