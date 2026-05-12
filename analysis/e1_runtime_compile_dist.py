@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 For each measurements/runs/e1*.json file, plot the distribution of run times
-and compilation times for the first 1686 measurements.
+for the first 1686 measurements. Compilation times from all files are pooled
+into a single histogram.
 
 Run time per measurement  = Result.TotalDuration
 Compile time per measurement = sum of CompilationOverhead across all kernels
@@ -40,20 +41,19 @@ def summarize(name, values):
         print(f"  p{p:02d}     : {percentile(values, p):.6f} ms")
 
 
-def plot_distributions(files_data, output_dir: Path):
-    """Plot run-time and compile-time distributions for all files."""
+def plot_run_time_distributions(files_data, output_dir: Path):
+    """Plot run-time distributions for each file separately."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     n_files = len(files_data)
     cols = 3
     rows = (n_files + cols - 1) // cols
 
-    # --- Run time distributions ---
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4), squeeze=False)
-    for idx, (fname, run_times, _) in enumerate(files_data):
+    for idx, (fname, run_times) in enumerate(files_data):
         ax = axes[idx // cols, idx % cols]
         ax.hist(run_times, bins=50, color="steelblue", edgecolor="white")
-        ax.set_title(fname.replace("e1_", "").replace(".json", ""))
+        ax.set_title(fname.replace("e1_", "").replace("_rep00.json", ""))
         ax.set_xlabel("Run time (ms)")
         ax.set_ylabel("Count")
         ax.axvline(statistics.median(run_times), color="red", linestyle="--", label="median")
@@ -68,21 +68,20 @@ def plot_distributions(files_data, output_dir: Path):
     plt.close(fig)
     print(f"Saved run-time plot: {run_plot_path}")
 
-    # --- Compilation time distributions ---
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4), squeeze=False)
-    for idx, (fname, _, compile_times) in enumerate(files_data):
-        ax = axes[idx // cols, idx % cols]
-        ax.hist(compile_times, bins=50, color="darkorange", edgecolor="white")
-        ax.set_title(fname.replace("e1_", "").replace(".json", ""))
-        ax.set_xlabel("Compilation time (ms)")
-        ax.set_ylabel("Count")
-        ax.axvline(statistics.median(compile_times), color="red", linestyle="--", label="median")
-        ax.legend()
-    for idx in range(n_files, rows * cols):
-        axes[idx // cols, idx % cols].set_visible(False)
-    fig.suptitle("Compilation Time Distributions", fontsize=14, fontweight="bold")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    comp_plot_path = output_dir / "e1_compile_time_distributions.png"
+
+def plot_pooled_compile_distribution(all_compile_times, output_dir: Path):
+    """Plot a single histogram of all pooled compilation times."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(all_compile_times, bins=100, color="darkorange", edgecolor="white")
+    ax.set_title("Pooled Compilation Time Distribution")
+    ax.set_xlabel("Compilation time (ms)")
+    ax.set_ylabel("Count")
+    ax.axvline(statistics.median(all_compile_times), color="red", linestyle="--", label="median")
+    ax.legend()
+    plt.tight_layout()
+    comp_plot_path = output_dir / "e1_compile_time_distribution.png"
     fig.savefig(comp_plot_path, dpi=150)
     plt.close(fig)
     print(f"Saved compile-time plot: {comp_plot_path}")
@@ -96,6 +95,7 @@ def main():
 
     n = 1686
     files_data = []
+    all_compile_times = []
 
     for filepath in files:
         print(f"\nProcessing: {filepath.name}")
@@ -108,7 +108,6 @@ def main():
             continue
 
         run_times = []
-        compile_times = []
 
         for r in results[:n]:
             run_times.append(float(r.get("TotalDuration", 0.0)))
@@ -116,14 +115,17 @@ def main():
                 float(k.get("CompilationOverhead", 0.0))
                 for k in r.get("ComputationResults", [])
             ]
-            compile_times.append(sum(comp_overheads))
+            all_compile_times.append(sum(comp_overheads))
 
         summarize("  Run time per measurement (TotalDuration)", run_times)
-        summarize("  Compilation time per measurement (sum of CompilationOverhead)", compile_times)
-        files_data.append((filepath.name, run_times, compile_times))
+        files_data.append((filepath.name, run_times))
 
     if files_data:
-        plot_distributions(files_data, Path("out"))
+        plot_run_time_distributions(files_data, Path("output"))
+
+    if all_compile_times:
+        summarize("Pooled compilation time per measurement (sum of CompilationOverhead)", all_compile_times)
+        plot_pooled_compile_distribution(all_compile_times, Path("output"))
 
 
 if __name__ == "__main__":

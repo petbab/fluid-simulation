@@ -26,7 +26,7 @@ def extract_name(filepath: str) -> str:
         basename = basename[:-11]
     elif basename.endswith(".json"):
         basename = basename[:-5]
-    return basename
+    return basename.replace('_', '-')
 
 
 def analyze_file(filepath: str, eps: float) -> dict:
@@ -59,15 +59,15 @@ def analyze_file(filepath: str, eps: float) -> dict:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: python count_near_best.py <eps> [file_pattern] [output.csv]")
+        print("Usage: python count_min_steps.py <eps> [file_pattern] [output.csv]")
         print("  eps         : float, e.g. 0.1 for 10%")
         print("  file_pattern: glob pattern for e1 files (default: measurements/runs/e1*)")
-        print("  output.csv  : output CSV path (default: analysis/near_best.csv)")
+        print("  output.csv  : output CSV path (default: analysis/min_steps.csv)")
         sys.exit(1)
 
     eps = float(sys.argv[1])
     pattern = sys.argv[2] if len(sys.argv) > 2 else "measurements/runs/e1*"
-    out_path = sys.argv[3] if len(sys.argv) > 3 else "analysis/near_best.csv"
+    out_path = sys.argv[3] if len(sys.argv) > 3 else "analysis/min_steps.csv"
 
     files = glob.glob(pattern)
     if not files:
@@ -78,12 +78,12 @@ def main() -> None:
 
     with open(out_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["scenario", "best", "average", "percentage", "min-steps"])
+        writer.writerow(["Scenario", "Best", "Average", "Percentage", "Min steps"])
         for row in rows:
             writer.writerow([
                 row["scenario"],
-                f"{row['best']:.6f}",
-                f"{row['average']:.6f}",
+                f"{row['best']:.3f}",
+                f"{row['average']:.3f}",
                 f"{row['percentage']:.2f}",
                 f"{row['min_steps']}",
             ])
