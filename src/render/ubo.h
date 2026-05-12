@@ -4,14 +4,21 @@
 #include <debug.h>
 
 
+/**
+ * @brief Uniform Buffer Object (UBO) wrapper.
+ *
+ * Manages a GPU uniform buffer with std140-compatible data.
+ * @tparam DATA The data type stored in the UBO.
+ */
 template<class DATA>
 class UBO {
 public:
-    static constexpr unsigned CAMERA_UBO_BINDING = 0;
-    static constexpr unsigned MODEL_UBO_BINDING = 1;
-    static constexpr unsigned LIGHTS_UBO_BINDING = 2;
-    static constexpr unsigned MATERIAL_UBO_BINDING = 3;
+    static constexpr unsigned CAMERA_UBO_BINDING = 0;    ///< Binding index for camera data.
+    static constexpr unsigned MODEL_UBO_BINDING = 1;     ///< Binding index for model data.
+    static constexpr unsigned LIGHTS_UBO_BINDING = 2;    ///< Binding index for light data.
+    static constexpr unsigned MATERIAL_UBO_BINDING = 3;  ///< Binding index for material data.
 
+    /** @brief Allocates the GPU uniform buffer. */
     UBO() {
         glCreateBuffers(1, &ubo);
         glNamedBufferStorage(ubo, sizeof(DATA), nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -34,11 +41,15 @@ public:
         glCheckError();
     }
 
+    /**
+     * @brief Binds the UBO to a uniform buffer binding point.
+     * @param binding Binding index.
+     */
     void bind(unsigned binding) const {
         glBindBufferBase(GL_UNIFORM_BUFFER, binding, ubo);
         glCheckError();
     }
 
 private:
-    unsigned ubo = 0;
+    unsigned ubo = 0;  ///< OpenGL buffer identifier.
 };

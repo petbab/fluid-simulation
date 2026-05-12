@@ -8,12 +8,28 @@
 #include <cuda/SPH/sph.cuh>
 
 
+/**
+ * @brief Concept requiring a type to derive from FluidSimulator.
+ * @tparam S The type to check.
+ */
 template<class S>
 concept Simulator = std::is_base_of_v<FluidSimulator, S>;
 
+/**
+ * @brief Renderable fluid object backed by a simulator.
+ *
+ * Manages instanced geometry for fluid particles and delegates simulation
+ * updates to the underlying simulator. Supports double-buffered geometry
+ * for CUDA-based simulators that write directly into GPU buffers.
+ * @tparam S Simulator type, must satisfy the Simulator concept.
+ */
 template<Simulator S>
 class Fluid : public Object {
 public:
+    /**
+     * @brief Constructs the fluid object and initializes geometry.
+     * @param opts Simulation options passed to the simulator.
+     */
     Fluid(const FluidSimulator::opts_t &opts) : simulator{std::make_unique<S>(opts)} {
         shader = AssetManager::make<Shader>(
             "instanced_ball_shader",
@@ -34,6 +50,10 @@ public:
                 geometry_a->get_instance_vbo(), geometry_b->get_instance_vbo());
     }
 
+    /**
+     * @brief Advances the simulation and swaps geometry buffers.
+     * @param delta Time step in seconds.
+     */
     void update(float delta) override {
         simulator->update(delta);
 
@@ -45,6 +65,11 @@ public:
         geometry = geometry_a;
     }
 
+    /**
+     * @brief Renders the fluid particles.
+     *
+     * Sets simulator-specific uniforms and delegates visualization to the simulator.
+     */
     void render() const override {
         shader->use();
         shader->set_uniform("fluid_particles", simulator->get_fluid_particles());
@@ -53,6 +78,9 @@ public:
         Object::render();
     }
 
+    /**
+     * @brief Resets the simulation and geometry to initial state.
+     */
     void reset() {
         simulator->reset();
 
@@ -64,6 +92,7 @@ public:
         geometry_b->update_instance_data(pos);
     }
 
+    /** @brief Toggles rendering of boundary particles. */
     void toggle_show_boundary() { show_boundary = !show_boundary; }
 
 private:
@@ -72,9 +101,9 @@ private:
     const S& get_simulator() const { return dynamic_cast<const S&>(*simulator); }
     S& get_simulator() { return dynamic_cast<S&>(*simulator); }
 
-    InstancedGeometry *geometry_a, *geometry_b;
-    std::unique_ptr<FluidSimulator> simulator;
-    bool show_boundary = false;
+    InstancedGeometry *geometry_a, *geometry_b;  ///< Double-buffered instanced geometries.
+    std::unique_ptr<FluidSimulator> simulator;   ///< The fluid simulator instance.
+    bool show_boundary = false;                  ///< Whether to render boundary particles.
 
     friend class GUI;
 };
