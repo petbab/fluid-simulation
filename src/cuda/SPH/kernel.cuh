@@ -5,10 +5,22 @@
 #endif
 
 
+/**
+ * @brief Computes normalized distance q = |r| / support_radius.
+ * @param r Distance vector.
+ * @param support_radius Support radius.
+ * @return Normalized distance.
+ */
 __device__ inline float r_to_q(float4 r, float support_radius) {
     return length(r) / support_radius;
 }
 
+/**
+ * @brief Cubic spline kernel W(q).
+ * @param q Normalized distance.
+ * @param support_radius Support radius.
+ * @return Kernel value.
+ */
 __device__ inline float cubic_spline(float q, float support_radius) {
     const float factor = 8.f / (PI * support_radius * support_radius * support_radius);
     if (q <= 0.5f)
@@ -18,7 +30,15 @@ __device__ inline float cubic_spline(float q, float support_radius) {
     return 0.f;
 }
 
-// Returns coefficient that should be multiplied with the original vector to obtain the gradient.
+/**
+ * @brief Gradient coefficient for the cubic spline kernel.
+ *
+ * Returns the scalar coefficient that should be multiplied with the
+ * original vector to obtain the gradient.
+ * @param q Normalized distance.
+ * @param support_radius Support radius.
+ * @return Gradient coefficient.
+ */
 __device__ __host__ inline float cubic_spline_grad(float q, float support_radius) {
     if (q < 1.e-9 || q > 1.)
         return 0.f;
@@ -31,6 +51,12 @@ __device__ __host__ inline float cubic_spline_grad(float q, float support_radius
     return -grad_factor * (1.f - q) * (1.f - q) / (support_radius * r_len);
 }
 
+/**
+ * @brief Spiky kernel W(q).
+ * @param q Normalized distance.
+ * @param support_radius Support radius.
+ * @return Kernel value.
+ */
 __device__ __host__ inline float spiky(float q, float support_radius) {
     if (q > 1.f)
         return 0.f;
@@ -39,7 +65,15 @@ __device__ __host__ inline float spiky(float q, float support_radius) {
     return factor * powf(1 - q, 3.f);
 }
 
-// Returns coefficient that should be multiplied with the original vector to obtain the gradient.
+/**
+ * @brief Gradient coefficient for the spiky kernel.
+ *
+ * Returns the scalar coefficient that should be multiplied with the
+ * original vector to obtain the gradient.
+ * @param q Normalized distance.
+ * @param support_radius Support radius.
+ * @return Gradient coefficient.
+ */
 __device__ __host__ inline float spiky_grad(float q, float support_radius) {
     if (q < 1.e-9 || q > 1.)
         return 0.f;
@@ -50,6 +84,12 @@ __device__ __host__ inline float spiky_grad(float q, float support_radius) {
     return factor * (1.f - q) * (1.f - q) / (support_radius * r_len);
 }
 
+/**
+ * @brief Cohesion kernel W(q) for surface tension.
+ * @param q Normalized distance.
+ * @param support_radius Support radius.
+ * @return Kernel value.
+ */
 __device__ __host__ inline float cohesion(float q, float support_radius) {
     const float factor = 32.f / (PI * support_radius*support_radius*support_radius);
 

@@ -6,8 +6,18 @@
 #include "cuda/nsearch/nsearch.cuh"
 
 
+/**
+ * @brief KTT tuner for the compute_boundary_mass kernel.
+ *
+ * Computes boundary particle masses using the SPH density summation
+ * with a fixed block size parameter.
+ */
 class ComputeBoundaryMassTuner final : public Tuner {
 public:
+    /**
+     * @brief Constructs the tuner and registers the kernel definition.
+     * @param boundary_particles Number of boundary particles.
+     */
     explicit ComputeBoundaryMassTuner(unsigned boundary_particles) {
         assert(tuner != nullptr);
 
@@ -36,6 +46,15 @@ public:
         results.clear();
     }
 
+    /**
+     * @brief Runs the boundary mass computation kernel.
+     * @param positions_dev_ptr Device pointer to boundary positions.
+     * @param masses_dev_ptr Device pointer to output masses.
+     * @param boundary_n Number of boundary particles.
+     * @param boundary_n_search Device neighbor search structure.
+     * @param tune If true, runs the KTT tuner.
+     * @return Kernel result from KTT.
+     */
     ktt::KernelResult run(
         float4* positions_dev_ptr, float* masses_dev_ptr, unsigned boundary_n,
         NSearch* boundary_n_search, bool tune

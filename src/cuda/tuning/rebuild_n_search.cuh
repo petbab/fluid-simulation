@@ -5,8 +5,19 @@
 #include "cuda/nsearch/nsearch.cuh"
 
 
+/**
+ * @brief KTT tuner for the rebuild_n_search kernel.
+ *
+ * Rebuilds the spatial hash table for neighbor search from particle positions.
+ * Supports both fluid and boundary particle configurations.
+ */
 class RebuildNSearchTuner final : public Tuner {
 public:
+    /**
+     * @brief Constructs the tuner and registers the kernel definition.
+     * @param total_particles Number of particles.
+     * @param boundary If true, configures for boundary particles.
+     */
     explicit RebuildNSearchTuner(unsigned total_particles, bool boundary = false) {
         assert(tuner != nullptr);
 
@@ -46,6 +57,14 @@ public:
         results.clear();
     }
 
+    /**
+     * @brief Runs the rebuild neighbor search kernel.
+     * @param dev_n_search Device neighbor search structure.
+     * @param particle_positions Device pointer to particle positions.
+     * @param total_particles Number of particles.
+     * @param tune If true, runs the KTT tuner.
+     * @return Kernel result from KTT.
+     */
     ktt::KernelResult run(NSearch *dev_n_search, float4 *particle_positions, unsigned total_particles, bool tune) {
         std::vector args{
             tuner->AddArgumentVector<NSearch>(dev_n_search, sizeof(NSearch),

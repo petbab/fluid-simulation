@@ -6,8 +6,21 @@
 #include "debug.h"
 
 
+/**
+ * @brief RAII wrapper for a GLFW window and OpenGL context.
+ *
+ * Creates a GLFW window, initializes GLAD, and optionally sets up
+ * a debug context in DEBUG builds.
+ */
 class Window {
 public:
+    /**
+     * @brief Constructs and initializes the window.
+     * @param width Initial width in pixels.
+     * @param height Initial height in pixels.
+     * @param title Window title.
+     * @throws std::runtime_error if window or GLAD creation fails.
+     */
     Window(int width, int height, const char *title) {
         window = glfwCreateWindow(width, height, title, nullptr, nullptr);
         if (!window)
@@ -30,20 +43,23 @@ public:
 #endif
     }
 
+    /** @return Current window width in pixels. */
     int width() const {
         int w;
         glfwGetWindowSize(window, &w, nullptr);
         return w;
     }
 
+    /** @return Current window height in pixels. */
     int height() const {
         int h;
         glfwGetWindowSize(window, nullptr, &h);
         return h;
     }
 
+    /** @return Raw GLFW window handle. */
     GLFWwindow* get() { return window; }
 
 private:
-    GLFWwindow *window;
+    GLFWwindow *window;  ///< GLFW window handle.
 };

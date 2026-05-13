@@ -5,6 +5,12 @@
 #include <stdexcept>
 
 
+/**
+ * @brief RAII wrapper for GLFW initialization and termination.
+ *
+ * Constructs glfwInit() and destroys glfwTerminate().
+ * Configures an OpenGL 4.5 core profile context.
+ */
 class GLFW {
 public:
     GLFW() {

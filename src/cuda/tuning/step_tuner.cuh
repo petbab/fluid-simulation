@@ -9,8 +9,23 @@
 #include "cuda/nsearch/nsearch.h"
 
 
+/**
+ * @brief KTT composite tuner for a full SPH simulation step.
+ *
+ * Encapsulates all kernels required for one simulation step:
+ * rebuild neighbor search, count/fill neighbors, compute density/pressure,
+ * compute pressure acceleration and normals, compute non-pressure acceleration,
+ * and update positions. Supports auto-tuning of block sizes, unroll factors,
+ * and neighbor search strategies.
+ */
 class StepTuner final : public Tuner {
 public:
+    /**
+     * @brief Constructs the step tuner and registers all kernel definitions.
+     * @param fluid_particles Number of fluid particles.
+     * @param boundary_particles Number of boundary particles.
+     * @param external_force Optional external force macro name.
+     */
     StepTuner(unsigned fluid_particles, unsigned boundary_particles,
               std::string external_force = {})
         : fluid_n(fluid_particles),
@@ -122,8 +137,27 @@ public:
         cudaCheckError();
     }
 
+    /** @brief Callback type for sorting particle data before the step. */
     using sort_particle_data_t = std::function<void(float)>;
 
+    /**
+     * @brief Runs one full simulation step.
+     * @param sort Callback to sort particles by Morton code.
+     * @param boundary_n_search Device boundary neighbor search (or nullptr).
+     * @param positions Device particle positions.
+     * @param velocities Device particle velocities.
+     * @param densities Device density array.
+     * @param pressures Device pressure array.
+     * @param pressure_accel Device pressure acceleration array.
+     * @param non_pressure_accel Device non-pressure acceleration array.
+     * @param normals Device normal array.
+     * @param boundary_mass Device boundary mass array (or nullptr).
+     * @param p_delta Pressure time step.
+     * @param np_delta Non-pressure time step.
+     * @param bb Bounding box for collision handling.
+     * @param tune If true, runs the KTT tuner.
+     * @return Kernel result from KTT.
+     */
     ktt::KernelResult run(
         sort_particle_data_t sort,
         NSearch* boundary_n_search,
@@ -351,16 +385,16 @@ private:
         return id;
     }
     
-    unsigned fluid_n, boundary_n, total_n;
-    bool has_boundary;
+    unsigned fluid_n, boundary_n, total_n;  ///< Particle counts.
+    bool has_boundary;                      ///< Whether boundary particles exist.
 
-    const std::uint64_t min_table_size;
-    std::map<std::uint64_t, std::unique_ptr<NSearchWrapper>> fluid_n_search_map;
-    NSearch *dev_fluid_n_search = nullptr;
+    const std::uint64_t min_table_size;     ///< Minimum hash table size.
+    std::map<std::uint64_t, std::unique_ptr<NSearchWrapper>> fluid_n_search_map;  ///< Pre-allocated neighbor searches.
+    NSearch *dev_fluid_n_search = nullptr;  ///< Device fluid neighbor search.
 
-    NeighborList neighbor_list;
+    NeighborList neighbor_list;             ///< GPU neighbor list storage.
 
-    sort_particle_data_t sort_particle_data;
+    sort_particle_data_t sort_particle_data;  ///< Sort callback.
 
     ktt::KernelDefinitionId def_rebuild_n_search = 0,
                             def_compute_rho_p = 0,
@@ -370,5 +404,5 @@ private:
                             def_fill_neighbors = 0,
                             def_update_positions = 0;
 
-    std::vector<ktt::ArgumentId> owned_args;
+    std::vector<ktt::ArgumentId> owned_args;  ///< Argument IDs owned per run.
 };

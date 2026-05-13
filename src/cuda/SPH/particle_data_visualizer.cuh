@@ -10,13 +10,30 @@
 
 namespace detail_ {
 
+/**
+ * @brief Typed SSBO visualizer for particle data.
+ *
+ * Manages an SSBO and CUDA-GL interop buffer for a specific data type
+ * (float, unsigned, or float4), and configures shader uniforms accordingly.
+ * @tparam T Data type stored in the SSBO.
+ */
 template<typename T>
 class TypeVisualizer {
 public:
+    /**
+     * @brief Constructs the type visualizer.
+     * @param total_particles Total number of particles (fluid + boundary).
+     * @param fluid_particles Number of fluid particles.
+     */
     explicit TypeVisualizer(unsigned total_particles, unsigned fluid_particles) : ssbo{total_particles},
         cuda_gl_buffer{ssbo.get_id(), cudaGraphicsRegisterFlagsWriteDiscard},
         total_particles{total_particles}, fluid_particles{fluid_particles} {}
 
+    /**
+     * @brief Configures shader uniforms for visualization.
+     * @param shader Shader to configure.
+     * @param visualize_boundary If true, visualizes boundary particles.
+     */
     void visualize(Shader* shader, bool visualize_boundary) {
         shader->use();
 
@@ -40,6 +57,13 @@ public:
         shader->set_uniform("visualize_boundary", visualize_boundary);
     }
 
+    /**
+     * @brief Configures shader uniforms with normalization.
+     * @param shader Shader to configure.
+     * @param visualize_boundary If true, visualizes boundary particles.
+     * @param min_value Minimum value for normalization.
+     * @param max_value Maximum value for normalization.
+     */
     void visualize(Shader* shader, bool visualize_boundary, float min_value, float max_value) {
         visualize(shader, visualize_boundary);
         shader->set_uniform("norm", true);
@@ -47,6 +71,11 @@ public:
         shader->set_uniform("max_value", max_value);
     }
 
+    /**
+     * @brief Copies particle data from device to the SSBO.
+     * @param data Device pointer to source data.
+     * @param boundary If true, copies boundary particles; otherwise fluid particles.
+     */
     void update(const T* data, bool boundary) {
         write_data(data, boundary ? total_particles - fluid_particles : fluid_particles);
     }
@@ -59,14 +88,20 @@ private:
         cudaCheckError();
     }
 
-    SSBO<T> ssbo;
-    CUDAGLBuffer cuda_gl_buffer;
-    unsigned total_particles, fluid_particles;
+    SSBO<T> ssbo;                ///< Shader storage buffer object.
+    CUDAGLBuffer cuda_gl_buffer; ///< CUDA-GL interop buffer.
+    unsigned total_particles, fluid_particles;  ///< Particle counts.
 };
 
 }
 
 
+/**
+ * @brief Visualizes particle data by mapping it to SSBOs for shader rendering.
+ *
+ * Supports multiple visualization modes (density, pressure, velocity, etc.)
+ * and automatically configures shader uniforms.
+ */
 class ParticleDataVisualizer {
     template <class T>
     static const T* dev_ptr(const thrust::device_vector<T>& vec) {
@@ -74,12 +109,19 @@ class ParticleDataVisualizer {
     }
 
 public:
+    /**
+     * @brief Constructs the visualizer.
+     * @param data Pointer to particle data.
+     * @param total_particles Total number of particles.
+     * @param fluid_particles Number of fluid particles.
+     */
     explicit ParticleDataVisualizer(const ParticleData *data, unsigned total_particles, unsigned fluid_particles)
         : particle_data(data), total_particles(total_particles), fluid_particles(fluid_particles),
         float_visualizer{total_particles, fluid_particles},
         uint_visualizer{total_particles, fluid_particles},
         vec_visualizer{total_particles, fluid_particles} {}
 
+    /** @brief Available visualization modes. */
     enum class mode_t {
         pretty,
         none,
@@ -93,14 +135,16 @@ public:
         boundary_indices,
     };
 
+    /** @brief Mode specification (normalization range). */
     struct mode_spec_t {
-        bool normalize;
-        float min, max;
+        bool normalize;  ///< Whether to normalize values.
+        float min, max;  ///< Normalization range.
     };
 
-    static const std::map<mode_t, mode_spec_t> modes;
-    static const std::vector<const char*> mode_strings;
+    static const std::map<mode_t, mode_spec_t> modes;      ///< Mode specifications.
+    static const std::vector<const char*> mode_strings;    ///< Human-readable mode names.
 
+    /** @brief Updates SSBO data based on the current visualization mode. */
     void update() {
         switch (mode) {
         case mode_t::pretty:
@@ -137,6 +181,10 @@ public:
         }
     }
 
+    /**
+     * @brief Configures shader uniforms for the current visualization mode.
+     * @param shader Shader to configure.
+     */
     void visualize(Shader* shader) {
         switch (mode) {
         case mode_t::pretty:
@@ -170,6 +218,10 @@ public:
         }
     }
 
+    /**
+     * @brief Sets the visualization mode and updates data.
+     * @param m New mode.
+     */
     void set_mode(mode_t m) {
         mode = m;
         const auto &spec = modes.at(m);
@@ -197,14 +249,14 @@ private:
     bool has_boundary() const { return total_particles > fluid_particles; }
 
 public:
-    mode_t mode = mode_t::none;
-    bool normalize = false;
-    float min = 0.f, max = 0.f;
+    mode_t mode = mode_t::none;  ///< Current visualization mode.
+    bool normalize = false;      ///< Whether normalization is active.
+    float min = 0.f, max = 0.f;  ///< Current normalization range.
 
 private:
-    const ParticleData *particle_data;
-    unsigned total_particles, fluid_particles;
-    detail_::TypeVisualizer<float> float_visualizer;
-    detail_::TypeVisualizer<unsigned> uint_visualizer;
-    detail_::TypeVisualizer<float4> vec_visualizer;
+    const ParticleData *particle_data;  ///< Source particle data.
+    unsigned total_particles, fluid_particles;  ///< Particle counts.
+    detail_::TypeVisualizer<float> float_visualizer;     ///< Float data visualizer.
+    detail_::TypeVisualizer<unsigned> uint_visualizer;   ///< Unsigned data visualizer.
+    detail_::TypeVisualizer<float4> vec_visualizer;      ///< Vector data visualizer.
 };
