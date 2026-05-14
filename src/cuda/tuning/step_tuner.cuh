@@ -133,6 +133,8 @@ public:
                 params.emplace_back(pair.GetName(), uint64_t{min_table_size}); // override
             else if (pair.GetName() == "MIN_BOUNDARY_TABLE_SIZE")
                 params.emplace_back(pair.GetName(), uint64_t{std::bit_ceil(boundary_n) / 2}); // override
+            else if (pair.GetName() == "KERNEL_DIR")
+                params.emplace_back(pair.GetName(), cfg::tuned_kernels_dir); // override
             else
                 params.emplace_back(pair.GetName(), pair.GetValue());
         }
