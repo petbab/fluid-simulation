@@ -78,13 +78,13 @@ def main() -> None:
 
     with open(out_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Scenario", "Best", "Average", "Percentage", "Min steps"])
+        writer.writerow(["Scenario", "Best", "Average", "Well-performing", "Min steps"])
         for row in rows:
             writer.writerow([
                 row["scenario"],
                 f"{row['best']:.3f}",
                 f"{row['average']:.3f}",
-                f"{row['percentage']:.2f}",
+                f"{row['count']}",
                 f"{row['min_steps']}",
             ])
 

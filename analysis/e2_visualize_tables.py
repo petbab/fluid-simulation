@@ -65,7 +65,7 @@ def plot_heatmap(labels: list[str], data: np.ndarray, title: str, out_path: Path
     for i in range(len(labels)):
         for j in range(len(labels)):
             val = data[i, j]
-            text_color = "white" if im.norm(val) < 0.4 or im.norm(val) > 0.9 else "black"
+            text_color = "white" if im.norm(val) < 0.4 else "black"
             ax.text(j, i, f"{val:.2f}", ha="center", va="center", color=text_color, fontsize=8)
 
     fig.tight_layout()

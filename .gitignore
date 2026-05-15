@@ -5,6 +5,7 @@ vcpkg_installed/
 cmake/CMakeUserConfig.cmake
 results/
 figs/
+imgui.ini
 
 # ==== Gitignore Template ====
 # Prerequisites
