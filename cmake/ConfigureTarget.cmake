@@ -11,6 +11,7 @@ function(configure_target TARGET)
             ${KTT_LIBRARY}
             Open3D::Open3D
             imgui::imgui
+            nlohmann_json::nlohmann_json
     )
     target_include_directories(${TARGET} PUBLIC
             ${KTT_INCLUDE_DIR}

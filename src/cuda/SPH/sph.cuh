@@ -42,6 +42,11 @@ public:
 
     void reset() override;
 
+    void set_result_out(std::optional<std::filesystem::path> out);
+    void set_frozen_config(ktt::KernelConfiguration cfg);
+    bool was_scheduled_step() const { return is_scheduled(STEP_TUNER); }
+    std::pair<float, float> compute_state_metrics() const;
+
 private:
     void init_boundary();
     void build_boundary_n_search(float4* positions_dev_ptr);
@@ -77,4 +82,5 @@ private:
     float tuning_budget;
 
     friend class GUI;
+    friend class Application;
 };

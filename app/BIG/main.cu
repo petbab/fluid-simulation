@@ -6,20 +6,24 @@
 #include <exception>
 
 
-int main() {
+int main(int argc, char** argv) {
 #ifndef DEBUG
     try {
 #endif
 
+    RunOptions opts = parse_cli(argc, argv);
+
     // Initialize GLFW
     GLFW glfw{};
+    if (opts.headless)
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     Window window{800, 600, APP_NAME};
 
     cuda_init();
 
     {
-        BIGApp application{window.get(), window.width(), window.height(), APP_NAME};
+        BIGApp application{window.get(), window.width(), window.height(), APP_NAME, opts};
         application.init();
         application.run();
 

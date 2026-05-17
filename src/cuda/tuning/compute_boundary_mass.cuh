@@ -23,6 +23,7 @@ public:
 
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
         tuner->AddParameter<std::uint64_t>(kernel, "TABLE_SIZE", {std::bit_ceil(boundary_particles) / 2});
+        tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE", {std::bit_ceil(boundary_particles) / 2});
 
         tuner->AddParameter(kernel, "multiply_block_size", std::vector<uint64_t>{128});
         tuner->AddThreadModifier(kernel, {definition}, ktt::ModifierType::Local, ktt::ModifierDimension::X, "multiply_block_size",

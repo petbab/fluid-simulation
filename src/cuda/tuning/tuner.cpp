@@ -4,6 +4,9 @@
 #include <cuda.h>
 #include <filesystem>
 #include "config.h"
+#include <Api/Searcher/McmcSearcher.h>
+#include <Api/Searcher/RandomSearcher.h>
+#include <Api/Searcher/DeterministicSearcher.h>
 
 
 static std::string result_name() {
@@ -18,11 +21,17 @@ Tuner::Tuner() : tuner{instance()} {}
 Tuner::~Tuner() {
     if (searched_count > 0) {
         print_best_config(std::cout);
-        tuner->SaveResults(results, cfg::results_dir / result_name(), ktt::OutputFormat::JSON);
+        if (results_out)
+            tuner->SaveResults(results, *results_out, ktt::OutputFormat::JSON);
+        else
+            tuner->SaveResults(results, cfg::results_dir / result_name(), ktt::OutputFormat::JSON);
     }
 }
 
 std::pair<int, int> Tuner::tuning_stats() const {
+    if (frozen_config)
+        return {1, 1};
+
     if (searched_count == 0)
         return {0, 0};
 
@@ -37,6 +46,11 @@ void Tuner::clear_configuration_data() {
 }
 
 ktt::KernelResult Tuner::run(bool tune) {
+    if (frozen_config) {
+        auto res = tuner->Run(kernel, *frozen_config, {});
+        results.push_back(res);
+        return res;
+    }
     ktt::KernelResult res;
     if (tune || searched_count == 0) {
         ++searched_count;
@@ -49,6 +63,36 @@ ktt::KernelResult Tuner::run(bool tune) {
     return res;
 }
 
+void Tuner::set_searcher(RunOptions::Searcher s) {
+    std::unique_ptr<ktt::Searcher> searcher;
+    switch (s) {
+    case RunOptions::Searcher::Mcmc:
+        searcher = std::make_unique<ktt::McmcSearcher>();
+        break;
+    case RunOptions::Searcher::Random:
+        searcher = std::make_unique<ktt::RandomSearcher>();
+        break;
+    case RunOptions::Searcher::Full:
+        searcher = std::make_unique<ktt::DeterministicSearcher>();
+        break;
+    }
+    tuner->SetSearcher(kernel, std::move(searcher));
+}
+
+void Tuner::set_results_out(std::optional<std::filesystem::path> out) {
+    results_out = out;
+}
+
+void Tuner::set_frozen_config(ktt::KernelConfiguration cfg) {
+    searched_count = 1;
+    frozen_config = std::move(cfg);
+}
+
+void Tuner::clear_frozen_config() {
+    searched_count = 0;
+    frozen_config.reset();
+}
+
 void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {
     tuner->SetArguments(definition, new_args);
     for (const auto& arg : args)
@@ -59,7 +103,7 @@ void Tuner::update_args(const std::vector<ktt::ArgumentId>& new_args) {
 void Tuner::print_best_config(std::ostream& out) const {
     assert(tuner != nullptr);
 
-    auto bestConfig = tuner->GetBestConfiguration(kernel);
+    auto bestConfig = frozen_config ? *frozen_config : tuner->GetBestConfiguration(kernel);
     // out << "Best configuration for " << name << ":\n";
 
     for (const auto& param : bestConfig.GetPairs()) {

@@ -6,6 +6,7 @@
 #include <render/light.h>
 #include <cuda/SPH/sph.cuh>
 #include "gui.cuh"
+#include "cli.h"
 
 
 class Application {
@@ -13,7 +14,7 @@ public:
     using FluidSim = CUDASPHSimulator;
     static constexpr float DEFAULT_TIME_STEP = 0.01;
 
-    Application(GLFWwindow *window, int width, int height, const std::string& name);
+    Application(GLFWwindow *window, int width, int height, const std::string& name, const RunOptions& opts = {});
     virtual ~Application() = default;
 
     void init();
@@ -36,6 +37,9 @@ protected:
 
     void process_keyboard_input(float delta);
 
+    void run_headless();
+    bool stop_reached(int step, double sim_time, std::chrono::steady_clock::time_point t0) const;
+
     GLFWwindow *window;
     std::unique_ptr<GUI> gui;
 
@@ -47,4 +51,7 @@ protected:
     glm::vec2 last_mouse_pos{0.f};
     bool paused = true;
     bool captured_mouse = false;
+
+    RunOptions opts;
+    std::string app_name;
 };

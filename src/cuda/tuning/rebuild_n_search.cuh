@@ -39,6 +39,7 @@ public:
 
         tuner->AddParameter<std::string>(kernel, "KERNEL_DIR", {cfg::tuned_kernels_dir});
         tuner->AddParameter<std::uint64_t>(kernel, "TABLE_SIZE", {std::bit_ceil(total_particles) / 2});
+        tuner->AddParameter<std::uint64_t>(kernel, "BOUNDARY_TABLE_SIZE", {std::bit_ceil(total_particles) / 2});
     }
 
     ~RebuildNSearchTuner() override {

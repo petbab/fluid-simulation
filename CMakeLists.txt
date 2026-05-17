@@ -48,6 +48,7 @@ find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 find_package(CUDAToolkit REQUIRED)
 find_package(Open3D REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(nlohmann_json 3.12.0 REQUIRED)
 
 # CompactNSearch
 include(FetchContent)

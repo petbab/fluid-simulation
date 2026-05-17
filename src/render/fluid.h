@@ -66,11 +66,12 @@ public:
 
     void toggle_show_boundary() { show_boundary = !show_boundary; }
 
-private:
-    const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
-
+public:
     const S& get_simulator() const { return dynamic_cast<const S&>(*simulator); }
     S& get_simulator() { return dynamic_cast<S&>(*simulator); }
+
+private:
+    const InstancedGeometry* inst_geom() const { return dynamic_cast<const InstancedGeometry*>(geometry); }
 
     InstancedGeometry *geometry_a, *geometry_b;
     std::unique_ptr<FluidSimulator> simulator;
