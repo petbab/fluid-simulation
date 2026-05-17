@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run from within analysis/
 
 STATES=(dragon_settled dragon_falling fountain_active vortex_active \
         tilting_chaotic surface_settled BIG_falling BIG_settled)
@@ -15,9 +16,9 @@ declare -A BIN=(
 
 for s in "${STATES[@]}"; do
     echo "Tuning ${s}..."
-    out="measurements/runs/e1_${s}"
-    ./build/bin/${BIN[$s]} --headless \
-      --snapshot-load measurements/snapshots/${s}.sphs \
+    out="../measurements/runs/e1_${s}"
+    ../build/bin/${BIN[$s]} --headless \
+      --snapshot-load ../measurements/snapshots/${s}.sphs \
       --tuning-budget 1.0 \
       --warmup-iters 50 --fixed-dt 0.01 \
       --stop iters=1700 \

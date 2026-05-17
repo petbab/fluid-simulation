@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visualize analysis/out/ tables as colored heatmaps."""
+"""Visualize output/ tables as colored heatmaps."""
 
 import csv
 from pathlib import Path
@@ -10,8 +10,8 @@ import numpy as np
 
 matplotlib.use("Agg")
 
-OUT_DIR = Path(__file__).with_suffix("").parent / "out"
-PLOT_DIR = OUT_DIR / "plots"
+OUT_DIR = Path("output")
+PLOT_DIR = OUT_DIR
 
 
 def load_csv(path: Path) -> tuple[list[str], np.ndarray]:

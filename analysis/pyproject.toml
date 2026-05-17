@@ -1,7 +1,7 @@
 [project]
 name = "analysis"
 version = "0.1.0"
-description = "Add your description here"
+description = "Analysis scripts for fluid simulation tuning results"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,3 +10,16 @@ dependencies = [
     "pandas>=3.0.2",
     "tabulate>=0.10.0",
 ]
+
+[project.scripts]
+analyze-results = "analyze_results:main"
+compare-configs = "compare_configs:main"
+count-min-best = "count_min_best:main"
+count-min-best-e4-avg = "count_min_best_e4_avg:main"
+e1-runtime-compile-dist = "e1_runtime_compile_dist:main"
+e2-plot-step-times = "e2_plot_step_times:main"
+e2-tables = "e2_tables:main"
+e2-visualize-tables = "e2_visualize_tables:main"
+e3-distributions = "e3_distributions:main"
+e4-comparison = "e4_comparison:main"
+extract-config = "extract_config:main"

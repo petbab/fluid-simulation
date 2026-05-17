@@ -91,7 +91,7 @@ def plot_comparison(e3_medians, e4_medians, output_path: Path | None = None):
 
 
 def main():
-    runs_dir = Path(__file__).parent.parent / "measurements" / "runs"
+    runs_dir = Path("../measurements/runs")
     if not runs_dir.exists():
         print(f"Directory not found: {runs_dir}")
         sys.exit(1)
@@ -106,7 +106,7 @@ def main():
     for s, v in sorted(e4_medians.items()):
         print(f"  {s}: {v:.3f}")
 
-    out_dir = Path(__file__).parent / "output"
+    out_dir = Path("output")
     out_dir.mkdir(exist_ok=True)
     plot_comparison(e3_medians, e4_medians, out_dir / "e4_runtime_comparison.png")
 

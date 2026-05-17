@@ -114,7 +114,7 @@ def plot_stacked_bars(file_medians, all_kernels, output_path: Path | None = None
 
 
 def main():
-    runs_dir = Path(__file__).parent.parent / "measurements" / "runs"
+    runs_dir = Path("../measurements/runs")
     if not runs_dir.exists():
         print(f"Directory not found: {runs_dir}")
         sys.exit(1)
@@ -122,7 +122,7 @@ def main():
     file_medians, all_kernels, files = load_e3_data(runs_dir)
     print(f"Loaded {len(files)} e3 files, kernels: {all_kernels}")
 
-    out_dir = Path(__file__).parent / "output"
+    out_dir = Path("output")
     out_dir.mkdir(exist_ok=True)
     plot_stacked_bars(
         file_medians, all_kernels, out_dir / "e3_kernel_runtime_composition.png"

@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 
 matplotlib.use("Agg")
 
-RUNS_DIR = Path(__file__).parent.parent / "measurements" / "runs"
-PLOT_DIR = Path(__file__).with_suffix("").parent / "out" / "plots"
+RUNS_DIR = Path("../measurements/runs")
+PLOT_DIR = Path("output")
 
 # Add vertical lines at specific steps with annotations.
 # Each entry is a tuple: (step_index, annotation_text)
@@ -81,7 +81,7 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help="Output file path (default: analysis/out/plots/e2_step_times_<tgt>.png)",
+        help="Output file path (default: output/e2_step_times_<tgt>.png)",
     )
     args = parser.parse_args()
 

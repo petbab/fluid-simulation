@@ -53,7 +53,7 @@ def plot_run_time_distributions(files_data, output_dir: Path):
     for idx, (fname, run_times) in enumerate(files_data):
         ax = axes[idx // cols, idx % cols]
         ax.hist(run_times, bins=50, color="steelblue", edgecolor="white")
-        ax.set_title(fname.replace("e1_", "").replace("_rep00.json", ""))
+        ax.set_title(fname.replace("e1_", "").replace(".json", ""))
         ax.set_xlabel("Run time (ms)")
         ax.set_ylabel("Count")
         ax.axvline(statistics.median(run_times), color="red", linestyle="--", label="median")
@@ -120,12 +120,13 @@ def main():
         summarize("  Run time per measurement (TotalDuration)", run_times)
         files_data.append((filepath.name, run_times))
 
+    out_dir = Path("output")
     if files_data:
-        plot_run_time_distributions(files_data, Path("output"))
+        plot_run_time_distributions(files_data, out_dir)
 
     if all_compile_times:
         summarize("Pooled compilation time per measurement (sum of CompilationOverhead)", all_compile_times)
-        plot_pooled_compile_distribution(all_compile_times, Path("output"))
+        plot_pooled_compile_distribution(all_compile_times, out_dir)
 
 
 if __name__ == "__main__":

@@ -148,7 +148,7 @@ def main() -> None:
     print()
 
     # Also write CSVs for easy import elsewhere
-    out_dir = Path("analysis/out")
+    out_dir = Path("output")
     out_dir.mkdir(parents=True, exist_ok=True)
     total_runtime.round(2).to_csv(out_dir / "total_runtime.csv")
     mean_frame.round(4).to_csv(out_dir / "mean_frame_time.csv")

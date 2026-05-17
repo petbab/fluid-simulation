@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 For measurements/runs/e1* files, computes:
-  - scenario name (file name stripped of e1_ and _rep00.json)
+  - scenario name (file name stripped of e1_ and .json)
   - best runtime (minimum within first 1686 of the e1 file)
   - matching runtime from e1 that corresponds to the e4 configuration
   - percentage of results within a given eps threshold of the best
@@ -23,8 +23,6 @@ def extract_name(filepath: str) -> str:
     basename = os.path.basename(filepath)
     if basename.startswith("e1_"):
         basename = basename[3:]
-    if basename.endswith("_rep00.json"):
-        basename = basename[:-11]
     elif basename.endswith(".json"):
         basename = basename[:-5]
     return basename.replace('_', '-')
@@ -34,8 +32,8 @@ def get_e4_path(e1_path: str) -> str:
     """Derive the corresponding e4 file path from an e1 file path."""
     dirname = os.path.dirname(e1_path)
     basename = os.path.basename(e1_path)
-    # e1_<scenario>_rep00.json -> e4_<scenario>.json
-    if basename.startswith("e1_") and basename.endswith("_rep00.json"):
+    # e1_<scenario>.json -> e4_<scenario>.json
+    if basename.startswith("e1_") and basename.endswith(".json"):
         scenario = basename[3:-11]
         return os.path.join(dirname, f"e4_{scenario}.json")
     raise ValueError(f"Unexpected e1 filename format: {basename}")
@@ -110,13 +108,13 @@ def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python count_min_best_e4_avg.py <eps> [file_pattern] [output.csv]")
         print("  eps         : float, e.g. 0.1 for 10%")
-        print("  file_pattern: glob pattern for e1 files (default: measurements/runs/e1*)")
-        print("  output.csv  : output CSV path (default: analysis/min_steps_e4.csv)")
+        print("  file_pattern: glob pattern for e1 files (default: ../measurements/runs/e1*)")
+        print("  output.csv  : output CSV path (default: output/min_steps_e4.csv)")
         sys.exit(1)
 
     eps = float(sys.argv[1])
     pattern = sys.argv[2] if len(sys.argv) > 2 else "../measurements/runs/e1*"
-    out_path = sys.argv[3] if len(sys.argv) > 3 else "min_steps_e4.csv"
+    out_path = sys.argv[3] if len(sys.argv) > 3 else "output/min_steps_e4.csv"
 
     files = glob.glob(pattern)
     if not files:
@@ -130,6 +128,7 @@ def main() -> None:
         except:
             print(fp)
 
+    os.makedirs(os.path.dirname(out_path) if os.path.dirname(out_path) else ".", exist_ok=True)
     with open(out_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Scenario", "Best", "MatchingAvg", "Well-performing", "Min steps"])

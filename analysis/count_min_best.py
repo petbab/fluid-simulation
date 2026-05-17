@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 For measurements/runs/e1* files, computes:
-  - scenario name (file name stripped of e1_ and _rep00.json)
+  - scenario name (file name stripped of e1_ and .json)
   - best runtime (minimum within first 1686)
   - average runtime (mean of all results)
   - percentage of results within a given eps threshold of the best
@@ -22,8 +22,6 @@ def extract_name(filepath: str) -> str:
     basename = os.path.basename(filepath)
     if basename.startswith("e1_"):
         basename = basename[3:]
-    if basename.endswith("_rep00.json"):
-        basename = basename[:-11]
     elif basename.endswith(".json"):
         basename = basename[:-5]
     return basename.replace('_', '-')
@@ -61,13 +59,13 @@ def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python count_min_steps.py <eps> [file_pattern] [output.csv]")
         print("  eps         : float, e.g. 0.1 for 10%")
-        print("  file_pattern: glob pattern for e1 files (default: measurements/runs/e1*)")
-        print("  output.csv  : output CSV path (default: analysis/min_steps.csv)")
+        print("  file_pattern: glob pattern for e1 files (default: ../measurements/runs/e1*)")
+        print("  output.csv  : output CSV path (default: output/min_steps.csv)")
         sys.exit(1)
 
     eps = float(sys.argv[1])
-    pattern = sys.argv[2] if len(sys.argv) > 2 else "measurements/runs/e1*"
-    out_path = sys.argv[3] if len(sys.argv) > 3 else "analysis/min_steps.csv"
+    pattern = sys.argv[2] if len(sys.argv) > 2 else "../measurements/runs/e1*"
+    out_path = sys.argv[3] if len(sys.argv) > 3 else "output/min_steps.csv"
 
     files = glob.glob(pattern)
     if not files:
@@ -76,6 +74,7 @@ def main() -> None:
 
     rows = [analyze_file(fp, eps) for fp in sorted(files)]
 
+    os.makedirs(os.path.dirname(out_path) if os.path.dirname(out_path) else ".", exist_ok=True)
     with open(out_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Scenario", "Best", "Average", "Well-performing", "Min steps"])
