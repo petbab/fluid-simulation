@@ -4,8 +4,6 @@ function(configure_target TARGET)
             OpenGL::GL
             glfw
             glad::glad
-            OpenMP::OpenMP_CXX
-            CompactNSearch
             CUDA::cudart
             CUDA::cuda_driver
             ${KTT_LIBRARY}
@@ -23,7 +21,6 @@ function(configure_target TARGET)
             ROOT_DIR="${CMAKE_SOURCE_DIR}"
             $<$<CONFIG:Debug>:DEBUG>
             USE_DOUBLE_PRECISION=OFF
-            COMPACT_NSEARCH_STATIC_LIB
             GLM_ENABLE_EXPERIMENTAL # Enable #include glm/gtx/...
             $<$<COMPILE_LANGUAGE:CUDA>:GLM_FORCE_CUDA>
             $<$<COMPILE_LANGUAGE:CUDA>:CUDA_VERSION=${CUDA_VERSION}>

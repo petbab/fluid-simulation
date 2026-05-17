@@ -44,27 +44,10 @@ endif()
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
-find_package(OpenMP REQUIRED) # TODO: pull in `libomp` from vcpkg for Clang
 find_package(CUDAToolkit REQUIRED)
 find_package(Open3D REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
-
-# CompactNSearch
-include(FetchContent)
-set(USE_DOUBLE_PRECISION OFF CACHE BOOL "Use double precision")
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
-FetchContent_Declare(
-        CompactNSearch
-        GIT_REPOSITORY https://github.com/petbab/CompactNSearch.git
-        GIT_TAG master
-)
-FetchContent_MakeAvailable(CompactNSearch)
-# Ensure CompactNSearch is built with the same flags
-if(TARGET CompactNSearch)
-    target_compile_options(CompactNSearch PRIVATE $<$<CONFIG:Release>:-O3>)
-    target_compile_features(CompactNSearch PRIVATE cxx_std_20)
-endif()
 
 find_library(KTT_LIBRARY
         NAMES ktt libktt
