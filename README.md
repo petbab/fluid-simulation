@@ -45,7 +45,7 @@ with `register_app(<name>)`. Top-level CMake picks it up automatically via `GLOB
 4. Build:
    ```
    cmake -B build
-   cmake --build build -j
+   cmake --build build -j $(nproc)
    ```
 
 Executables land in `build/bin/<scene>`. `results/` and `snapshots/` directories are created at configure time.
