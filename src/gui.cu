@@ -105,7 +105,7 @@ void GUI::update(float delta) {
         if (!reset && searched > 0) {
             std::stringstream best_config;
             fluid_sim.step_tuner.print_best_config(best_config);
-            ImGui::Text(best_config.str().c_str());
+            ImGui::Text("%s", best_config.str().c_str());
         }
 
         ImGui::TreePop();
