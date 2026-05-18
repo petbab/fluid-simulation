@@ -4,6 +4,8 @@ Real-time 3D Smoothed Particle Hydrodynamics (SPH) fluid simulator.
 CUDA-accelerated solver with dynamic autotuning via [KTT](https://github.com/HiPerCoRe/KTT),
 rendered through OpenGL with CUDA–GL interop.
 
+GitHub: https://github.com/petbab/fluid-simulation
+
 ## Features
 
 - Weakly Compressible SPH (WCSPH) solver with CFL-adaptive time stepping
