@@ -43,6 +43,8 @@ void CUDASPHSimulator::update(float delta) {
             particle_data.set_cell_size_mult(cell_size_mult);
             particle_data.sort(positions_src, positions_dst);
         },
+        positions_src,
+        particle_data.morton(),
         has_boundary() ? boundary_n_search->dev_ptr() : nullptr,
         positions_dst,
         particle_data.velocity_dst(),

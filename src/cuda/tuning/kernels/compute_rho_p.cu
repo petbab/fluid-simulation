@@ -125,11 +125,9 @@ float compute_density(
 
     float density = cubic_spline(0.f, SUPPORT_RADIUS);
 
-    constexpr int R = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
-
-    for (int x = -R; x <= R; ++x)
-    for (int y = -R; y <= R; ++y)
-    for (int z = -R; z <= R; ++z) {
+    for (int x = -RANGE; x <= RANGE; ++x)
+    for (int y = -RANGE; y <= RANGE; ++y)
+    for (int z = -RANGE; z <= RANGE; ++z) {
         NSearch::cell_t nc{anchor.x + x, anchor.y + y, anchor.z + z};
         unsigned n_t_i = dev_n_search->find_cell_in_table<TABLE_SIZE>(nc);
         if (n_t_i == NSearch::EMPTY_CELL) continue;
@@ -261,7 +259,7 @@ void compute_rho_p_with_boundary(
     const unsigned tiles = (home_count + BS - 1) / BS;
     for (unsigned t = 0; t < tiles; ++t) {
         float density = compute_density(
-        positions, fluid_n, fluid_n_search, nl_offsets, nl_counts, nl_neighbors);
+            positions, fluid_n, fluid_n_search, nl_offsets, nl_counts, nl_neighbors, t);
 
         const unsigned tid = BS * t + threadIdx.x;
         const bool active = tid < home_count;

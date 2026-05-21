@@ -85,3 +85,8 @@ inline __device__ __host__ float4 operator*(mat4 m, float4 v) {
         m.col[0].w * v.x + m.col[1].w * v.y + m.col[2].w * v.z + m.col[3].w * v.w
     );
 }
+
+constexpr __device__ __host__ int cceil(float x) {
+    int i = static_cast<int>(x);
+    return x > static_cast<float>(i) ? i + 1 : i;
+}

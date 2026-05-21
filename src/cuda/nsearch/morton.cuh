@@ -32,3 +32,9 @@ __device__ __host__ inline morton_t encode_morton(int3 c) {
         | (part_by_3(signed_to_unsigned(c.y)) << 1)
         | (part_by_3(signed_to_unsigned(c.z)) << 2);
 }
+
+__device__ __host__ inline morton_t encode_morton(uint3 c) {
+    return part_by_3(c.x)
+        | (part_by_3(c.y) << 1)
+        | (part_by_3(c.z) << 2);
+}

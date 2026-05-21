@@ -178,11 +178,9 @@ void compute_non_pressure_accel(
 
         float4 f{0.f}, vlap{0.f};
 
-        constexpr int R = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
-
-        for (int x = -R; x <= R; ++x)
-            for (int y = -R; y <= R; ++y)
-                for (int z = -R; z <= R; ++z) {
+        for (int x = -RANGE; x <= RANGE; ++x)
+            for (int y = -RANGE; y <= RANGE; ++y)
+                for (int z = -RANGE; z <= RANGE; ++z) {
                     NSearch::cell_t nc{anchor.x + x, anchor.y + y, anchor.z + z};
                     unsigned n_t_i = dev_n_search->find_cell_in_table<TABLE_SIZE>(nc);
                     if (n_t_i == NSearch::EMPTY_CELL) continue;

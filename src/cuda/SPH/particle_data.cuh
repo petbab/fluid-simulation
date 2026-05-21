@@ -109,23 +109,12 @@ public:
         thrust::sequence(boundary_indices.begin(), boundary_indices.end());
     }
 
+    // Assumes morton_codes have been populated
     void sort(const float4 *positions_src, float4 *positions_dst) {
         thrust::sequence(indices.begin(), indices.end());
-
-        const thrust::device_ptr<const float4> pos_src{positions_src};
-        const float cs = cell_size * cell_size_mult;
-        thrust::transform(pos_src, pos_src + fluid_n, morton_codes.begin(),
-            [cs] __device__ (float4 p) -> morton_t {
-                int3 cell_coord{
-                    static_cast<int>(floorf(p.x / cs)),
-                    static_cast<int>(floorf(p.y / cs)),
-                    static_cast<int>(floorf(p.z / cs))
-                };
-                return encode_morton(cell_coord);
-            });
-
         thrust::sort_by_key(morton_codes.begin(), morton_codes.end(), indices.begin());
 
+        const thrust::device_ptr<const float4> pos_src{positions_src};
         const thrust::device_ptr<float4> pos_dst{positions_dst};
         thrust::gather(indices.begin(), indices.end(), pos_src, pos_dst);
         thrust::gather(indices.begin(), indices.end(), velocity_buf.src().begin(), velocity_buf.dst().begin());
@@ -168,6 +157,8 @@ public:
 
     const unsigned* get_indices() const { return dev_ptr(indices); }
     const unsigned* get_boundary_indices() const { return dev_ptr(boundary_indices); }
+
+    morton_t* morton() { return dev_ptr(morton_codes); }
 
 private:
     void swap_buffers() {

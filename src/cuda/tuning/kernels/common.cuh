@@ -35,6 +35,7 @@ static constexpr float PARTICLE_MASS = REST_DENSITY * PARTICLE_VOLUME;
 #endif
 
 static constexpr float CELL_SIZE = SUPPORT_RADIUS * CELL_SIZE_MULT;
+static constexpr int RANGE = cceil(1.f / CELL_SIZE_MULT);
 
 __device__ inline bool is_neighbor(float4 xi, float4 xj, unsigned i, unsigned j) {
     float4 r = xi - xj;
@@ -128,7 +129,6 @@ struct NSearch {
         cell_t cell = cell_coord(pos);
 
         unsigned count = 0;
-        static constexpr int RANGE = static_cast<int>(SUPPORT_RADIUS / CELL_SIZE + .5f);
         for (int x = -RANGE; x <= RANGE; ++x) {
             for (int y = -RANGE; y <= RANGE; ++y) {
                 #pragma unroll U_N

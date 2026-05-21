@@ -35,6 +35,10 @@ public:
                 grid_size, block_size);
         }
 
+        def_compute_morton = tuner->AddKernelDefinitionFromFile(
+            "compute_morton", cfg::tuned_kernels_dir / "compute_morton.cu",
+            ktt::DimensionVector{fluid_n + 127 / 128}, ktt::DimensionVector{128});
+
         def_count_neighbors = tuner->AddKernelDefinitionFromFile(
             "count_neighbors", cfg::tuned_kernels_dir / "compute_neighbor_list.cu",
             grid_size, block_size);
@@ -63,6 +67,7 @@ public:
 
         std::vector defs{
             def_rebuild_n_search,
+            def_compute_morton,
             def_count_neighbors,
             def_fill_neighbors,
             def_compute_rho_p,
@@ -145,6 +150,8 @@ public:
 
     ktt::KernelResult run(
         sort_particle_data_t sort,
+        float4 *positions_src,
+        morton_t* morton,
         NSearch* boundary_n_search,
         float4* positions, float4* velocities,
         float* densities, float* pressures,
@@ -163,6 +170,10 @@ public:
         // within this composite invocation; KTT only validates this lazily.
         const auto a_fluid_search = vec_arg<NSearch>(
             dev_fluid_n_search, sizeof(NSearch), ktt::ArgumentAccessType::ReadWrite);
+        const auto a_morton = vec_arg<morton_t>(
+            morton, fluid_n * sizeof(morton_t), ktt::ArgumentAccessType::ReadWrite);
+        const auto a_positions_src = vec_arg<float4>(
+            positions_src, total_n * sizeof(float4), ktt::ArgumentAccessType::ReadOnly);
         const auto a_positions = vec_arg<float4>(
             positions, total_n * sizeof(float4), ktt::ArgumentAccessType::ReadWrite);
         const auto a_velocities = vec_arg<float4>(
@@ -199,6 +210,7 @@ public:
 
         // Per-definition arg lists. Order must match each kernel's parameter list.
         tuner->SetArguments(def_rebuild_n_search, {a_fluid_search, a_positions, a_n_fluid});
+        tuner->SetArguments(def_compute_morton, {a_positions_src, a_morton, a_n_fluid});
 
         tuner->SetArguments(def_count_neighbors,
             {a_positions, a_nl_counts, a_n_fluid, a_fluid_search});
@@ -271,12 +283,15 @@ private:
                 nlist = true;
         }
 
+        iface.RunKernel(def_compute_morton);
         sort_particle_data(cell_size_mult);
 
         NSearchWrapper &n_search = *fluid_n_search_map.at(table_size_mult);
         n_search.clear();
         n_search.shallow_copy(dev_fluid_n_search);
         iface.RunKernel(def_rebuild_n_search);
+
+        n_search.print_stats();
 
         if (nlist) {
             iface.RunKernel(def_count_neighbors);
@@ -388,7 +403,8 @@ private:
                             def_compute_non_pressure_accel = 0,
                             def_count_neighbors = 0,
                             def_fill_neighbors = 0,
-                            def_update_positions = 0;
+                            def_update_positions = 0,
+                            def_compute_morton = 0;
 
     std::vector<ktt::ArgumentId> owned_args;
 };
