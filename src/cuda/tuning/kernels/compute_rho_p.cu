@@ -24,7 +24,7 @@ float compute_density(
 #if compute_rho_p_nlist
 #if compute_rho_p_shared
     constexpr unsigned BS    = compute_rho_p_block;
-    constexpr unsigned CACHE = BS << (2 + compute_rho_p_cache_log2);
+    constexpr unsigned CACHE = BS << (3 + compute_rho_p_cache_log2);
     constexpr unsigned MASK  = CACHE - 1;
     constexpr unsigned EMPTY = ~0u;
 
@@ -63,6 +63,8 @@ float compute_density(
                 if (old == j) break;
             }
             slot = (slot + 1) & MASK;
+            if (c == CACHE - 1)
+                printf("Cache full");
         }
     }
     __syncthreads();

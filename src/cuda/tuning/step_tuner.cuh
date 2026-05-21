@@ -291,8 +291,6 @@ private:
         n_search.shallow_copy(dev_fluid_n_search);
         iface.RunKernel(def_rebuild_n_search);
 
-        n_search.print_stats();
-
         if (nlist) {
             iface.RunKernel(def_count_neighbors);
             thrust::exclusive_scan(
@@ -357,7 +355,7 @@ private:
     void add_nsearch_params(const std::string& name) const {
         tuner->AddParameter<std::uint64_t>(kernel, name + "_nlist", {0, 1});
         tuner->AddParameter<std::uint64_t>(kernel, name + "_shared", {0, 1});
-        tuner->AddParameter<std::uint64_t>(kernel, name + "_cache_log2", {1, 2, 3}, name);
+        tuner->AddParameter<std::uint64_t>(kernel, name + "_cache_log2", {1, 2}, name);
 
         tuner->AddGenericConstraint(kernel,{
             name + "_block",
