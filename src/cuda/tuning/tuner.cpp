@@ -23,8 +23,6 @@ Tuner::~Tuner() {
         print_best_config(std::cout);
         if (results_out)
             tuner->SaveResults(results, *results_out, ktt::OutputFormat::JSON);
-        else
-            tuner->SaveResults(results, cfg::results_dir / result_name(), ktt::OutputFormat::JSON);
     }
 }
 
