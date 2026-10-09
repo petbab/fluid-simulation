@@ -7,9 +7,10 @@
 #include "cuda/SPH/sph.cuh"
 #include "render/asset_manager.h"
 #include "render/fluid.h"
+#include "application.h"
 
 
-GUI::GUI(GLFWwindow* window, const std::string& name) : name(name) {
+GUI::GUI(GLFWwindow* window, const std::string& name) : name(name), window(window) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -38,6 +39,15 @@ void GUI::update(float delta) {
     assert(fluid != nullptr);
     CUDASPHSimulator &fluid_sim = fluid->get_simulator();
 
+    auto *app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+
+    ///////////////////////////////////
+    //           Rendering           //
+    ///////////////////////////////////
+    ImGui::SeparatorText("Rendering");
+
+    ImGui::Checkbox("Fancy render", &app->rendering_fancy);
+
     ///////////////////////////////////
     //          Simulation           //
     ///////////////////////////////////
@@ -49,6 +59,11 @@ void GUI::update(float delta) {
     ImGui::Checkbox("Show Boundary [B]", &fluid->show_boundary);
 
     auto &visualizer = fluid_sim.particle_data_visualizer;
+    if (app->rendering_fancy) {
+        visualizer.set_mode(ParticleDataVisualizer::mode_t::none);
+        ImGui::BeginDisabled();
+    }
+
     int viz_mode = static_cast<int>(visualizer.mode);
     if (ImGui::Combo("Visualization", &viz_mode,
         ParticleDataVisualizer::mode_strings.data(),
@@ -58,13 +73,20 @@ void GUI::update(float delta) {
         vis_max = visualizer.max;
     }
 
-    if (visualizer.normalize) {
-        float range[2] = {visualizer.min, visualizer.max};
-        if (ImGui::SliderFloat2("Range", range, vis_min, vis_max, "%.3f")) {
-            visualizer.min = range[0];
-            visualizer.max = range[1];
-        }
+    if (!visualizer.normalize)
+        ImGui::BeginDisabled();
+
+    float range[2] = {visualizer.min, visualizer.max};
+    if (ImGui::SliderFloat2("Range", range, vis_min, vis_max, "%.3f")) {
+        visualizer.min = range[0];
+        visualizer.max = range[1];
     }
+
+    if (!visualizer.normalize)
+        ImGui::EndDisabled();
+
+    if (app->rendering_fancy)
+        ImGui::EndDisabled();
 
     if (ImGui::Button("Reset Fluid"))
         fluid->reset();

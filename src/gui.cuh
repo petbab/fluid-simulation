@@ -14,4 +14,5 @@ public:
 private:
     float vis_min = 0.f, vis_max = 0.f;
     std::string name;
+    GLFWwindow* window;
 };
