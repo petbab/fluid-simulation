@@ -48,6 +48,19 @@ void GUI::update(float delta) {
 
     ImGui::Checkbox("Fancy render", &app->rendering_fancy);
 
+    if (!app->rendering_fancy)
+        ImGui::BeginDisabled();
+
+    int show_tex = static_cast<int>(app->show_texture);
+    if (ImGui::Combo("Show Texture", &show_tex,
+        Application::show_texture_strings.data(),
+        static_cast<int>(Application::show_texture_strings.size()))) {
+        app->show_texture = static_cast<Application::show_texture_t>(show_tex);
+    }
+
+    if (!app->rendering_fancy)
+        ImGui::EndDisabled();
+
     ///////////////////////////////////
     //          Simulation           //
     ///////////////////////////////////
